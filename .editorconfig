@@ -3,7 +3,7 @@
 # top-most EditorConfig file
 root = true
 
-[*.{md,sh}]
+[*.{md,sh,yml,yaml}]
 indent_style = space
 indent_size = 2
 

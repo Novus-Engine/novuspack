@@ -16,29 +16,29 @@ For the full technical specifications, start here:
 - **NO documents should be created outside this directory**
 - **NO exceptions are allowed**
 
-### **File Naming Convention**
+### File Naming Convention
 
-**ALL documents MUST follow this exact format:**
+ALL documents MUST follow this exact format:
 
 ```text
 YYYY-MM-DD_document_type_description.md
 ```
 
-**Required Elements:**
+#### Required Elements
 
 - **Date:** ISO format (YYYY-MM-DD)
 - **Document Type:** Clear type identifier (plan, analysis, test, review, implementation, etc.)
 - **Description:** Specific, descriptive content summary
 - **Extension:** Must be `.md` (Markdown format)
 
-**Valid Examples:**
+#### Valid Examples
 
 - `2024-01-15_development_plan_mlkem_implementation.md`
 - `2024-01-15_test_analysis_path_normalization.md`
 - `2024-01-15_code_review_quantum_safe_encryption.md`
 - `2024-01-15_implementation_notes_file_validation.md`
 
-**Invalid Examples (DO NOT USE):**
+#### Invalid Examples (DO NOT USE)
 
 - `plan.md` (missing date and description)
 - `test_results.md` (missing date and specific description)

@@ -270,10 +270,10 @@ Package-level security flags provide comprehensive security configuration:
 
 | Feature                 | NovusPack | PGP Files | X.509/PKCS#7 | Windows Authenticode | macOS Code Signing |
 | ----------------------- | --------- | --------- | ------------ | -------------------- | ------------------ |
-| **Multiple Signatures** | ✅        | ✅        | ✅           | ✅                   | ✅                 |
+| **Multiple Signatures** | Yes       | Yes       | Yes          | Yes                  | Yes                |
 | **Signature Types**     | 4 types   | 1 type    | 1 type       | 1 type               | 1 type             |
-| **Quantum-Safe**        | ✅        | ❌        | ❌           | ❌                   | ❌                 |
-| **Cross-Platform**      | ✅        | ✅        | ✅           | ❌                   | ❌                 |
+| **Quantum-Safe**        | Yes       | No        | No           | No                   | No                 |
+| **Cross-Platform**      | Yes       | Yes       | Yes          | No                   | No                 |
 | **Key Management**      | Multiple  | PGP       | X.509        | Windows cert store   | macOS keychain     |
 
 ### 6.2 NovusPack Security Advantages

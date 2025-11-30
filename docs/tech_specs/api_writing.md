@@ -352,13 +352,13 @@ Multiple approaches for handling compression:
 
 #### 5.6.1 Compressed Package Performance
 
-| Operation | Compressed Package | Uncompressed Package |
-|-----------|-------------------|---------------------|
-| Read Speed | Slower (decompression) | Faster (direct access) |
-| Write Speed | Slower (compression) | Faster (direct write) |
-| Disk Usage | Lower | Higher |
-| Memory Usage | Higher (compression buffers) | Lower |
-| Network Transfer | Faster | Slower |
+| Operation        | Compressed Package           | Uncompressed Package   |
+| ---------------- | ---------------------------- | ---------------------- |
+| Read Speed       | Slower (decompression)       | Faster (direct access) |
+| Write Speed      | Slower (compression)         | Faster (direct write)  |
+| Disk Usage       | Lower                        | Higher                 |
+| Memory Usage     | Higher (compression buffers) | Lower                  |
+| Network Transfer | Faster                       | Slower                 |
 
 #### 5.6.2 Compression Decision Factors
 
@@ -402,4 +402,4 @@ Multiple approaches for handling compression:
 
 ---
 
-*This document defines the package writing operations for NovusPack. For core package operations, see the Core Package Interface API.*
+_This document defines the package writing operations for NovusPack. For core package operations, see the Core Package Interface API._

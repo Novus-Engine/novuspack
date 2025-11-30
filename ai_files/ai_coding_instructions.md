@@ -34,23 +34,23 @@
 
 ### Phase 1: Analysis & Planning
 
-1. **Environment Setup**
+#### 1. Environment Setup
 
-    - Verify Go 1.23.0+ installation
-    - Check PATH configuration
-    - Install required tools (gofmt, golangci-lint)
+- Verify Go 1.23.0+ installation
+- Check PATH configuration
+- Install required tools (gofmt, golangci-lint)
 
-2. **Repository Management**
+#### 2. Repository Management
 
-    - Only work on the specified branch
-      If not branch is specified, make a new branch to commit to
-    - Fetch latest changes and review specifications
+- Only work on the specified branch
+  If not branch is specified, make a new branch to commit to
+- Fetch latest changes and review specifications
 
-3. **Code Analysis**
+#### 3. Code Analysis
 
-    - Map existing code to specifications
-    - Identify gaps and required changes
-    - Plan minimal necessary modifications
+- Map existing code to specifications
+- Identify gaps and required changes
+- Plan minimal necessary modifications
 
 ### Phase 2: BDD/TDD Implementation
 

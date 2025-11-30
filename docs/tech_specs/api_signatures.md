@@ -86,24 +86,27 @@ func (p *Package) ClearAllSignatures(ctx context.Context) error
 The `AddSignature` function must:
 
 1. **Check if this is the first signature**:
-    - If `SignatureOffset == 0`, this is the first signature
-    - Set the "Has signatures" bit (Bit 0) in package header flags to 1
-    - Set `SignatureOffset` to point to the new signature location
+
+   - If `SignatureOffset == 0`, this is the first signature
+   - Set the "Has signatures" bit (Bit 0) in package header flags to 1
+   - Set `SignatureOffset` to point to the new signature location
 
 2. **Validate header state**:
-    - Ensure the package header is in a valid state for signing
-    - Verify that no content modifications have occurred since package creation
-    - Check that the package is not already signed if this is not the first signature
+
+   - Ensure the package header is in a valid state for signing
+   - Verify that no content modifications have occurred since package creation
+   - Check that the package is not already signed if this is not the first signature
 
 3. **Append signature**:
-    - Add signature metadata header (18 bytes)
-    - Add signature comment (if provided)
-    - Add signature data
-    - Update file size and any necessary offsets
+
+   - Add signature metadata header (18 bytes)
+   - Add signature comment (if provided)
+   - Add signature data
+   - Update file size and any necessary offsets
 
 4. **Maintain immutability** (see [Immutability Check](#13-immutability-check)):
-    - After the first signature, the entire package becomes immutable
-    - Only signature addition operations are allowed on signed packages
+   - After the first signature, the entire package becomes immutable
+   - Only signature addition operations are allowed on signed packages
 
 **Implementation Constraint**: The signature bit must be set before the first signature is added because:
 
@@ -143,7 +146,7 @@ The `AddSignature` function must:
 
 ### 1.3 Immutability Check
 
-**This is the authoritative source for immutability requirements. All signature functions must follow these rules:**
+This is the authoritative source for immutability requirements. All signature functions must follow these rules:
 
 - **Pre-signature check**: All write operations must check `SignatureOffset > 0` before proceeding
 - **Post-signature restrictions**: If signed, only signature addition operations are allowed
@@ -276,7 +279,7 @@ The `SignPackage` functions follow the same implementation requirements as `AddS
 - You're implementing custom signature generation logic
 - You need to add signatures from external signature services
 
-##### 2.8.2.2 When to use SignPackage* functions (High-Level)
+##### 2.8.2.2 When to use SignPackage\* functions (High-Level)
 
 - You have a private key and want to generate + add a signature
 - You want the convenience of automatic signature generation
@@ -310,18 +313,18 @@ func (p *Package) LoadSigningKey(ctx context.Context, keyFile string) (*SigningK
 
 ### 3.1 Industry Standard Comparison
 
-| Feature                 | NovusPack                                   | PGP Files               | X.509/PKCS#7            | Windows Authenticode    | macOS Code Signing      |
-| ----------------------- | ------------------------------------------- | ----------------------- | ----------------------- | ----------------------- | ----------------------- |
-| **Signature Location**  | End of file                                 | Detached/Inline         | End of file             | End of file             | End of file             |
-| **Header Metadata**     | [OK] Extended header                          | [NO] Separate files       | [OK] PKCS#7 structure     | [OK] PE structure         | [OK] Mach-O structure     |
-| **Multiple Signatures** | [OK] Multiple signatures                      | [OK] Multiple signatures  | [OK] Multiple signatures  | [OK] Multiple signatures  | [OK] Multiple signatures  |
-| **Signature Types**     | 4 types (ML-DSA, SLH-DSA, PGP, X.509) | 1 type (PGP)            | 1 type (X.509)          | 1 type (Authenticode)   | 1 type (Code Signing)   |
-| **Quantum-Safe**        | [OK] ML-DSA/SLH-DSA                           | [NO] No                   | [NO] No                   | [NO] No                   | [NO] No                   |
-| **Cross-Platform**      | [OK] All platforms                            | [OK] All platforms        | [OK] All platforms        | [NO] Windows only         | [NO] macOS only           |
-| **Key Management**      | [OK] Multiple types                           | [OK] PGP keyrings         | [OK] X.509 certificates   | [OK] Windows cert store   | [OK] macOS keychain       |
-| **Signature Size**      | Variable (100-17K bytes)                    | Variable (100-1K bytes) | Variable (200-2K bytes) | Variable (200-2K bytes) | Variable (200-2K bytes) |
-| **Verification Speed**  | Fast                                        | Fast                    | Fast                    | Fast                    | Fast                    |
-| **Industry Adoption**   | New                                         | High                    | High                    | High (Windows)          | High (macOS)            |
+| Feature                 | NovusPack                             | PGP Files                | X.509/PKCS#7             | Windows Authenticode     | macOS Code Signing       |
+| ----------------------- | ------------------------------------- | ------------------------ | ------------------------ | ------------------------ | ------------------------ |
+| **Signature Location**  | End of file                           | Detached/Inline          | End of file              | End of file              | End of file              |
+| **Header Metadata**     | [OK] Extended header                  | [NO] Separate files      | [OK] PKCS#7 structure    | [OK] PE structure        | [OK] Mach-O structure    |
+| **Multiple Signatures** | [OK] Multiple signatures              | [OK] Multiple signatures | [OK] Multiple signatures | [OK] Multiple signatures | [OK] Multiple signatures |
+| **Signature Types**     | 4 types (ML-DSA, SLH-DSA, PGP, X.509) | 1 type (PGP)             | 1 type (X.509)           | 1 type (Authenticode)    | 1 type (Code Signing)    |
+| **Quantum-Safe**        | [OK] ML-DSA/SLH-DSA                   | [NO] No                  | [NO] No                  | [NO] No                  | [NO] No                  |
+| **Cross-Platform**      | [OK] All platforms                    | [OK] All platforms       | [OK] All platforms       | [NO] Windows only        | [NO] macOS only          |
+| **Key Management**      | [OK] Multiple types                   | [OK] PGP keyrings        | [OK] X.509 certificates  | [OK] Windows cert store  | [OK] macOS keychain      |
+| **Signature Size**      | Variable (100-17K bytes)              | Variable (100-1K bytes)  | Variable (200-2K bytes)  | Variable (200-2K bytes)  | Variable (200-2K bytes)  |
+| **Verification Speed**  | Fast                                  | Fast                     | Fast                     | Fast                     | Fast                     |
+| **Industry Adoption**   | New                                   | High                     | High                     | High (Windows)           | High (macOS)             |
 
 ### 3.2 NovusPack Advantages
 
@@ -522,18 +525,18 @@ type ValidationErrorContext struct {
 
 #### 5.2.2 Error Type Mapping
 
-| Error Message | ErrorType | Description |
-|---------------|-----------|-------------|
-| ErrSignatureInvalid | ErrTypeSignature | Invalid signature format or data |
-| ErrSignatureNotFound | ErrTypeValidation | Signature not found at index |
-| ErrSignatureValidationFailed | ErrTypeSignature | Signature validation failed |
-| ErrUnsupportedSignatureType | ErrTypeUnsupported | Unsupported signature algorithm |
-| ErrInvalidSignatureData | ErrTypeValidation | Invalid signature data format |
-| ErrSignatureTooLarge | ErrTypeValidation | Signature exceeds maximum size |
-| ErrKeyNotFound | ErrTypeSecurity | Signing key not found |
-| ErrInvalidKey | ErrTypeSecurity | Invalid signing key format |
-| ErrSignatureGenerationFailed | ErrTypeSignature | Signature generation failed |
-| ErrSignatureCorrupted | ErrTypeCorruption | Signature data corrupted |
+| Error Message                | ErrorType          | Description                      |
+| ---------------------------- | ------------------ | -------------------------------- |
+| ErrSignatureInvalid          | ErrTypeSignature   | Invalid signature format or data |
+| ErrSignatureNotFound         | ErrTypeValidation  | Signature not found at index     |
+| ErrSignatureValidationFailed | ErrTypeSignature   | Signature validation failed      |
+| ErrUnsupportedSignatureType  | ErrTypeUnsupported | Unsupported signature algorithm  |
+| ErrInvalidSignatureData      | ErrTypeValidation  | Invalid signature data format    |
+| ErrSignatureTooLarge         | ErrTypeValidation  | Signature exceeds maximum size   |
+| ErrKeyNotFound               | ErrTypeSecurity    | Signing key not found            |
+| ErrInvalidKey                | ErrTypeSecurity    | Invalid signing key format       |
+| ErrSignatureGenerationFailed | ErrTypeSignature   | Signature generation failed      |
+| ErrSignatureCorrupted        | ErrTypeCorruption  | Signature data corrupted         |
 
 ### 5.3 Structured Error Examples
 
