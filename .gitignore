@@ -1,0 +1,37 @@
+# Directories
+.vscode/
+.cursor/
+Abacus.ai*/
+tmp/
+
+# File Patterns
+*.bak
+*.out
+*.log
+*.zip
+*.pdf
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.webp
+*.eps
+*.pdf
+*.docx
+*.doc
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.odt
+*.odp
+*.backup*
+
+# Ignore tar files
+*.tar
+*.tar.gz
+
+# Ignore coverage files
+coverage.*
