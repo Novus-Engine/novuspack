@@ -472,7 +472,7 @@ Adds multiple files to the package based on a file system pattern and returns th
 #### 2.2.2 Parameters
 
 - `ctx`: Context for cancellation and timeout handling
-- `pattern`: File system pattern (e.g., "*.txt", "documents/**/*.pdf")
+- `pattern`: File system pattern (e.g., "_.txt", "documents/\*\*/_.pdf")
 - `options`: Configuration options for file processing (can be nil for defaults)
 
 #### 2.2.3 Returns
@@ -623,30 +623,34 @@ The file addition process must follow a specific sequence to ensure proper compr
 #### 3.1.1 Required Processing Sequence
 
 1. File Validation
-    - Check file exists and is not a directory
-    - Validate file name and path format
-    - Verify file size limits and permissions
+
+   - Check file exists and is not a directory
+   - Validate file name and path format
+   - Verify file size limits and permissions
 
 2. Compression (if requested)
-    - Apply compression algorithm if requested
-    - Compression may fail and must return error
-    - No fallback to uncompressed storage
+
+   - Apply compression algorithm if requested
+   - Compression may fail and must return error
+   - No fallback to uncompressed storage
 
 3. Encryption (if requested)
-    - Apply encryption algorithm if requested
-    - Encryption may fail and must return error
-    - No fallback to unencrypted storage
+
+   - Apply encryption algorithm if requested
+   - Encryption may fail and must return error
+   - No fallback to unencrypted storage
 
 4. Deduplication Check
-    - Check for existing processed content using:
-        - Processed file size (after compression/encryption)
-        - CRC32 checksum of processed content
-        - SHA-256 hash of processed content (if size and CRC32 match)
-    - Use processed content, not raw file content
+
+   - Check for existing processed content using:
+     - Processed file size (after compression/encryption)
+     - CRC32 checksum of processed content
+     - SHA-256 hash of processed content (if size and CRC32 match)
+   - Use processed content, not raw file content
 
 5. Storage Decision
-    - If unique: Store file with new FileEntry
-    - If duplicate: Add path reference to existing FileEntry
+   - If unique: Store file with new FileEntry
+   - If duplicate: Add path reference to existing FileEntry
 
 #### 3.1.2 Error Handling Requirements
 
@@ -1542,26 +1546,26 @@ var (
 
 #### 12.2.2 Error Type Mapping
 
-| Sentinel Error | ErrorType | Description |
-|----------------|-----------|-------------|
-| ErrFileNotFound | ErrTypeValidation | File not found in package |
-| ErrFileExists | ErrTypeValidation | File already exists |
-| ErrInvalidPath | ErrTypeValidation | Invalid file path |
-| ErrInvalidPattern | ErrTypeValidation | Invalid file pattern |
-| ErrContentTooLarge | ErrTypeValidation | File content too large |
-| ErrNoFilesFound | ErrTypeValidation | No files found matching pattern |
-| ErrUnsupportedEncryption | ErrTypeEncryption | Unsupported encryption type |
-| ErrEncryptionFailed | ErrTypeEncryption | Encryption operation failed |
-| ErrDecryptionFailed | ErrTypeEncryption | Decryption operation failed |
-| ErrDecompressionFailed | ErrTypeCompression | Decompression operation failed |
-| ErrInvalidSecurityLevel | ErrTypeSecurity | Invalid security level |
-| ErrKeyGenerationFailed | ErrTypeEncryption | Key generation failed |
-| ErrInvalidKey | ErrTypeEncryption | Invalid encryption key |
-| ErrPackageNotOpen | ErrTypeValidation | Package is not open |
-| ErrPackageReadOnly | ErrTypeValidation | Package is read-only |
-| ErrIOError | ErrTypeIO | I/O error |
-| ErrContextCancelled | ErrTypeContext | Context cancelled |
-| ErrContextTimeout | ErrTypeContext | Context timeout |
+| Sentinel Error           | ErrorType          | Description                     |
+| ------------------------ | ------------------ | ------------------------------- |
+| ErrFileNotFound          | ErrTypeValidation  | File not found in package       |
+| ErrFileExists            | ErrTypeValidation  | File already exists             |
+| ErrInvalidPath           | ErrTypeValidation  | Invalid file path               |
+| ErrInvalidPattern        | ErrTypeValidation  | Invalid file pattern            |
+| ErrContentTooLarge       | ErrTypeValidation  | File content too large          |
+| ErrNoFilesFound          | ErrTypeValidation  | No files found matching pattern |
+| ErrUnsupportedEncryption | ErrTypeEncryption  | Unsupported encryption type     |
+| ErrEncryptionFailed      | ErrTypeEncryption  | Encryption operation failed     |
+| ErrDecryptionFailed      | ErrTypeEncryption  | Decryption operation failed     |
+| ErrDecompressionFailed   | ErrTypeCompression | Decompression operation failed  |
+| ErrInvalidSecurityLevel  | ErrTypeSecurity    | Invalid security level          |
+| ErrKeyGenerationFailed   | ErrTypeEncryption  | Key generation failed           |
+| ErrInvalidKey            | ErrTypeEncryption  | Invalid encryption key          |
+| ErrPackageNotOpen        | ErrTypeValidation  | Package is not open             |
+| ErrPackageReadOnly       | ErrTypeValidation  | Package is read-only            |
+| ErrIOError               | ErrTypeIO          | I/O error                       |
+| ErrContextCancelled      | ErrTypeContext     | Context cancelled               |
+| ErrContextTimeout        | ErrTypeContext     | Context timeout                 |
 
 ### 12.3 Structured Error Examples
 

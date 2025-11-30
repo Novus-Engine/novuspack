@@ -58,11 +58,11 @@ The .npk file structure follows this ordered layout:
 
 1. **Package Header** (see [Package Header](#2-package-header)) - Fixed-size header with metadata and navigation information (immutable after first signature)
 2. **File Entries and Data** (variable length) - Interleaved file entries and their data:
-    - File Entry 1 (64-byte binary format + extended data)
-    - File Data 1 (compressed/encrypted content)
-    - File Entry 2 (64-byte binary format + extended data)
-    - File Data 2 (compressed/encrypted content)
-    - ... (repeat for each file)
+   - File Entry 1 (64-byte binary format + extended data)
+   - File Data 1 (compressed/encrypted content)
+   - File Entry 2 (64-byte binary format + extended data)
+   - File Data 2 (compressed/encrypted content)
+   - ... (repeat for each file)
 3. **File Index** (variable length) - Index of all files with metadata and offsets
 4. **Package Comment** (variable length, optional) - Human-readable package description
 5. **Digital Signatures** (variable length, optional) - Multiple digital signatures for package integrity (appended incrementally)
@@ -228,20 +228,24 @@ Examples using common software distribution methods.
 #### 2.5.2 Metadata-Related Flags
 
 - **Bit 7**: Metadata-only package
+
   - **Purpose**: Indicates that the package contains only special metadata files and no regular content
   - **Usage**: Set to 1 if package contains only special metadata files (see [File Types System - Special File Types](file_type_system.md#special-file-types-65000-65535))
 
 - **Bit 6**: Has special metadata files
+
   - **Purpose**: Indicates the presence of special metadata files in the package
   - **Usage**: Set to 1 if package contains special metadata files (see [File Types System - Special File Types](file_type_system.md#special-file-types-65000-65535))
   - **Related**: Corresponds to special metadata file detection
 
 - **Bit 5**: Has per-file tags
+
   - **Purpose**: Indicates that files in the package have per-file tags
   - **Usage**: Set to 1 if any files have associated tags
   - **Related**: Corresponds to per-file tag system usage
 
 - **Bit 4**: Has package comment
+
   - **Purpose**: Indicates that the package has a comment
   - **Usage**: Set to 1 if package contains a comment
   - **Related**: Corresponds to `HasComment` in PackageInfo
@@ -254,12 +258,14 @@ Examples using common software distribution methods.
 #### 2.5.3 Content-Related Flags
 
 - **Bit 2**: Has encrypted files
+
   - **Purpose**: Indicates that the package contains encrypted files (per-file encryption)
   - **Usage**: Set to 1 if any files in the package are encrypted
   - **Related**: Corresponds to `HasEncryptedData` in PackageInfo
   - **Note**: Per-file encryption, not package-level encryption
 
 - **Bit 1**: Has compressed files
+
   - **Purpose**: Indicates that the package contains compressed files
   - **Usage**: Set to 1 if any files in the package are compressed
   - **Related**: Corresponds to `HasCompressedData` in PackageInfo
@@ -423,6 +429,7 @@ The file entry binary format consists of a fixed-size header followed by optiona
 ##### 4.1.1.2 File Version Fields Specification
 
 - **FileVersion**: 4 bytes (32-bit unsigned integer) - File data version
+
   - **Purpose**: Tracks changes to file content/data
   - **Increment**: Incremented whenever file data is modified
   - **Initial Value**: 1 for new files
@@ -439,6 +446,7 @@ The file entry binary format consists of a fixed-size header followed by optiona
 ##### 4.1.1.3 Compression and Encryption Types
 
 - **CompressionType**: 1 byte - Direct compression algorithm identifier
+
   - 0: No compression
   - 1: Zstd compression
   - 2: LZ4 compression
@@ -446,6 +454,7 @@ The file entry binary format consists of a fixed-size header followed by optiona
   - 4-255: Reserved for future algorithms
 
 - **EncryptionType**: 1 byte - Direct encryption algorithm identifier
+
   - 0x00: No encryption
   - 0x01: AES-256-GCM encryption
   - 0x02: Quantum-safe encryption (ML-KEM + ML-DSA)
@@ -576,6 +585,7 @@ Each optional data entry: `[DataType: 1 byte][DataLength: 2 bytes][Data: variabl
 #### 4.1.5 Hash Algorithm Support
 
 - **HashType**: 1 byte - Hash algorithm identifier
+
   - 0x00: SHA-256 (32 bytes) - Standard cryptographic hash
   - 0x01: SHA-512 (64 bytes) - Stronger cryptographic hash
   - 0x02: BLAKE3 (32 bytes) - Fast cryptographic hash
@@ -660,11 +670,13 @@ The package comment is an optional, variable-length field that provides human-re
 ##### 6.1.1.1 Field Specifications
 
 - **CommentLength**: 4 bytes, little-endian unsigned integer
+
   - Value of 0 indicates no comment is present
   - Maximum length: 1,048,575 bytes (1MB - 1 byte) to prevent abuse
   - Must match the actual length of the Comment field including null terminator
 
 - **Comment**: Variable-length UTF-8 string with null termination
+
   - Must be null-terminated (ends with 0x00)
   - Must be valid UTF-8 encoding
   - Can contain newlines, tabs, and other whitespace characters
@@ -697,15 +709,15 @@ For signature implementation details, see [Digital Signature API](api_signatures
 Each signature consists of a metadata header, optional comment, and signature data.
 The signature validates all content up to its creation point, including its own metadata and comment.
 
-| Field              | Size    | Description                                                      |
-| ------------------ | ------- | ---------------------------------------------------------------- |
-| SignatureType      | 4 bytes | Signature type (0x01=ML-DSA, 0x02=SLH-DSA, 0x03=PGP, 0x04=X.509) |
-| SignatureSize      | 4 bytes | Size of this signature data in bytes                             |
-| SignatureFlags     | 4 bytes | Signature-specific flags                                         |
-| SignatureTimestamp | 4 bytes | When this signature was created (Unix nanoseconds)               |
-| CommentLength      | 2 bytes | Length of signature comment in bytes (0 if no comment)           |
-| SignatureComment   | Variable| Human-readable comment about this signature (UTF-8, null-terminated) |
-| SignatureData      | Variable| Raw signature data                                               |
+| Field              | Size     | Description                                                          |
+| ------------------ | -------- | -------------------------------------------------------------------- |
+| SignatureType      | 4 bytes  | Signature type (0x01=ML-DSA, 0x02=SLH-DSA, 0x03=PGP, 0x04=X.509)     |
+| SignatureSize      | 4 bytes  | Size of this signature data in bytes                                 |
+| SignatureFlags     | 4 bytes  | Signature-specific flags                                             |
+| SignatureTimestamp | 4 bytes  | When this signature was created (Unix nanoseconds)                   |
+| CommentLength      | 2 bytes  | Length of signature comment in bytes (0 if no comment)               |
+| SignatureComment   | Variable | Human-readable comment about this signature (UTF-8, null-terminated) |
+| SignatureData      | Variable | Raw signature data                                                   |
 
 ### 7.2 Signature Types
 

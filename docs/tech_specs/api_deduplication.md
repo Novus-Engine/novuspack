@@ -33,26 +33,27 @@ This document defines the multi-layer deduplication system for the NovusPack sys
 
 ### 1.1 Deduplication Layers
 
-1. **Layer 1: Size Check (Instant Elimination)**
+#### 1. Layer 1: Size Check (Instant Elimination)
 
-    - Compares file sizes for instant elimination of different files
-    - Zero computational cost, maximum efficiency
-    - Eliminates 99%+ of non-matches instantly
+- Compares file sizes for instant elimination of different files
+- Zero computational cost, maximum efficiency
+- Eliminates 99%+ of non-matches instantly
 
-2. **Layer 2: CRC32 Check (Fast Elimination)**
+#### 2. Layer 2: CRC32 Check (Fast Elimination)
 
-    - Uses existing CRC32 checksums for fast comparison
-    - Leverages existing infrastructure
-    - Provides good collision resistance for most use cases
+- Uses existing CRC32 checksums for fast comparison
+- Leverages existing infrastructure
+- Provides good collision resistance for most use cases
 
-3. **Layer 3: SHA256 Check (Hash-on-Demand)**
-    - Computes SHA256 only when size + CRC32 match
-    - Provides cryptographic collision resistance
-    - Minimal computational overhead (only for potential matches)
+#### 3. Layer 3: SHA256 Check (Hash-on-Demand)
+
+- Computes SHA256 only when size + CRC32 match
+- Provides cryptographic collision resistance
+- Minimal computational overhead (only for potential matches)
 
 ### 1.2 Deduplication Implementation Strategy
 
-#### 1.2.1 findExistingEntry(originalSize int64, rawChecksum uint32, contentHash []byte) *FileEntry
+#### 1.2.1 findExistingEntry(originalSize int64, rawChecksum uint32, contentHash []byte) \*FileEntry
 
 - **Layer 1 - Size check**: Instant elimination of files with different sizes
 - **Layer 2 - CRC32 check**: Fast comparison using existing CRC32 checksums
@@ -106,7 +107,7 @@ This document defines the multi-layer deduplication system for the NovusPack sys
 
 ### 2.4 Deduplication Level Selection
 
-#### 2.4.1 selectDeduplicationLevel(entry *FileEntry) DeduplicationLevel
+#### 2.4.1 selectDeduplicationLevel(entry \*FileEntry) DeduplicationLevel
 
 - **Encrypted files**: Returns DeduplicationLevelProcessed (deduplicate before encryption)
 - **Compressed files**: Returns DeduplicationLevelProcessed (deduplicate before compression)
@@ -114,4 +115,4 @@ This document defines the multi-layer deduplication system for the NovusPack sys
 
 ---
 
-*This document defines the multi-layer deduplication system for NovusPack. For core package operations, see the Core Package Interface API.*
+_This document defines the multi-layer deduplication system for NovusPack. For core package operations, see the Core Package Interface API._

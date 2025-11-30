@@ -91,7 +91,7 @@ The registration ensures that step definitions from all domains are available wh
 Stub files are feature files that contain only comments referencing moved scenarios.
 These files are kept for reference but are excluded from BDD test execution via `@skip` tags.
 
-**Features per Domain:**
+### Features per Domain
 
 | Domain                 | Feature Count | Testable Files |
 | ---------------------- | ------------- | -------------- |
@@ -121,7 +121,7 @@ These files document where requirements have been moved to dedicated feature fil
 All stub files are tagged with `@skip` to exclude them from BDD test execution by default.
 The BDD system also supports `@wip` tags for work-in-progress features that should be excluded from test execution.
 
-**Stub Files by Domain:**
+### Stub Files by Domain
 
 - `basic_ops/`: 3 files
   - `basic_operations_definitions.feature`
@@ -279,43 +279,43 @@ Each scenario gets a fresh world instance via Before hooks.
 
 ### Recent Updates
 
-1. **Domain Tagging System:**
+#### 1. Domain Tagging System
 
-    - All 17 step files now include package-level domain tags
-    - Each `Register*Steps` function includes domain, phase, and tag documentation
-    - Tags align with feature file `@domain:xxx` tags for better organization
+- All 17 step files now include package-level domain tags
+- Each `Register*Steps` function includes domain, phase, and tag documentation
+- Tags align with feature file `@domain:xxx` tags for better organization
 
-2. **Step Registration Refactoring (2025-01-20):**
+#### 2. Step Registration Refactoring
 
-    - ✅ **Refactored to use regex patterns** - Consolidating similar steps using regex with capture groups and optional groups
-    - ✅ **Reduced code duplication** - Multiple step variations now handled by single functions
-    - ✅ **Examples implemented** - File path and FileEntry variations consolidated in `file_mgmt_steps.go`
-    - ✅ **Documentation updated** - README and STEP_CHECKLIST now include regex pattern guidelines
-    - ✅ **Compilation successful** - All refactored steps compile correctly
-    - ✅ **Pattern consolidation complete** - 10 phases of pattern consolidation implemented
+- ✅ **Refactored to use regex patterns** - Consolidating similar steps using regex with capture groups and optional groups
+- ✅ **Reduced code duplication** - Multiple step variations now handled by single functions
+- ✅ **Examples implemented** - File path and FileEntry variations consolidated in `file_mgmt_steps.go`
+- ✅ **Documentation updated** - README and STEP_CHECKLIST now include regex pattern guidelines
+- ✅ **Compilation successful** - All refactored steps compile correctly
+- ✅ **Pattern consolidation complete** - 10 phases of pattern consolidation implemented
 
-3. **Pattern Consolidation Phases (2025-01-20):**
+#### 3. Pattern Consolidation Phases
 
-    - ✅ **Phase 1:** "a/an" Type Instance Patterns (e.g., `^a PackageComment$`, `^an AppID value$`)
-    - ✅ **Phase 2:** Method Fails Patterns (e.g., `^AddSignature fails$`)
-    - ✅ **Phase 3:** Type Implementation Patterns (e.g., `^AES256GCMFileHandler implementation$`)
-    - ✅ **Phase 4:** Enhanced Capitalized Action Patterns (e.g., `^AES support provides...$`)
-    - ✅ **Phase 5:** Lowercase Action Patterns (e.g., `^compression fails$`, `^configuration enables...$`)
-    - ✅ **Phase 6:** Numeric Start Patterns (e.g., `^a (\d+)-bit X$`, `^X value (\d+)x(\d+)$`)
-    - ✅ **Phase 7:** Bit Indicates Patterns (e.g., `^bit (\d+) indicates...$`)
-    - ✅ **Phase 8:** Quoted String Patterns (e.g., patterns with quoted strings)
-    - ✅ **Phase 9:** Complex Preposition/Conjunction Patterns (`of`, `that`, `when`, `before/after`, `using`, `during`, `favor`, `and`, `or`)
-    - ✅ **Phase 10:** All function implementations added and compiling
-    - ❌ **Catch-All Pattern Removed** - As requested, replaced with specific patterns for better test fidelity
-    - **Status:** All 10 phases complete, 626 undefined steps remain (may require additional analysis)
+- ✅ **Phase 1:** "a/an" Type Instance Patterns (e.g., `^a PackageComment$`, `^an AppID value$`)
+- ✅ **Phase 2:** Method Fails Patterns (e.g., `^AddSignature fails$`)
+- ✅ **Phase 3:** Type Implementation Patterns (e.g., `^AES256GCMFileHandler implementation$`)
+- ✅ **Phase 4:** Enhanced Capitalized Action Patterns (e.g., `^AES support provides...$`)
+- ✅ **Phase 5:** Lowercase Action Patterns (e.g., `^compression fails$`, `^configuration enables...$`)
+- ✅ **Phase 6:** Numeric Start Patterns (e.g., `^a (\d+)-bit X$`, `^X value (\d+)x(\d+)$`)
+- ✅ **Phase 7:** Bit Indicates Patterns (e.g., `^bit (\d+) indicates...$`)
+- ✅ **Phase 8:** Quoted String Patterns (e.g., patterns with quoted strings)
+- ✅ **Phase 9:** Complex Preposition/Conjunction Patterns (`of`, `that`, `when`, `before/after`, `using`, `during`, `favor`, `and`, `or`)
+- ✅ **Phase 10:** All function implementations added and compiling
+- ❌ **Catch-All Pattern Removed** - As requested, replaced with specific patterns for better test fidelity
+- **Status:** All 10 phases complete, 626 undefined steps remain (may require additional analysis)
 
-4. **Additional Pattern Consolidation (2025-11-21):**
+#### 4. Additional Pattern Consolidation
 
-    - ✅ **Phase 1:** Escaped Character Patterns (e.g., `^an io\.Reader$`, `^bit (\d+) \((\d+) of features\)...$`, `^X X\.(\d+)\/PKCS#(\d+)$`)
-    - ✅ **Phase 2:** Two-Word Capitalized Patterns (e.g., `^Asset Metadata contains...$`, `^API definitions reference...$`)
-    - ✅ **Phase 3:** Two-Word Lowercase End Patterns (e.g., `^compression configuration$`, `^archival storage requirements$`)
-    - ✅ **Phase 4:** Verified existing pattern matches (most patterns already covered by previous phases)
-    - ✅ **Phase 5:** Complex Multi-Word Patterns (e.g., `^a probe result indicating type "([^"]*)"$`)
+- ✅ **Phase 1:** Escaped Character Patterns (e.g., `^an io\.Reader$`, `^bit (\d+) \((\d+) of features\)...$`, `^X X\.(\d+)\/PKCS#(\d+)$`)
+- ✅ **Phase 2:** Two-Word Capitalized Patterns (e.g., `^Asset Metadata contains...$`, `^API definitions reference...$`)
+- ✅ **Phase 3:** Two-Word Lowercase End Patterns (e.g., `^compression configuration$`, `^archival storage requirements$`)
+- ✅ **Phase 4:** Verified existing pattern matches (most patterns already covered by previous phases)
+- ✅ **Phase 5:** Complex Multi-Word Patterns (e.g., `^a probe result indicating type "([^"]*)"$`)
 
 ### Remaining Work
 
@@ -362,106 +362,106 @@ Step definitions should be implemented in the following priority order:
 
 1. **`core/`** (42 files, ~39 testable)
 
-    - Foundation for all other domains
-    - Package creation, opening, closing
-    - Error handling infrastructure
-    - Context management
+   - Foundation for all other domains
+   - Package creation, opening, closing
+   - Error handling infrastructure
+   - Context management
 
 2. **`basic_ops/`** (82 files, ~79 testable)
 
-    - Basic package operations
-    - Lifecycle management
-    - Validation and defragmentation
+   - Basic package operations
+   - Lifecycle management
+   - Validation and defragmentation
 
 ### Phase 2: File Operations (Priority: High)
 
 1. **`file_format/`** (74 files, ~73 testable)
 
-    - Package file format structure
-    - File entry parsing
-    - Header and metadata parsing
+   - Package file format structure
+   - File entry parsing
+   - Header and metadata parsing
 
 2. **`file_types/`** (30 files, ~29 testable)
 
-    - File type detection
-    - Type registration and mapping
+   - File type detection
+   - Type registration and mapping
 
 3. **`file_mgmt/`** (139 files, ~130 testable)
 
-    - File addition, removal, extraction
-    - File queries and search
-    - Tag management
+   - File addition, removal, extraction
+   - File queries and search
+   - Tag management
 
 ### Phase 3: Package Operations (Priority: Medium)
 
 1. **`compression/`** (135 files, ~131 testable)
 
-    - Package compression/decompression
-    - Compression type selection
-    - Streaming compression
+   - Package compression/decompression
+   - Compression type selection
+   - Streaming compression
 
 2. **`signatures/`** (46 files, ~44 testable)
 
-    - Digital signature operations
-    - Signature validation
-    - Signature management
+   - Digital signature operations
+   - Signature validation
+   - Signature management
 
 3. **`streaming/`** (49 files, ~46 testable)
 
-    - Streaming file operations
-    - Buffer pool management
-    - Backpressure handling
+   - Streaming file operations
+   - Buffer pool management
+   - Backpressure handling
 
 4. **`writing/`** (51 files, ~49 testable)
 
-    - Package writing operations
-    - SafeWrite and FastWrite
-    - Write strategies
+   - Package writing operations
+   - SafeWrite and FastWrite
+   - Write strategies
 
 ### Phase 4: Advanced Features (Priority: Medium)
 
 1. **`security/`** (96 files, ~90 testable)
 
-    - Security validation
-    - Encryption type management
-    - Security status checking
+   - Security validation
+   - Encryption type management
+   - Security status checking
 
 2. **`metadata/`** (95 files, ~90 testable)
 
-    - Metadata management
-    - Tag operations
-    - Package information
+   - Metadata management
+   - Tag operations
+   - Package information
 
 3. **`dedup/`** (14 files, ~14 testable)
 
-    - Deduplication operations
-    - Content block management
+   - Deduplication operations
+   - Content block management
 
 ### Phase 5: Supporting Features (Priority: Low)
 
 1. **`generics/`** (23 files, ~22 testable)
 
-    - Generic helper functions
-    - Concurrency patterns
+   - Generic helper functions
+   - Concurrency patterns
 
 2. **`validation/`** (6 files, ~6 testable)
 
-    - Input validation
-    - Package integrity validation
+   - Input validation
+   - Package integrity validation
 
 3. **`testing/`** (11 files, ~11 testable)
 
-    - Testing infrastructure
-    - Test coverage requirements
+   - Testing infrastructure
+   - Test coverage requirements
 
 4. **`metadata_system/`** (2 files, ~2 testable)
 
-    - Metadata system operations
+   - Metadata system operations
 
 5. **`security_encryption/`** (3 files, ~3 testable)
 
-    - Encryption-specific operations
-    - Key management
+   - Encryption-specific operations
+   - Key management
 
 ### Common Step Patterns
 
@@ -481,7 +481,7 @@ These common patterns should be implemented in shared helper functions or a comm
 
 Instead of creating individual functions for every step variation, use regex patterns with capture groups and optional groups to consolidate similar steps:
 
-**Good Example - Consolidated Pattern:**
+##### Good Example - Consolidated Pattern
 
 ```go
 // Matches multiple variations with a single function
@@ -502,7 +502,7 @@ func aFilePathWithVariation(ctx context.Context, variation string) error {
 }
 ```
 
-**Bad Example - Individual Functions:**
+##### Bad Example - Individual Functions
 
 ```go
 // Don't do this - creates unnecessary duplication
@@ -561,7 +561,7 @@ Create separate functions when:
 
 See [`support/common_steps.go`](support/common_steps.go) for examples:
 
-- Parameter extraction: `ctx.Step(`^a file at path "([^"]*)"$`, aFileAtPath)`
+- Parameter extraction: `ctx.Step(`^a file at path "([^"]\*)"$`, aFileAtPath)`
 - Alternation: `ctx.Step(`^a file with (?:corrupted|invalid) (?:package )?format$`, aFileWithInvalidFormat)`
 - Context variations: `ctx.Step(`^a context for (?:package creation|package operations)$`, aContextForPackageOperations)`
 

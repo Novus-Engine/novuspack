@@ -222,4 +222,9 @@ MD047: true
 MD048:
   # Code fence style
   style: "consistent"
+
+# MD060/table-column-style - Table column style
+MD060:
+  # Table column style
+  style: "aligned"
 ...

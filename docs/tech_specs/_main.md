@@ -37,7 +37,7 @@ It provides an overview and cross-references to all detailed specification docum
 - [Testing Requirements](testing.md) - Comprehensive testing requirements and validation
 - [Metadata System](metadata.md) - Per-file tags system and package metadata specifications
 
-**API Documentation:**
+#### API Documentation
 
 - [Basic Operations API](api_basic_operations.md) - Package lifecycle management
 - [File Management API](api_file_management.md) - File operations and encryption
