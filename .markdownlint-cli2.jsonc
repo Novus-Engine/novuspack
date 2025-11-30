@@ -1,0 +1,15 @@
+{
+  "config": {
+    "default": true,
+    "extends": ".markdownlint.yml"
+  },
+  "globs": [
+    "**/*.md"
+  ],
+  "ignores": [
+    "**/node_modules/**",
+  ],
+  "customRules": [
+    ".markdownlint-rules/no-heading-like-lines.js"
+  ]
+}
