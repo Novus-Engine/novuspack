@@ -42,16 +42,16 @@ NovusPack uses the `.npk` (Novus Package) format, which provides:
 ```text
 novuspack/
 ├── api/                      # Language-specific implementations
-│   ├── go/                   # Go implementation
-│   │   ├── v1/               # API version 1
-│   │   └── v2/               # API version 2 (future)
-│   ├── rust/                 # Rust implementation (future)
-│   └── zig/                  # Zig implementation (future)
+│   └── go/                   # Go implementation
+│       └── v1/               # API version 1
+│           ├── bdd/          # BDD test infrastructure
+│           ├── go.mod        # Go module
+│           └── README.md     # Implementation-specific docs
 ├── features/                 # Shared Gherkin feature files (all implementations)
 ├── docs/                     # Shared documentation and specifications
 │   ├── tech_specs/           # API specifications (language-agnostic)
 │   └── requirements/         # Requirements documentation
-└── test-runner/              # Unified test runner (future implementation)
+└── README.md                 # This file
 ```
 
 ## Architecture
@@ -83,21 +83,57 @@ Comprehensive technical specifications are available in the `docs/tech_specs/` d
 
 ## Quick Start
 
-*Note: This project is currently in the specification phase.*
-*Implementation will begin following the completion of technical specifications.*
+The repository structure and initial Go BDD test framework are now established.
+
+To run BDD tests:
+
+```bash
+cd api/go/v1
+make bdd
+```
 
 ## Project Status
 
-This repository currently contains the complete technical specifications for NovusPack.
-The implementation phase will begin once all specifications are finalized and reviewed.
+This repository contains:
+
+- **Complete initial specifications** for NovusPack
+- **Go BDD test framework** with 898 feature files covering all domains
+- **Repository structure** established for multi-language support
+- **Requirements documentation** organized by domain
+
+The Go implementation is in progress, with the BDD framework ready for functional implementation.
 
 ## Contributing
 
-This project is in the specification phase. Please refer to the [Implementation Guide](docs/tech_specs/implementation.md) for development phases and contribution guidelines.
+This project has completed the initial specification phase and is moving into implementation.
+
+For Go development:
+
+- Feature files: [`features/`](features/) at repository root
+- Go implementation: [`api/go/v1/`](api/go/v1/)
+- BDD tests: [`api/go/v1/bdd/`](api/go/v1/bdd/)
+- Requirements: [`docs/requirements/`](docs/requirements/)
 
 ## License
 
-*License information will be added during the implementation phase.*
+NovusPack is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+
+This license allows:
+
+- ✅ **Commercial use** of the library in production applications (no restrictions)
+- ✅ **Contributions** from anyone without restriction
+- ✅ **Non-commercial forks** and modifications
+- ✅ **Internal use** and modifications within organizations
+
+This license restricts:
+
+- ❌ **Commercial forks** that create competing products or services substantially similar to NovusPack
+
+**Change Date:** January 1, 2030
+
+On the Change Date, the license will automatically convert to the **Apache License 2.0**, making the code fully open source.
+
+For the complete license text, see [LICENSE](LICENSE).
 
 ## Security
 
