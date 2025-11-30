@@ -1,0 +1,45 @@
+Business Source License 1.1
+
+Copyright 2025 G. Andre Vaillancourt
+
+Licensor: G. Andre Vaillancourt
+
+Licensed Work: NovusPack
+  The Licensed Work is (c) 2025 G. Andre Vaillancourt
+
+Additional Use Grant: None
+
+Change Date: 2030-01-01
+
+Change License: Apache License, Version 2.0
+
+On the date specified in the Change Date above, the Licensor hereby changes the Licensed Work's license to the Change License, and the Licensed Work will become subject to the Change License subject to all the same terms, conditions, and exceptions stated for the Licensed Work above, except as stated below.
+
+Business Source License 1.1
+
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative works, redistribute, and use the Licensed Work and such derivative works in source code or binary form for any purpose, including commercial use, provided that you comply with the following conditions:
+
+1. You may use the Licensed Work commercially without restriction, including in production environments.
+
+2. You may not create a commercial fork or derivative work that competes with the Licensed Work.
+   A "commercial fork" means a fork or derivative work that is offered as a competing product or service substantially similar to the Licensed Work.
+   This restriction does not apply to:
+   - Using the Licensed Work as a library or component in your own products or services
+   - Internal use and modifications within your organization
+   - Contributions back to the original Licensed Work
+
+3. You may not remove or alter any proprietary notices or labels on the Licensed Work.
+
+4. Any use of the Licensed Work must include attribution to the original Licensor.
+
+5. Redistributions of source code must retain the above copyright notice, this list of conditions, and the following disclaimer.
+
+6. Redistributions in binary form must reproduce the above copyright notice, this list of conditions, and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+7. Neither the name of the Licensor nor the names of its contributors may be used to endorse or promote products derived from this Licensed Work without specific prior written permission.
+
+DISCLAIMER
+
+THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER DEALINGS IN THE LICENSED WORK.
