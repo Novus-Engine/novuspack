@@ -5,7 +5,7 @@ Feature: ArchivePartInfo field encoding and decoding
   Scenario: ArchivePartInfo defaults to single archive (part 1 of 1)
     Given a new NovusPack package
     When the package is created
-    Then ArchivePartInfo equals 0x00010000
+    Then ArchivePartInfo equals 0x00010001
     And part number equals 1
     And total parts equals 1
 
@@ -33,7 +33,7 @@ Feature: ArchivePartInfo field encoding and decoding
 
     Examples:
       | ArchivePartInfo | Part | Total |
-      | 0x00010000      | 1    | 1     |
+      | 0x00010001      | 1    | 1     |
       | 0x00020003      | 2    | 3     |
       | 0x0005000A      | 5    | 10    |
       | 0x00100064      | 16   | 100   |

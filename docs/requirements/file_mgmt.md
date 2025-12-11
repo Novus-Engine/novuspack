@@ -272,7 +272,7 @@
 
 ## Context Integration
 
-- REQ-FILEMGMT-037: All file management methods accept context.Context and respect cancellation/timeout [type: constraint]. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
+- REQ-FILEMGMT-037: File management methods performing I/O operations accept context.Context and respect cancellation/timeout [type: constraint]. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
 - REQ-FILEMGMT-041: Context cancellation during file operations returns structured context error. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
 
 ## Validation

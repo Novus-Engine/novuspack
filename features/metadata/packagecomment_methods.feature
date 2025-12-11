@@ -2,6 +2,15 @@
 Feature: PackageComment methods
 
   @happy
+  Scenario: NewPackageComment creates empty package comment
+    Given NewPackageComment is called
+    Then a PackageComment is returned
+    And CommentLength is 0
+    And Comment is empty
+    And Reserved bytes are all zero
+    And comment is in empty state
+
+  @happy
   Scenario: Size returns size of package comment
     Given a PackageComment with content
     When Size is called

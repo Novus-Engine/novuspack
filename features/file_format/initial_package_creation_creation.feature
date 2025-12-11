@@ -82,10 +82,10 @@ Feature: Initial Package Creation
     And reserved fields are initialized for future use
 
   @REQ-FILEFMT-039 @happy
-  Scenario: ArchivePartInfo is set to 0x00010000 for single archive on creation
+  Scenario: ArchivePartInfo is set to 0x00010001 for single archive on creation
     Given a new NovusPack package is being created
     And package is single archive
     When initial package creation is performed
-    Then ArchivePartInfo is set to 0x00010000
+    Then ArchivePartInfo is set to 0x00010001
     And ArchivePartInfo indicates part 1 of 1
     And ArchivePartInfo encodes single archive format

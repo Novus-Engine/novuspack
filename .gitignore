@@ -5,29 +5,29 @@ Abacus.ai*/
 tmp/
 
 # File Patterns
+*.backup*
 *.bak
-*.out
-*.log
-*.zip
-*.pdf
-*.jpg
-*.jpeg
-*.gif
 *.bmp
-*.tiff
-*.ico
-*.webp
-*.eps
-*.pdf
-*.docx
 *.doc
-*.xls
-*.xlsx
+*.docx
+*.eps
+*.gif
+*.ico
+*.jpeg
+*.jpg
+*.log
+*.odp
+*.odt
+*.out
+*.pdf
 *.ppt
 *.pptx
-*.odt
-*.odp
-*.backup*
+*.test
+*.tiff
+*.webp
+*.xls
+*.xlsx
+*.zip
 
 # Ignore tar files
 *.tar

@@ -293,7 +293,7 @@ Examples using common software distribution methods.
 - **Format**:
   - Bits 31-16: Archive part number (0-65535, 0 for single archive)
   - Bits 15-0: Total parts in archive (1-65535, 1 for single archive)
-- **Default Value**: 0x00010000 (part 1 of 1 - single archive)
+- **Default Value**: 0x00010001 (part 1 of 1 - single archive)
 - **Usage**: Enables support for large archives split across multiple files
 
 ### 2.7 LocaleID Field Specification
@@ -324,7 +324,7 @@ Examples using common software distribution methods.
 - **IndexStart**: Set to offset to file index from start of file
 - **IndexSize**: Set to size of file index in bytes
 - **ArchiveChainID**: Set to unique identifier for archive chain (0 for single archive)
-- **ArchivePartInfo**: Set to 0x00010000 for single archive, or part number + total parts for split archives
+- **ArchivePartInfo**: Set to 0x00010001 for single archive, or part number + total parts for split archives
 - **CommentSize**: Set to 0 if no comment, or size of comment including null terminator
 - **CommentStart**: Set to 0 if no comment, or offset to comment from start of file
 - **SignatureOffset**: Set to 0 if no signatures, or offset to signature index from start of file

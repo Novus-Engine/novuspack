@@ -80,3 +80,21 @@ Feature: FileEntry variable-length data structure
       | DataType | DataLength | TotalSize |
       | 0x00     | 100        | 103       |
       | 0x01     | 1          | 4         |
+
+  @happy
+  Scenario: FileEntry serialization handles variable-length data correctly
+    Given a FileEntry with paths, hashes, and optional data
+    When WriteTo serializes file entry
+    Then paths are written first
+    And hashes are written after paths
+    And optional data is written after hashes
+    And offsets are calculated correctly
+
+  @happy
+  Scenario: FileEntry deserialization reads variable-length data correctly
+    Given a reader with file entry containing paths, hashes, and optional data
+    When ReadFrom deserializes file entry
+    Then paths are read correctly
+    And hashes are read correctly
+    And optional data is read correctly
+    And all variable-length data is preserved

@@ -364,15 +364,19 @@ for {
 #### 2.6.1 DefaultBufferConfig() *BufferConfig
 
 ```go
-func DefaultBufferConfig() *BufferConfig {
-    return &BufferConfig{
-        MaxTotalSize:     1 << 30,           // 1GB maximum total buffer size
-        MaxBufferSize:    1 << 20,           // 1MB maximum single buffer size
-        EvictionPolicy:   "lru",             // Least Recently Used
-        EvictionTimeout:  5 * time.Minute,   // 5 minutes for unused buffer cleanup
-    }
-}
+func DefaultBufferConfig() *BufferConfig
 ```
+
+**DefaultBufferConfig** returns a BufferConfig with default values suitable for most use cases.
+
+The function creates and returns a new BufferConfig instance with the following default settings:
+
+- **MaxTotalSize**: 1 GB (1 << 30 bytes) - Maximum total size of all buffers in the pool
+- **MaxBufferSize**: 1 MB (1 << 20 bytes) - Maximum size of a single buffer
+- **EvictionPolicy**: "lru" (Least Recently Used) - Buffer eviction strategy for managing memory when limits are reached
+- **EvictionTimeout**: 5 minutes - Time after which unused buffers are automatically evicted from the pool
+
+These defaults provide a balance between memory efficiency and performance for typical streaming operations. Applications can create custom configurations using the BufferConfig structure directly if different values are needed.
 
 ## 3. Streaming Concurrency Patterns
 

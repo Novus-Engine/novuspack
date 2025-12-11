@@ -86,3 +86,42 @@ Feature: Validate FileEntry fixed structure fields
     Then RawChecksum matches the stored value
     When StoredChecksum is calculated
     Then StoredChecksum matches the stored value
+
+  @happy
+  Scenario: NewFileEntry creates entry with zero values
+    Given NewFileEntry is called
+    Then a FileEntry is returned
+    And FileEntry is in initialized state
+    And file entry all fields are zero or empty
+
+  @happy
+  Scenario: WriteTo serializes file entry to binary format
+    Given a FileEntry with values
+    When file entry WriteTo is called with writer
+    Then file entry is written to writer
+    And fixed structure is written first (64 bytes)
+    And variable-length data follows
+    And written data matches file entry content
+
+  @happy
+  Scenario: ReadFrom deserializes file entry from binary format
+    Given a reader with valid file entry data
+    When file entry ReadFrom is called with reader
+    Then file entry is read from reader
+    And file entry fields match reader data
+    And file entry is valid
+
+  @happy
+  Scenario: File entry round-trip serialization preserves all fields
+    Given a FileEntry with all fields set
+    When file entry WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then all file entry fields are preserved
+    And file entry is valid
+
+  @error
+  Scenario: ReadFrom fails with incomplete fixed structure
+    Given a reader with less than 64 bytes of file entry data
+    When file entry ReadFrom is called with reader
+    Then structured IO error is returned
+    And error indicates read failure

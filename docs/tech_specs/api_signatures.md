@@ -69,13 +69,13 @@ func (p *Package) AddSignature(ctx context.Context, signatureType uint32, signat
 func (p *Package) RemoveSignature(ctx context.Context, signatureIndex int) error
 
 // GetSignatureCount gets total number of signatures
-func (p *Package) GetSignatureCount(ctx context.Context) int
+func (p *Package) GetSignatureCount() int
 
 // GetSignature gets signature by index
-func (p *Package) GetSignature(ctx context.Context, index int) (SignatureInfo, error)
+func (p *Package) GetSignature(index int) (SignatureInfo, error)
 
 // GetAllSignatures gets all signatures
-func (p *Package) GetAllSignatures(ctx context.Context) []SignatureInfo
+func (p *Package) GetAllSignatures() []SignatureInfo
 
 // ClearAllSignatures removes all signatures
 func (p *Package) ClearAllSignatures(ctx context.Context) error

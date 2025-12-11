@@ -66,10 +66,3 @@ Feature: Per-file tags management
     Given a read-only open NovusPack package
     When SetFileTags is called
     Then a structured validation error is returned
-
-  @error
-  Scenario: Tag operations respect context cancellation
-    Given an open writable NovusPack package
-    And a cancelled context
-    When tag operation is called
-    Then a structured context error is returned

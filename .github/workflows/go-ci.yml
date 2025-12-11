@@ -1,14 +1,22 @@
 name: Go CI
 
+# NOTE: This workflow must be kept in sync with the 'ci' target in api/go/v1/Makefile.
+#       The Makefile target performs the same checks locally. When adding or modifying
+#       CI checks, update both this workflow and api/go/v1/Makefile to ensure consistency.
+
 on:
   push:
     paths:
       - 'api/go/**/*.go'
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    name: Test
+  test-go-v1:
+    name: Test api/go/v1
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,11 +37,48 @@ jobs:
       - name: Run unit tests
         run: make test
 
-      - name: Run BDD tests
-        run: make bdd-ci
+  lint-go-v1:
+    name: Lint api/go/v1
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api/go/v1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  build:
-    name: Build
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: api/go/v1/go.sum
+
+      - name: Check formatting
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Code is not formatted. Run 'go fmt ./...'"
+            gofmt -s -d .
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.7.0
+          working-directory: api/go/v1
+
+      - name: Run golangci-lint (BDD)
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.7.0
+          working-directory: api/go/v1
+          args: --build-tags=bdd
+
+  build-go-v1:
+    name: Build api/go/v1
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -50,14 +95,3 @@ jobs:
 
       - name: Build
         run: go build ./...
-
-      - name: Check formatting
-        run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "Code is not formatted. Run 'go fmt ./...'"
-            gofmt -s -d .
-            exit 1
-          fi
-
-      - name: Run go vet
-        run: go vet ./...

@@ -54,14 +54,9 @@ This document defines the basic package operations for the NovusPack system, cov
 
 ### 0.2 Context Integration
 
-All public methods in the NovusPack Basic Operations API accept `context.Context` as the first parameter to support:
+See [Core API - Context Integration](api_core.md#02-context-integration) for the complete context integration specification.
 
-- Request cancellation and timeout handling
-- Request-scoped values and configuration
-- Graceful shutdown and resource cleanup
-- Integration with Go's standard context patterns
-
-This follows 2025 Go best practices and ensures the API is compatible with modern Go applications and frameworks.
+The NovusPack Basic Operations API follows the same context integration patterns as the core API.
 
 These methods assume the following imports:
 
