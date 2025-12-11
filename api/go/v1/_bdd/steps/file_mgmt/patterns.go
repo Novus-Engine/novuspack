@@ -1,73 +1,23 @@
-// Package steps provides BDD step definitions for NovusPack API testing.
+//go:build bdd
+
+// Package file_mgmt provides BDD step definitions for NovusPack file management domain testing.
 //
 // Domain: file_mgmt
 // Tags: @domain:file_mgmt, @phase:2
-package steps
+package file_mgmt
 
 import (
 	"context"
 
 	"github.com/cucumber/godog"
+	novuspack "github.com/novus-engine/novuspack/api/go/v1"
 )
 
-// RegisterFileMgmtSteps registers step definitions for the file_mgmt domain.
-//
-// Domain: file_mgmt
-// Phase: 2
-// Tags: @domain:file_mgmt
-func RegisterFileMgmtSteps(ctx *godog.ScenarioContext) {
-	// Package state steps
-	ctx.Step(`^an open writable package$`, anOpenWritablePackage)
-	ctx.Step(`^a package that is not open$`, aPackageThatIsNotOpen)
-
-	// FileSource steps
-	ctx.Step(`^FileSource providing file data$`, fileSourceProvidingFileData)
-	ctx.Step(`^FileSource with file data$`, fileSourceWithFileData)
-	ctx.Step(`^FileSource with oversized content$`, fileSourceWithOversizedContent)
-
-	// AddFile steps
-	ctx.Step(`^AddFile is called$`, addFileIsCalled)
-	ctx.Step(`^AddFile is called with path, source, and options$`, addFileIsCalledWithPathSourceAndOptions)
-	ctx.Step(`^AddFile is called with options$`, addFileIsCalledWithOptions)
-	ctx.Step(`^AddFile is called with different FileSource types$`, addFileIsCalledWithDifferentFileSourceTypes)
-	ctx.Step(`^AddFile completes$`, addFileCompletes)
-	ctx.Step(`^unified file addition interface is used$`, unifiedFileAdditionInterfaceIsUsed)
-	ctx.Step(`^file is added to package$`, fileIsAddedToPackage)
-	ctx.Step(`^created FileEntry is returned$`, createdFileEntryIsReturned)
-	ctx.Step(`^FileEntry contains all metadata$`, fileEntryContainsAllMetadata)
-	ctx.Step(`^FileEntry contains compression status$`, fileEntryContainsCompressionStatus)
-	ctx.Step(`^FileEntry contains encryption details$`, fileEntryContainsEncryptionDetails)
-	ctx.Step(`^FileEntry contains checksums$`, fileEntryContainsChecksums)
-	ctx.Step(`^package index is updated with new file entry$`, packageIndexIsUpdatedWithNewFileEntry)
-	ctx.Step(`^package metadata is updated$`, packageMetadataIsUpdated)
-	ctx.Step(`^file count is incremented$`, fileCountIsIncremented)
-	ctx.Step(`^file content is read from FileSource$`, fileContentIsReadFromFileSource)
-	ctx.Step(`^streaming is used for large files when supported$`, streamingIsUsedForLargeFilesWhenSupported)
-	ctx.Step(`^memory is managed efficiently$`, memoryIsManagedEfficiently)
-	ctx.Step(`^compression settings are applied$`, compressionSettingsAreApplied)
-	ctx.Step(`^encryption settings are applied$`, encryptionSettingsAreApplied)
-	ctx.Step(`^file processing follows options$`, fileProcessingFollowsOptions)
-	ctx.Step(`^filesystem files are supported via FilePathSource$`, filesystemFilesAreSupportedViaFilePathSource)
-	ctx.Step(`^in-memory data is supported via MemorySource$`, inMemoryDataIsSupportedViaMemorySource)
-	ctx.Step(`^custom sources are supported via FileSource interface$`, customSourcesAreSupportedViaFileSourceInterface)
-	ctx.Step(`^FileSource is automatically closed$`, fileSourceIsAutomaticallyClosed)
-	ctx.Step(`^cleanup is performed$`, cleanupIsPerformed)
-
-	// File operations steps
-	ctx.Step(`^file is added$`, fileIsAdded)
-	ctx.Step(`^file is removed$`, fileIsRemoved)
-	ctx.Step(`^file is extracted$`, fileIsExtracted)
-	ctx.Step(`^file exists in package$`, fileExistsInPackage)
-	ctx.Step(`^file no longer exists$`, fileNoLongerExists)
-	ctx.Step(`^file content matches$`, fileContentMatches)
-
-	// File queries steps
-	ctx.Step(`^files are queried$`, filesAreQueried)
-	ctx.Step(`^matching files are returned$`, matchingFilesAreReturned)
-
-	// Tag management steps
-	ctx.Step(`^tags are set$`, tagsAreSet)
-	ctx.Step(`^tags are accessible$`, tagsAreAccessible)
+// getWorld is defined in file_addition.go (shared helper)
+func RegisterFileMgmtPatterns(ctx *godog.ScenarioContext) {
+	// Phase 4: Domain-Specific Consolidations - File Operations
+	// Consolidated "file" patterns - Phase 4 (enhanced)
+	ctx.Step(`^file (?:is|has|with|operations|validation|management|entry|entries|type|types|path|paths|content|data|metadata|encryption|compression|signature|signatures|count|size|version|versions|tags|tag|search|query|extraction|addition|removal|update|modification|processing|handling|validation|verification|checking|identification|detection|tracking|monitoring|optimization|efficiency|performance|security|integrity|corruption|error|errors|structure|format|formatting|encoding|decoding|compression|decompression|encryption|decryption|signing|verification|validation|checking|testing|examining|analyzing|processing|handling|managing|tracking|monitoring|optimizing|improving|enhancing|maintaining|preserving|protecting|securing|validating|verifying|checking|testing|examining|analyzing|processing|handling|managing|tracking|monitoring|optimizing|improving|enhancing|maintaining|preserving|protecting|securing|can|will|should|must|may|does|do|contains|provides|includes|occurs|happens|follows|uses|creates|adds|returns|indicates|enables|supports) (.+)$`, fileOperationProperty)
 
 	// Pattern operations steps
 	ctx.Step(`^files matching pattern$`, filesMatchingPattern)
@@ -79,127 +29,12 @@ func RegisterFileMgmtSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^structured validation error is returned$`, structuredValidationErrorIsReturned)
 	ctx.Step(`^error indicates size limit exceeded$`, errorIndicatesSizeLimitExceeded)
 	ctx.Step(`^ErrContextCancelled error is returned$`, errContextCancelledErrorIsReturned)
-
-	// AddFileOptions steps
-	ctx.Step(`^AddFileOptions with compression and encryption settings$`, addFileOptionsWithCompressionAndEncryptionSettings)
-
-	// AddFilePattern steps
-	ctx.Step(`^an open writable NovusPack package$`, anOpenWritableNovusPackPackage)
-	ctx.Step(`^AddFilePattern is called with pattern and options$`, addFilePatternIsCalledWithPatternAndOptions)
-	ctx.Step(`^all matching files are added$`, allMatchingFilesAreAdded)
-	ctx.Step(`^file count matches pattern matches$`, fileCountMatchesPatternMatches)
-	ctx.Step(`^all files are added successfully$`, allFilesAreAddedSuccessfully)
-	ctx.Step(`^a directory structure with nested files$`, aDirectoryStructureWithNestedFiles)
-	ctx.Step(`^AddFilePattern is called with recursive option$`, addFilePatternIsCalledWithRecursiveOption)
-	ctx.Step(`^files in subdirectories are included$`, filesInSubdirectoriesAreIncluded)
-	ctx.Step(`^directory structure is preserved$`, directoryStructureIsPreserved)
-	ctx.Step(`^files with various extensions$`, filesWithVariousExtensions)
-	ctx.Step(`^AddFilePattern is called with include pattern$`, addFilePatternIsCalledWithIncludePattern)
-	ctx.Step(`^only matching files are added$`, onlyMatchingFilesAreAdded)
-	ctx.Step(`^non-matching files are excluded$`, nonMatchingFilesAreExcluded)
-	ctx.Step(`^AddFilePattern is called with exclude pattern$`, addFilePatternIsCalledWithExcludePattern)
-	ctx.Step(`^excluded files are not added$`, excludedFilesAreNotAdded)
-	ctx.Step(`^matching non-excluded files are added$`, matchingNonExcludedFilesAreAdded)
-	ctx.Step(`^files including symlinks$`, filesIncludingSymlinks)
-	ctx.Step(`^AddFilePattern is called with FollowSymlinks option$`, addFilePatternIsCalledWithFollowSymlinksOption)
-	ctx.Step(`^symlinks are followed if enabled$`, symlinksAreFollowedIfEnabled)
-	ctx.Step(`^symlinks are not followed if disabled$`, symlinksAreNotFollowedIfDisabled)
-	ctx.Step(`^AddFilePattern operation$`, addFilePatternOperation)
-	ctx.Step(`^pattern matching completes$`, patternMatchingCompletes)
-	ctx.Step(`^results indicate success or failure per file$`, resultsIndicateSuccessOrFailurePerFile)
-	ctx.Step(`^file paths are included in results$`, filePathsAreIncludedInResults)
-	ctx.Step(`^errors are reported per file$`, errorsAreReportedPerFile)
-	ctx.Step(`^an invalid file pattern$`, anInvalidFilePattern)
-	ctx.Step(`^AddFilePattern is called$`, addFilePatternIsCalled)
-	ctx.Step(`^error indicates invalid pattern$`, errorIndicatesInvalidPattern)
-	ctx.Step(`^a file pattern$`, aFilePattern)
-	ctx.Step(`^AddFilePattern is used$`, addFilePatternIsUsed)
-	ctx.Step(`^multiple files are added to package$`, multipleFilesAreAddedToPackage)
-	ctx.Step(`^files matching pattern are added$`, filesMatchingPatternAreAdded)
-	ctx.Step(`^pattern-based file addition is enabled$`, patternBasedFileAdditionIsEnabled)
-	ctx.Step(`^file system is scanned for matching files$`, fileSystemIsScannedForMatchingFiles)
-	ctx.Step(`^pattern matching is performed$`, patternMatchingIsPerformed)
-	ctx.Step(`^matching files are identified$`, matchingFilesAreIdentified)
-	ctx.Step(`^a file pattern matching files$`, aFilePatternMatchingFiles)
-	ctx.Step(`^slice of created FileEntry objects is returned$`, sliceOfCreatedFileEntryObjectsIsReturned)
-	ctx.Step(`^each FileEntry represents added file$`, eachFileEntryRepresentsAddedFile)
-	ctx.Step(`^FileEntry objects contain complete metadata$`, fileEntryObjectsContainCompleteMetadata)
-
-	// File existence and query steps
-	ctx.Step(`^an open package with files$`, anOpenPackageWithFiles)
-	ctx.Step(`^FileExists is called with existing file path$`, fileExistsIsCalledWithExistingFilePath)
-	ctx.Step(`^true is returned$`, trueIsReturned)
-	ctx.Step(`^file entry information is available$`, fileEntryInformationIsAvailable)
-	ctx.Step(`^an open package$`, anOpenPackage)
-	ctx.Step(`^FileExists is called with non-existent path$`, fileExistsIsCalledWithNonExistentPath)
-	ctx.Step(`^false is returned$`, falseIsReturned)
-	ctx.Step(`^an open package with multiple files$`, anOpenPackageWithMultipleFiles)
-	ctx.Step(`^ListFiles is called$`, listFilesIsCalled)
-	ctx.Step(`^list of all file entries is returned$`, listOfAllFileEntriesIsReturned)
-	ctx.Step(`^all files are included$`, allFilesAreIncluded)
-	ctx.Step(`^file information is complete$`, fileInformationIsComplete)
-	ctx.Step(`^an open package with files matching patterns$`, anOpenPackageWithFilesMatchingPatterns)
-	ctx.Step(`^FindEntriesByPathPatterns is called with patterns$`, findEntriesByPathPatternsIsCalledWithPatterns)
-	ctx.Step(`^file entries matching patterns are returned$`, fileEntriesMatchingPatternsAreReturned)
-	ctx.Step(`^pattern matching works correctly$`, patternMatchingWorksCorrectly)
-	ctx.Step(`^an open package with file$`, anOpenPackageWithFileNoParam)
-	ctx.Step(`^GetFileByPath is called with file path$`, getFileByPathIsCalledWithFilePath)
-	ctx.Step(`^FileEntry with matching path is returned$`, fileEntryWithMatchingPathIsReturned)
-	ctx.Step(`^an open package with files$`, anOpenPackageWithFiles)
-	ctx.Step(`^GetFileByOffset is called with offset$`, getFileByOffsetIsCalledWithOffset)
-	ctx.Step(`^FileEntry at that offset is returned$`, fileEntryAtThatOffsetIsReturned)
-	ctx.Step(`^GetFileByPath is called with non-existent path$`, getFileByPathIsCalledWithNonExistentPath)
-	ctx.Step(`^GetFileByOffset is called with invalid offset$`, getFileByOffsetIsCalledWithInvalidOffset)
-
-	// File addition flow steps
-	ctx.Step(`^a file to be added$`, aFileToBeAdded)
-	ctx.Step(`^processing follows defined sequence$`, processingFollowsDefinedSequence)
-	ctx.Step(`^processing order requirements are met$`, processingOrderRequirementsAreMet)
-	ctx.Step(`^file addition completes successfully$`, fileAdditionCompletesSuccessfully)
-	ctx.Step(`^processing order requirements are followed$`, processingOrderRequirementsAreFollowed)
-	ctx.Step(`^file validation occurs first$`, fileValidationOccursFirst)
-	ctx.Step(`^compression and encryption follow in order$`, compressionAndEncryptionFollowInOrder)
-	ctx.Step(`^deduplication occurs after processing$`, deduplicationOccursAfterProcessing)
-	ctx.Step(`^errors occur during file addition$`, errorsOccurDuringFileAddition)
-	ctx.Step(`^error handling requirements are followed$`, errorHandlingRequirementsAreFollowed)
-	ctx.Step(`^compression failures prevent file addition$`, compressionFailuresPreventFileAddition)
-	ctx.Step(`^encryption failures prevent file addition$`, encryptionFailuresPreventFileAddition)
-	ctx.Step(`^resources are cleaned up on failure$`, resourcesAreCleanedUpOnFailure)
-	ctx.Step(`^performance requirements are met$`, performanceRequirementsAreMet)
-	ctx.Step(`^deduplication efficiency is optimized$`, deduplicationEfficiencyIsOptimized)
-	ctx.Step(`^memory management is efficient$`, memoryManagementIsEfficient)
-	ctx.Step(`^I/O operations are optimized$`, ioOperationsAreOptimized)
-
-	// RemoveFile steps
-	ctx.Step(`^RemoveFile is used$`, removeFileIsUsed)
-	ctx.Step(`^removal behavior is documented$`, removalBehaviorIsDocumented)
-	ctx.Step(`^index update behavior is explained$`, indexUpdateBehaviorIsExplained)
-	ctx.Step(`^directory state update behavior is explained$`, directoryStateUpdateBehaviorIsExplained)
-	ctx.Step(`^usage patterns are provided$`, usagePatternsAreProvided)
-	ctx.Step(`^file removal operations are performed$`, fileRemovalOperationsArePerformed)
-	ctx.Step(`^usage notes explain removal process$`, usageNotesExplainRemovalProcess)
-	ctx.Step(`^usage notes explain index updates$`, usageNotesExplainIndexUpdates)
-	ctx.Step(`^usage notes explain directory state changes$`, usageNotesExplainDirectoryStateChanges)
-	ctx.Step(`^best practices are documented$`, bestPracticesAreDocumented)
-	ctx.Step(`^RemoveFile is called$`, removeFileIsCalled)
-	ctx.Step(`^RemoveFile is called with path$`, removeFileIsCalledWithPath)
-	ctx.Step(`^file is removed from package$`, fileIsRemovedFromPackage)
-	ctx.Step(`^package index is updated$`, packageIndexIsUpdated)
-	ctx.Step(`^directory state is updated$`, directoryStateIsUpdated)
-
-	// ExtractFile steps
-	ctx.Step(`^ExtractFile is called$`, extractFileIsCalled)
-	ctx.Step(`^ExtractFile is called with path and destination$`, extractFileIsCalledWithPathAndDestination)
-	ctx.Step(`^file is extracted to destination$`, fileIsExtractedToDestination)
-	ctx.Step(`^extracted file content matches original$`, extractedFileContentMatchesOriginal)
+	ctx.Step(`^a read-only open package$`, aReadonlyOpenPackage)
+	ctx.Step(`^XXH3 hash lookup succeeds$`, xXH3HashLookupSucceeds)
 
 	// Error handling and state steps
 	ctx.Step(`^package state becomes undefined$`, packageStateBecomesUndefined)
 	ctx.Step(`^edge cases do not cause panics or undefined behavior$`, edgeCasesDoNotCausePanicsOrUndefinedBehavior)
-
-	// Phase 4: Domain-Specific Consolidations - File Operations
-	// Consolidated "file" patterns - Phase 4 (enhanced)
-	ctx.Step(`^file (?:is|has|with|operations|validation|management|entry|entries|type|types|path|paths|content|data|metadata|encryption|compression|signature|signatures|count|size|version|versions|tags|tag|search|query|extraction|addition|removal|update|modification|processing|handling|validation|verification|checking|identification|detection|tracking|monitoring|optimization|efficiency|performance|security|integrity|corruption|error|errors|structure|format|formatting|encoding|decoding|compression|decompression|encryption|decryption|signing|verification|validation|checking|testing|examining|analyzing|processing|handling|managing|tracking|monitoring|optimizing|improving|enhancing|maintaining|preserving|protecting|securing|validating|verifying|checking|testing|examining|analyzing|processing|handling|managing|tracking|monitoring|optimizing|improving|enhancing|maintaining|preserving|protecting|securing|can|will|should|must|may|does|do|contains|provides|includes|occurs|happens|follows|uses|creates|adds|returns|indicates|enables|supports) (.+)$`, fileOperationProperty)
 
 	// Additional file management steps
 	ctx.Step(`^a file addition operation$`, aFileAdditionOperation)
@@ -224,11 +59,11 @@ func RegisterFileMgmtSteps(ctx *godog.ScenarioContext) {
 	// This matches: "a file path", "a file path containing only whitespace",
 	//              "a file path in the package", "a file path with redundant separators",
 	//              "a file path with relative references"
-	ctx.Step(`^a file path(?: containing only whitespace| in the package| with redundant separators| with relative references)?$`, aFilePathWithVariation)
+	ctx.Step(`^a file path((?: containing only whitespace| in the package| with redundant separators| with relative references))?$`, aFilePathWithVariation)
 	// This matches: "a FilePathSource created from file path",
 	//              "a FilePathSource created from large file path",
 	//              "a FilePathSource with file path"
-	ctx.Step(`^a FilePathSource (?:created from (?:large )?file path|with file path)$`, aFilePathSource)
+	ctx.Step(`^a FilePathSource ((?:created from (?:large )?file path|with file path))$`, aFilePathSource)
 	ctx.Step(`^a file pattern to match$`, aFilePatternToMatch)
 	ctx.Step(`^a FileSource instance$`, aFileSourceInstance)
 	ctx.Step(`^a FileSource with I\/O error$`, aFileSourceWithIOError)
@@ -574,18 +409,18 @@ func RegisterFileMgmtSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^AES encryption keys are available$`, aesEncryptionKeysAreAvailable)
 	// Consolidated FileEntry steps using regex patterns
 	// Basic FileEntry variations
-	ctx.Step(`^a (?:file entry|FileEntry)(?: instance)?(?: in the package| to update| that fails during serialization| with all fields populated)?$`, aFileEntryBasic)
+	ctx.Step(`^a (?:file entry|FileEntry)(?: instance)?((?: in the package| to update| that fails during serialization| with all fields populated))?$`, aFileEntryBasic)
 	// FileEntry with data variations
 	ctx.Step(`^a FileEntry instance with (?:data|encrypted data|encryption|unencrypted data)$`, aFileEntryInstanceWithData)
 	// FileEntry with encryption key variations
-	ctx.Step(`^a FileEntry (?:with|without) encryption key(?: removed)?$`, aFileEntryWithEncryptionKeyVariation)
+	ctx.Step(`^a FileEntry ((?:with|without)) encryption key(?: (removed))?$`, aFileEntryWithEncryptionKeyVariation)
 	// FileEntry with other attributes
-	ctx.Step(`^a FileEntry (?:with|without) (?:tags|specific tag|loaded data|complete metadata)$`, aFileEntryWithAttribute)
+	ctx.Step(`^a FileEntry ((?:with|without)) ((?:tags|specific tag|loaded data|complete metadata))$`, aFileEntryWithAttribute)
 
 	// Consolidated path-related patterns - Phase 2.2
 	ctx.Step(`^path is "([^"]*)"$`, pathIsValue)
 	ctx.Step(`^path is (absolute|not empty|normalized correctly|validated before (?:operation|writing)|consistent|added to existing entry|added with specified metadata)$`, pathIsState)
-	ctx.Step(`^path (?:format|normalization|matching|handling|management) (?:is|are|follows|maintains) (.+)$`, pathPropertyIs)
+	ctx.Step(`^path ((?:format|normalization|matching|handling|management)) (?:is|are|follows|maintains) (.+)$`, pathPropertyIs)
 
 	// Consolidated parameters patterns - Phase 5 (already registered above)
 	// Consolidated parent directory patterns - Phase 5 (already registered above)
@@ -593,9 +428,9 @@ func RegisterFileMgmtSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^path (?:entries|entry|data|length) (?:are|is) (.+)$`, pathDataPropertyIs)
 
 	// Additional consolidated path patterns - Phase 5
-	ctx.Step(`^path (?:addition is tracked in version|aliasing is (?:enabled|supported)|and directory management methods are used|array is updated|data is correctly bounded|does not contain only whitespace|field contains directory path|is (?:not required for lookup|UTF-(\d+) string)|length is determined by PathLength field|matches the opened file path|must end with "([^"]*)"|normalization (?:is (?:applied|performed)|removes redundant separators and resolves relative references)|normalization testing configuration)$`, pathAdditionalProperty)
-	ctx.Step(`^Path(?:Count|Length|Encoding|Flags) (?:>|is|does not match|is (?:>=|decremented|incremented)|, Type are) (.+)$`, pathFieldProperty)
-	ctx.Step(`^path (?:entries (?:are (?:first in variable-length data|included in binary format|located immediately after fixed structure|parsed|validated)|come first at offset (\d+)|follow at offset (\d+))|entry (?:includes per-path metadata|is (?:accessible|added to file entry metadata|stored in file entry metadata)|must end with "([^"]*)"))$`, pathEntryProperty)
+	ctx.Step(`^path ((?:addition is tracked in version|aliasing is (?:enabled|supported)|and directory management methods are used|array is updated|data is correctly bounded|does not contain only whitespace|field contains directory path|is (?:not required for lookup|UTF-(\d+) string)|length is determined by PathLength field|matches the opened file path|must end with "([^"]*)"|normalization (?:is (?:applied|performed)|removes redundant separators and resolves relative references)|normalization testing configuration))$`, pathAdditionalProperty)
+	ctx.Step(`^Path((?:Count|Length|Encoding|Flags)) (?:>|is|does not match|is (?:>=|decremented|incremented)|, Type are) ((?:.+))$`, pathFieldProperty)
+	ctx.Step(`^path ((?:entries (?:are (?:first in variable-length data|included in binary format|located immediately after fixed structure|parsed|validated)|come first at offset (\d+)|follow at offset (\d+))|entry (?:includes per-path metadata|is (?:accessible|added to file entry metadata|stored in file entry metadata)|must end with "([^"]*)")))$`, pathEntryProperty)
 	ctx.Step(`^parent directory (?:is (?:resolved if available|set)|references are resolved \("([^"]*)" becomes "([^"]*)"\)|resolution (?:is tested \("([^"]*)" becomes "([^"]*)"\)|testing is performed))$`, parentDirectoryProperty)
 	ctx.Step(`^parent (?:directory tags are (?:ignored|included)|references are normalized correctly|"([^"]*)" tags are not inherited)$`, parentTagsProperty)
 	ctx.Step(`^ParentDirectory (?:pointer (?:is (?:available|set correctly)|references parent directory)|points to parent directory|property (?:is set|points to parent directory metadata))$`, parentDirectoryPointerProperty)
@@ -683,803 +518,6 @@ func RegisterFileMgmtSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^all files with "category" tag are returned$`, allFilesWithCategoryTagAreReturned)
 	ctx.Step(`^all files with matching label are found$`, allFilesWithMatchingLabelAreFound)
 	ctx.Step(`^all files with type tag are returned$`, allFilesWithTypeTagAreReturned)
-}
-
-// Package state steps
-
-func anOpenWritablePackage(ctx context.Context) error {
-	// This is equivalent to an open package that is writable
-	return nil
-}
-
-func aPackageThatIsNotOpen(ctx context.Context) error {
-	// TODO: Create or verify a package that is not open
-	return nil
-}
-
-// FileSource steps
-
-func fileSourceProvidingFileData(ctx context.Context) error {
-	// TODO: Create a FileSource providing file data
-	return nil
-}
-
-func fileSourceWithFileData(ctx context.Context) error {
-	return fileSourceProvidingFileData(ctx)
-}
-
-func fileSourceWithOversizedContent(ctx context.Context) error {
-	// TODO: Create a FileSource with oversized content
-	return nil
-}
-
-// AddFile steps
-
-func addFileIsCalled(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, call AddFile
-	return ctx, nil
-}
-
-func addFileIsCalledWithPathSourceAndOptions(ctx context.Context) (context.Context, error) {
-	return addFileIsCalled(ctx)
-}
-
-func addFileIsCalledWithOptions(ctx context.Context) (context.Context, error) {
-	return addFileIsCalled(ctx)
-}
-
-func addFileIsCalledWithDifferentFileSourceTypes(ctx context.Context) (context.Context, error) {
-	return addFileIsCalled(ctx)
-}
-
-func addFileCompletes(ctx context.Context) (context.Context, error) {
-	// This step indicates AddFile has completed
-	return ctx, nil
-}
-
-func unifiedFileAdditionInterfaceIsUsed(ctx context.Context) error {
-	// TODO: Verify unified file addition interface is used
-	return nil
-}
-
-func fileIsAddedToPackage(ctx context.Context) error {
-	return fileIsAdded(ctx)
-}
-
-func createdFileEntryIsReturned(ctx context.Context) error {
-	// TODO: Verify created FileEntry is returned
-	return nil
-}
-
-func fileEntryContainsAllMetadata(ctx context.Context) error {
-	// TODO: Verify FileEntry contains all metadata
-	return nil
-}
-
-func fileEntryContainsCompressionStatus(ctx context.Context) error {
-	// TODO: Verify FileEntry contains compression status
-	return nil
-}
-
-func fileEntryContainsEncryptionDetails(ctx context.Context) error {
-	// TODO: Verify FileEntry contains encryption details
-	return nil
-}
-
-func fileEntryContainsChecksums(ctx context.Context) error {
-	// TODO: Verify FileEntry contains checksums
-	return nil
-}
-
-func packageIndexIsUpdatedWithNewFileEntry(ctx context.Context) error {
-	// TODO: Verify package index is updated with new file entry
-	return nil
-}
-
-func packageMetadataIsUpdated(ctx context.Context) error {
-	// TODO: Verify package metadata is updated
-	return nil
-}
-
-func fileCountIsIncremented(ctx context.Context) error {
-	// TODO: Verify file count is incremented
-	return nil
-}
-
-func fileContentIsReadFromFileSource(ctx context.Context) error {
-	// TODO: Verify file content is read from FileSource
-	return nil
-}
-
-func streamingIsUsedForLargeFilesWhenSupported(ctx context.Context) error {
-	// TODO: Verify streaming is used for large files when supported
-	return nil
-}
-
-func memoryIsManagedEfficiently(ctx context.Context) error {
-	// TODO: Verify memory is managed efficiently
-	return nil
-}
-
-func compressionSettingsAreApplied(ctx context.Context) error {
-	// TODO: Verify compression settings are applied
-	return nil
-}
-
-func encryptionSettingsAreApplied(ctx context.Context) error {
-	// TODO: Verify encryption settings are applied
-	return nil
-}
-
-func fileProcessingFollowsOptions(ctx context.Context) error {
-	// TODO: Verify file processing follows options
-	return nil
-}
-
-func filesystemFilesAreSupportedViaFilePathSource(ctx context.Context) error {
-	// TODO: Verify filesystem files are supported via FilePathSource
-	return nil
-}
-
-func inMemoryDataIsSupportedViaMemorySource(ctx context.Context) error {
-	// TODO: Verify in-memory data is supported via MemorySource
-	return nil
-}
-
-func customSourcesAreSupportedViaFileSourceInterface(ctx context.Context) error {
-	// TODO: Verify custom sources are supported via FileSource interface
-	return nil
-}
-
-func fileSourceIsAutomaticallyClosed(ctx context.Context) error {
-	// TODO: Verify FileSource is automatically closed
-	return nil
-}
-
-func cleanupIsPerformed(ctx context.Context) error {
-	// TODO: Verify cleanup is performed
-	return nil
-}
-
-// File operations steps
-
-func fileIsAdded(ctx context.Context) error {
-	// TODO: Verify file is added
-	return nil
-}
-
-func fileIsRemoved(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, remove file
-	return ctx, nil
-}
-
-func fileIsExtracted(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, extract file
-	return ctx, nil
-}
-
-func fileExistsInPackage(ctx context.Context) error {
-	// TODO: Verify file exists in package
-	return nil
-}
-
-func fileNoLongerExists(ctx context.Context) error {
-	// TODO: Verify file no longer exists
-	return nil
-}
-
-func fileContentMatches(ctx context.Context) error {
-	// TODO: Verify file content matches
-	return nil
-}
-
-// File queries steps
-
-func filesAreQueried(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, query files
-	return ctx, nil
-}
-
-func matchingFilesAreReturned(ctx context.Context) error {
-	// TODO: Verify matching files are returned
-	return nil
-}
-
-// Tag management steps
-
-func tagsAreSet(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, set tags
-	return ctx, nil
-}
-
-func tagsAreAccessible(ctx context.Context) error {
-	// TODO: Verify tags are accessible
-	return nil
-}
-
-// Pattern operations steps
-
-func filesMatchingPattern(ctx context.Context) error {
-	// TODO: Create or verify files matching pattern
-	return nil
-}
-
-func patternIsApplied(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, apply pattern
-	return ctx, nil
-}
-
-// Error handling steps
-
-func errPackageNotOpenErrorIsReturned(ctx context.Context) error {
-	// TODO: Verify ErrPackageNotOpen error is returned
-	return nil
-}
-
-func errorFollowsStructuredErrorFormat(ctx context.Context) error {
-	// TODO: Verify error follows structured error format
-	return nil
-}
-
-func structuredValidationErrorIsReturned(ctx context.Context) error {
-	// TODO: Verify structured validation error is returned
-	return nil
-}
-
-func errorIndicatesSizeLimitExceeded(ctx context.Context) error {
-	// TODO: Verify error indicates size limit exceeded
-	return nil
-}
-
-func errContextCancelledErrorIsReturned(ctx context.Context) error {
-	// TODO: Verify ErrContextCancelled error is returned
-	return nil
-}
-
-// AddFileOptions steps
-
-func addFileOptionsWithCompressionAndEncryptionSettings(ctx context.Context) error {
-	// TODO: Create AddFileOptions with compression and encryption settings
-	return nil
-}
-
-// AddFilePattern step implementations
-
-func anOpenWritableNovusPackPackage(ctx context.Context) error {
-	// TODO: Create an open writable NovusPack package
-	return nil
-}
-
-func addFilePatternIsCalledWithPatternAndOptions(ctx context.Context) (context.Context, error) {
-	// TODO: Call AddFilePattern with pattern and options
-	return ctx, nil
-}
-
-func allMatchingFilesAreAdded(ctx context.Context) error {
-	// TODO: Verify all matching files are added
-	return nil
-}
-
-func fileCountMatchesPatternMatches(ctx context.Context) error {
-	// TODO: Verify file count matches pattern matches
-	return nil
-}
-
-func allFilesAreAddedSuccessfully(ctx context.Context) error {
-	// TODO: Verify all files are added successfully
-	return nil
-}
-
-func aDirectoryStructureWithNestedFiles(ctx context.Context) error {
-	// TODO: Create a directory structure with nested files
-	return nil
-}
-
-func addFilePatternIsCalledWithRecursiveOption(ctx context.Context) (context.Context, error) {
-	// TODO: Call AddFilePattern with recursive option
-	return ctx, nil
-}
-
-func filesInSubdirectoriesAreIncluded(ctx context.Context) error {
-	// TODO: Verify files in subdirectories are included
-	return nil
-}
-
-func directoryStructureIsPreserved(ctx context.Context) error {
-	// TODO: Verify directory structure is preserved
-	return nil
-}
-
-func filesWithVariousExtensions(ctx context.Context) error {
-	// TODO: Create files with various extensions
-	return nil
-}
-
-func addFilePatternIsCalledWithIncludePattern(ctx context.Context) (context.Context, error) {
-	// TODO: Call AddFilePattern with include pattern
-	return ctx, nil
-}
-
-func onlyMatchingFilesAreAdded(ctx context.Context) error {
-	// TODO: Verify only matching files are added
-	return nil
-}
-
-func nonMatchingFilesAreExcluded(ctx context.Context) error {
-	// TODO: Verify non-matching files are excluded
-	return nil
-}
-
-func addFilePatternIsCalledWithExcludePattern(ctx context.Context) (context.Context, error) {
-	// TODO: Call AddFilePattern with exclude pattern
-	return ctx, nil
-}
-
-func excludedFilesAreNotAdded(ctx context.Context) error {
-	// TODO: Verify excluded files are not added
-	return nil
-}
-
-func matchingNonExcludedFilesAreAdded(ctx context.Context) error {
-	// TODO: Verify matching non-excluded files are added
-	return nil
-}
-
-func filesIncludingSymlinks(ctx context.Context) error {
-	// TODO: Create files including symlinks
-	return nil
-}
-
-func addFilePatternIsCalledWithFollowSymlinksOption(ctx context.Context) (context.Context, error) {
-	// TODO: Call AddFilePattern with FollowSymlinks option
-	return ctx, nil
-}
-
-func symlinksAreFollowedIfEnabled(ctx context.Context) error {
-	// TODO: Verify symlinks are followed if enabled
-	return nil
-}
-
-func symlinksAreNotFollowedIfDisabled(ctx context.Context) error {
-	// TODO: Verify symlinks are not followed if disabled
-	return nil
-}
-
-func addFilePatternOperation(ctx context.Context) error {
-	// TODO: Set up AddFilePattern operation
-	return nil
-}
-
-func patternMatchingCompletes(ctx context.Context) (context.Context, error) {
-	// TODO: Complete pattern matching
-	return ctx, nil
-}
-
-func resultsIndicateSuccessOrFailurePerFile(ctx context.Context) error {
-	// TODO: Verify results indicate success or failure per file
-	return nil
-}
-
-func filePathsAreIncludedInResults(ctx context.Context) error {
-	// TODO: Verify file paths are included in results
-	return nil
-}
-
-func errorsAreReportedPerFile(ctx context.Context) error {
-	// TODO: Verify errors are reported per file
-	return nil
-}
-
-func anInvalidFilePattern(ctx context.Context) error {
-	// TODO: Create an invalid file pattern
-	return nil
-}
-
-func addFilePatternIsCalled(ctx context.Context) (context.Context, error) {
-	// TODO: Call AddFilePattern
-	return ctx, nil
-}
-
-func errorIndicatesInvalidPattern(ctx context.Context) error {
-	// TODO: Verify error indicates invalid pattern
-	return nil
-}
-
-func aFilePattern(ctx context.Context) error {
-	// TODO: Create a file pattern
-	return nil
-}
-
-func addFilePatternIsUsed(ctx context.Context) (context.Context, error) {
-	// TODO: Use AddFilePattern
-	return ctx, nil
-}
-
-func multipleFilesAreAddedToPackage(ctx context.Context) error {
-	// TODO: Verify multiple files are added to package
-	return nil
-}
-
-func filesMatchingPatternAreAdded(ctx context.Context) error {
-	// TODO: Verify files matching pattern are added
-	return nil
-}
-
-func patternBasedFileAdditionIsEnabled(ctx context.Context) error {
-	// TODO: Verify pattern-based file addition is enabled
-	return nil
-}
-
-func fileSystemIsScannedForMatchingFiles(ctx context.Context) error {
-	// TODO: Verify file system is scanned for matching files
-	return nil
-}
-
-func patternMatchingIsPerformed(ctx context.Context) error {
-	// TODO: Verify pattern matching is performed
-	return nil
-}
-
-func matchingFilesAreIdentified(ctx context.Context) error {
-	// TODO: Verify matching files are identified
-	return nil
-}
-
-func aFilePatternMatchingFiles(ctx context.Context) error {
-	// TODO: Create a file pattern matching files
-	return nil
-}
-
-func sliceOfCreatedFileEntryObjectsIsReturned(ctx context.Context) error {
-	// TODO: Verify slice of created FileEntry objects is returned
-	return nil
-}
-
-func eachFileEntryRepresentsAddedFile(ctx context.Context) error {
-	// TODO: Verify each FileEntry represents added file
-	return nil
-}
-
-func fileEntryObjectsContainCompleteMetadata(ctx context.Context) error {
-	// TODO: Verify FileEntry objects contain complete metadata
-	return nil
-}
-
-// File existence and query step implementations
-
-func anOpenPackageWithFiles(ctx context.Context) error {
-	// TODO: Create an open package with files
-	return nil
-}
-
-func fileExistsIsCalledWithExistingFilePath(ctx context.Context) (context.Context, error) {
-	// TODO: Call FileExists with existing file path
-	return ctx, nil
-}
-
-func trueIsReturned(ctx context.Context) error {
-	// TODO: Verify true is returned
-	return nil
-}
-
-func fileEntryInformationIsAvailable(ctx context.Context) error {
-	// TODO: Verify file entry information is available
-	return nil
-}
-
-func anOpenPackage(ctx context.Context) error {
-	// TODO: Create an open package
-	return nil
-}
-
-func fileExistsIsCalledWithNonExistentPath(ctx context.Context) (context.Context, error) {
-	// TODO: Call FileExists with non-existent path
-	return ctx, nil
-}
-
-func falseIsReturned(ctx context.Context) error {
-	// TODO: Verify false is returned
-	return nil
-}
-
-func anOpenPackageWithMultipleFiles(ctx context.Context) error {
-	// TODO: Create an open package with multiple files
-	return nil
-}
-
-func listFilesIsCalled(ctx context.Context) (context.Context, error) {
-	// TODO: Call ListFiles
-	return ctx, nil
-}
-
-func listOfAllFileEntriesIsReturned(ctx context.Context) error {
-	// TODO: Verify list of all file entries is returned
-	return nil
-}
-
-func allFilesAreIncluded(ctx context.Context) error {
-	// TODO: Verify all files are included
-	return nil
-}
-
-func fileInformationIsComplete(ctx context.Context) error {
-	// TODO: Verify file information is complete
-	return nil
-}
-
-func anOpenPackageWithFilesMatchingPatterns(ctx context.Context) error {
-	// TODO: Create an open package with files matching patterns
-	return nil
-}
-
-func findEntriesByPathPatternsIsCalledWithPatterns(ctx context.Context) (context.Context, error) {
-	// TODO: Call FindEntriesByPathPatterns with patterns
-	return ctx, nil
-}
-
-func fileEntriesMatchingPatternsAreReturned(ctx context.Context) error {
-	// TODO: Verify file entries matching patterns are returned
-	return nil
-}
-
-func patternMatchingWorksCorrectly(ctx context.Context) error {
-	// TODO: Verify pattern matching works correctly
-	return nil
-}
-
-func anOpenPackageWithFileNoParam(ctx context.Context) error {
-	// TODO: Create an open package with file
-	return nil
-}
-
-func getFileByPathIsCalledWithFilePath(ctx context.Context) (context.Context, error) {
-	// TODO: Call GetFileByPath with file path
-	return ctx, nil
-}
-
-func fileEntryWithMatchingPathIsReturned(ctx context.Context) error {
-	// TODO: Verify FileEntry with matching path is returned
-	return nil
-}
-
-func getFileByOffsetIsCalledWithOffset(ctx context.Context) (context.Context, error) {
-	// TODO: Call GetFileByOffset with offset
-	return ctx, nil
-}
-
-func fileEntryAtThatOffsetIsReturned(ctx context.Context) error {
-	// TODO: Verify FileEntry at that offset is returned
-	return nil
-}
-
-func getFileByPathIsCalledWithNonExistentPath(ctx context.Context) (context.Context, error) {
-	// TODO: Call GetFileByPath with non-existent path
-	return ctx, nil
-}
-
-func getFileByOffsetIsCalledWithInvalidOffset(ctx context.Context) (context.Context, error) {
-	// TODO: Call GetFileByOffset with invalid offset
-	return ctx, nil
-}
-
-// File addition flow step implementations
-
-func aFileToBeAdded(ctx context.Context) error {
-	// TODO: Create a file to be added
-	return nil
-}
-
-func processingFollowsDefinedSequence(ctx context.Context) error {
-	// TODO: Verify processing follows defined sequence
-	return nil
-}
-
-func processingOrderRequirementsAreMet(ctx context.Context) error {
-	// TODO: Verify processing order requirements are met
-	return nil
-}
-
-func fileAdditionCompletesSuccessfully(ctx context.Context) error {
-	// TODO: Verify file addition completes successfully
-	return nil
-}
-
-func processingOrderRequirementsAreFollowed(ctx context.Context) error {
-	// TODO: Verify processing order requirements are followed
-	return nil
-}
-
-func fileValidationOccursFirst(ctx context.Context) error {
-	// TODO: Verify file validation occurs first
-	return nil
-}
-
-func compressionAndEncryptionFollowInOrder(ctx context.Context) error {
-	// TODO: Verify compression and encryption follow in order
-	return nil
-}
-
-func deduplicationOccursAfterProcessing(ctx context.Context) error {
-	// TODO: Verify deduplication occurs after processing
-	return nil
-}
-
-func errorsOccurDuringFileAddition(ctx context.Context) error {
-	// TODO: Simulate errors during file addition
-	return nil
-}
-
-func errorHandlingRequirementsAreFollowed(ctx context.Context) error {
-	// TODO: Verify error handling requirements are followed
-	return nil
-}
-
-func compressionFailuresPreventFileAddition(ctx context.Context) error {
-	// TODO: Verify compression failures prevent file addition
-	return nil
-}
-
-func encryptionFailuresPreventFileAddition(ctx context.Context) error {
-	// TODO: Verify encryption failures prevent file addition
-	return nil
-}
-
-func resourcesAreCleanedUpOnFailure(ctx context.Context) error {
-	// TODO: Verify resources are cleaned up on failure
-	return nil
-}
-
-func performanceRequirementsAreMet(ctx context.Context) error {
-	// TODO: Verify performance requirements are met
-	return nil
-}
-
-func deduplicationEfficiencyIsOptimized(ctx context.Context) error {
-	// TODO: Verify deduplication efficiency is optimized
-	return nil
-}
-
-func memoryManagementIsEfficient(ctx context.Context) error {
-	// TODO: Verify memory management is efficient
-	return nil
-}
-
-func ioOperationsAreOptimized(ctx context.Context) error {
-	// TODO: Verify I/O operations are optimized
-	return nil
-}
-
-// RemoveFile step implementations
-
-func removeFileIsUsed(ctx context.Context) (context.Context, error) {
-	// TODO: Use RemoveFile
-	return ctx, nil
-}
-
-func removalBehaviorIsDocumented(ctx context.Context) error {
-	// TODO: Verify removal behavior is documented
-	return nil
-}
-
-func indexUpdateBehaviorIsExplained(ctx context.Context) error {
-	// TODO: Verify index update behavior is explained
-	return nil
-}
-
-func directoryStateUpdateBehaviorIsExplained(ctx context.Context) error {
-	// TODO: Verify directory state update behavior is explained
-	return nil
-}
-
-func usagePatternsAreProvided(ctx context.Context) error {
-	// TODO: Verify usage patterns are provided
-	return nil
-}
-
-func fileRemovalOperationsArePerformed(ctx context.Context) (context.Context, error) {
-	// TODO: Perform file removal operations
-	return ctx, nil
-}
-
-func usageNotesExplainRemovalProcess(ctx context.Context) error {
-	// TODO: Verify usage notes explain removal process
-	return nil
-}
-
-func usageNotesExplainIndexUpdates(ctx context.Context) error {
-	// TODO: Verify usage notes explain index updates
-	return nil
-}
-
-func usageNotesExplainDirectoryStateChanges(ctx context.Context) error {
-	// TODO: Verify usage notes explain directory state changes
-	return nil
-}
-
-func bestPracticesAreDocumented(ctx context.Context) error {
-	// TODO: Verify best practices are documented
-	return nil
-}
-
-func removeFileIsCalled(ctx context.Context) (context.Context, error) {
-	// TODO: Call RemoveFile
-	return ctx, nil
-}
-
-func removeFileIsCalledWithPath(ctx context.Context) (context.Context, error) {
-	// TODO: Call RemoveFile with path
-	return ctx, nil
-}
-
-func fileIsRemovedFromPackage(ctx context.Context) error {
-	// TODO: Verify file is removed from package
-	return nil
-}
-
-func packageIndexIsUpdated(ctx context.Context) error {
-	// TODO: Verify package index is updated
-	return nil
-}
-
-func directoryStateIsUpdated(ctx context.Context) error {
-	// TODO: Verify directory state is updated
-	return nil
-}
-
-// ExtractFile step implementations
-
-func extractFileIsCalled(ctx context.Context) (context.Context, error) {
-	// TODO: Call ExtractFile
-	return ctx, nil
-}
-
-func extractFileIsCalledWithPathAndDestination(ctx context.Context) (context.Context, error) {
-	// TODO: Call ExtractFile with path and destination
-	return ctx, nil
-}
-
-func fileIsExtractedToDestination(ctx context.Context) error {
-	// TODO: Verify file is extracted to destination
-	return nil
-}
-
-func extractedFileContentMatchesOriginal(ctx context.Context) error {
-	// TODO: Verify extracted file content matches original
-	return nil
-}
-
-func packageStateBecomesUndefined(ctx context.Context) error {
-	// TODO: Verify package state becomes undefined
-	return godog.ErrPending
-}
-
-func edgeCasesDoNotCausePanicsOrUndefinedBehavior(ctx context.Context) error {
-	// TODO: Verify edge cases do not cause panics or undefined behavior
-	return godog.ErrPending
 }
 
 func aFileAdditionOperation(ctx context.Context) error {
@@ -1572,11 +610,6 @@ func aFileOrReaderWithPackageHeader(ctx context.Context) error {
 	return godog.ErrPending
 }
 
-func aFilePathContainingOnlyWhitespace(ctx context.Context) error {
-	// TODO: Create a file path containing only whitespace
-	return godog.ErrPending
-}
-
 func aFilePathInThePackage(ctx context.Context) error {
 	// TODO: Create a file path in the package
 	return godog.ErrPending
@@ -1594,16 +627,6 @@ func aFilePathSourceCreatedFromLargeFilePath(ctx context.Context) error {
 
 func aFilePathSourceWithFilePath(ctx context.Context) error {
 	// TODO: Create a FilePathSource with file path
-	return godog.ErrPending
-}
-
-func aFilePathWithRedundantSeparators(ctx context.Context) error {
-	// TODO: Create a file path with redundant separators
-	return godog.ErrPending
-}
-
-func aFilePathWithRelativeReferences(ctx context.Context) error {
-	// TODO: Create a file path with relative references
 	return godog.ErrPending
 }
 
@@ -3028,13 +2051,58 @@ func aPathEntryInstance(ctx context.Context) error {
 }
 
 func aPathEntryWherePathLengthDoesNotMatchActualPathLength(ctx context.Context) error {
-	// TODO: Create a path entry where path length does not match actual path length
-	return godog.ErrPending
+	world := getWorld(ctx)
+	if world == nil {
+		return godog.ErrUndefined
+	}
+	// Try to access file_format world
+	type worldFileFormat interface {
+		SetPathEntry(*novuspack.PathEntry)
+		GetPathEntry() *novuspack.PathEntry
+	}
+	wf, ok := world.(worldFileFormat)
+	if !ok {
+		return godog.ErrUndefined
+	}
+	// Create a path entry where PathLength does not match actual path length
+	// Path is "test.txt" (8 bytes) but PathLength is set to 10
+	pathEntry := &novuspack.PathEntry{
+		PathLength: 10, // Mismatch: actual path is 8 bytes
+		Path:       "test.txt",
+		Mode:       0644,
+		UserID:     1000,
+		GroupID:    1000,
+	}
+	wf.SetPathEntry(pathEntry)
+	return nil
 }
 
 func aPathEntryWithInvalidUTFBytes(ctx context.Context, version string) error {
-	// TODO: Create a path entry with invalid UTF bytes
-	return godog.ErrPending
+	world := getWorld(ctx)
+	if world == nil {
+		return godog.ErrUndefined
+	}
+	// Try to access file_format world
+	type worldFileFormat interface {
+		SetPathEntry(*novuspack.PathEntry)
+		GetPathEntry() *novuspack.PathEntry
+	}
+	wf, ok := world.(worldFileFormat)
+	if !ok {
+		return godog.ErrUndefined
+	}
+	// Create a path entry with invalid UTF-8 bytes
+	// Use invalid UTF-8 sequence: 0xFF 0xFE 0xFD
+	invalidUTF8 := []byte{0xFF, 0xFE, 0xFD}
+	pathEntry := &novuspack.PathEntry{
+		PathLength: uint16(len(invalidUTF8)),
+		Path:       string(invalidUTF8), // Invalid UTF-8
+		Mode:       0644,
+		UserID:     1000,
+		GroupID:    1000,
+	}
+	wf.SetPathEntry(pathEntry)
+	return nil
 }
 
 func aPathEntryWithMetadataPermissionsTimestamps(ctx context.Context) error {
@@ -3163,6 +2231,9 @@ func pathDataPropertyIs(ctx context.Context, property, value string) error {
 
 // pathAdditionalProperty handles additional path property patterns
 func pathAdditionalProperty(ctx context.Context, property, utfVersion, endWith string) error {
+	// property contains the full matched text
+	// utfVersion contains the UTF version number when "is UTF-X string" matches, empty otherwise
+	// endWith contains the ending string when "must end with \"X\"" matches, empty otherwise
 	// TODO: Handle path additional property
 	return godog.ErrPending
 }
@@ -3327,18 +2398,8 @@ func aesEncryptionKeysAreAvailable(ctx context.Context) error {
 	return godog.ErrPending
 }
 
-func aFileEntrySimple(ctx context.Context) error {
-	// TODO: Set up a file entry
-	return godog.ErrPending
-}
-
 func aFileEntryWithoutEncryptionKeySimple(ctx context.Context) error {
 	// TODO: Set up a FileEntry without encryption key
-	return godog.ErrPending
-}
-
-func aFileEntryInstanceSimple(ctx context.Context) error {
-	// TODO: Set up a FileEntry instance
 	return godog.ErrPending
 }
 
@@ -3431,5 +2492,190 @@ func aFileExistsWithKnownCRC32Checksum(ctx context.Context) error {
 // fileOperationProperty handles "file X" patterns
 func fileOperationProperty(ctx context.Context, details string) error {
 	// TODO: Handle file operation: details
+	return godog.ErrPending
+}
+
+// aFileEntryInstanceWithData handles "a FileEntry instance with data/encrypted data/encryption/unencrypted data"
+func aFileEntryInstanceWithData(ctx context.Context) error {
+	// TODO: Create a FileEntry instance with data
+	return godog.ErrPending
+}
+
+// aFileEntryInNestedDirectoryStructure handles "a file entry in nested directory structure"
+func aFileEntryInNestedDirectoryStructure(ctx context.Context) error {
+	// TODO: Create a file entry in nested directory structure
+	return godog.ErrPending
+}
+
+// aFileEntryWithCompleteMetadata handles "a FileEntry with complete metadata"
+func aFileEntryWithCompleteMetadata(ctx context.Context) error {
+	// TODO: Create a FileEntry with complete metadata
+	return godog.ErrPending
+}
+
+// aFileEntryWithCompressionEnabled handles "a file entry with compression enabled"
+func aFileEntryWithCompressionEnabled(ctx context.Context) error {
+	// TODO: Create a file entry with compression enabled
+	return godog.ErrPending
+}
+
+// aFileEntryWithDirectoryAssociations handles "a file entry with directory associations"
+func aFileEntryWithDirectoryAssociations(ctx context.Context) error {
+	// TODO: Create a file entry with directory associations
+	return godog.ErrPending
+}
+
+// aFileEntryWithEncryptionEnabled handles "a file entry with encryption enabled"
+func aFileEntryWithEncryptionEnabled(ctx context.Context) error {
+	// TODO: Create a file entry with encryption enabled
+	return godog.ErrPending
+}
+
+// aFileEntryWithEncryptionKey handles "a FileEntry with encryption key"
+func aFileEntryWithEncryptionKey(ctx context.Context) error {
+	// TODO: Create a FileEntry with encryption key
+	return godog.ErrPending
+}
+
+// aFileEntryWithEncryptionKeyRemoved handles "a FileEntry with encryption key removed"
+func aFileEntryWithEncryptionKeyRemoved(ctx context.Context) error {
+	// TODO: Create a FileEntry with encryption key removed
+	return godog.ErrPending
+}
+
+// aFileEntryWithEncryptionKeySet handles "a file entry with encryption key set"
+func aFileEntryWithEncryptionKeySet(ctx context.Context) error {
+	// TODO: Create a file entry with encryption key set
+	return godog.ErrPending
+}
+
+// aFileEntryWithEncryptionTypeSetButNoKey handles "a file entry with encryption type set but no key"
+func aFileEntryWithEncryptionTypeSetButNoKey(ctx context.Context) error {
+	// TODO: Create a file entry with encryption type set but no key
+	return godog.ErrPending
+}
+
+// aFileEntryWithLoadedData handles "a FileEntry with loaded data"
+func aFileEntryWithLoadedData(ctx context.Context) error {
+	// TODO: Create a FileEntry with loaded data
+	return godog.ErrPending
+}
+
+// aFileEntryWithoutCompression handles "a file entry without compression"
+func aFileEntryWithoutCompression(ctx context.Context) error {
+	// TODO: Create a file entry without compression
+	return godog.ErrPending
+}
+
+// aFileEntryWithoutEncryption handles "a file entry without encryption"
+func aFileEntryWithoutEncryption(ctx context.Context) error {
+	// TODO: Create a file entry without encryption
+	return godog.ErrPending
+}
+
+// aFileEntryWithoutEncryptionKey handles "a file entry without encryption key"
+func aFileEntryWithoutEncryptionKey(ctx context.Context) error {
+	// TODO: Create a file entry without encryption key
+	return godog.ErrPending
+}
+
+// aFileEntryWithoutSpecificTag handles "a FileEntry without specific tag"
+func aFileEntryWithoutSpecificTag(ctx context.Context) error {
+	// TODO: Create a FileEntry without specific tag
+	return godog.ErrPending
+}
+
+// aFileEntryWithPathsHashesAndOptionalData handles "a FileEntry with paths, hashes, and optional data"
+func aFileEntryWithPathsHashesAndOptionalData(ctx context.Context) error {
+	// TODO: Create a FileEntry with paths, hashes, and optional data
+	return godog.ErrPending
+}
+
+// aFileEntryWithPrimaryPath handles "a FileEntry with primary path"
+func aFileEntryWithPrimaryPath(ctx context.Context) error {
+	// TODO: Create a FileEntry with primary path
+	return godog.ErrPending
+}
+
+// aFileEntryWithSymlinks handles "a FileEntry with symlinks"
+func aFileEntryWithSymlinks(ctx context.Context) error {
+	// TODO: Create a FileEntry with symlinks
+	return godog.ErrPending
+}
+
+// Pattern operations step implementations
+
+func filesMatchingPattern(ctx context.Context) error {
+	// TODO: Create or verify files matching pattern
+	return nil
+}
+
+func patternIsApplied(ctx context.Context) (context.Context, error) {
+	world := getWorld(ctx)
+	if world == nil {
+		return ctx, godog.ErrUndefined
+	}
+	// TODO: Once API is implemented, apply pattern
+	return ctx, nil
+}
+
+// Error handling step implementations
+
+func errPackageNotOpenErrorIsReturned(ctx context.Context) error {
+	// TODO: Verify ErrPackageNotOpen error is returned
+	return nil
+}
+
+func errorFollowsStructuredErrorFormat(ctx context.Context) error {
+	// TODO: Verify error follows structured error format
+	return nil
+}
+
+func structuredValidationErrorIsReturned(ctx context.Context) error {
+	// TODO: Verify structured validation error is returned
+	return nil
+}
+
+func errorIndicatesSizeLimitExceeded(ctx context.Context) error {
+	// TODO: Verify error indicates size limit exceeded
+	return nil
+}
+
+func errContextCancelledErrorIsReturned(ctx context.Context) error {
+	// TODO: Verify ErrContextCancelled error is returned
+	return nil
+}
+
+// Error handling and state step implementations
+
+func packageStateBecomesUndefined(ctx context.Context) error {
+	// TODO: Verify package state becomes undefined
+	return godog.ErrPending
+}
+
+func edgeCasesDoNotCausePanicsOrUndefinedBehavior(ctx context.Context) error {
+	// TODO: Verify edge cases do not cause panics or undefined behavior
+	return godog.ErrPending
+}
+
+// aFileEntryWithTags handles "a FileEntry with tags"
+func aFileEntryWithTags(ctx context.Context) error {
+	// TODO: Create a FileEntry with tags
+	return godog.ErrPending
+}
+
+// allFileMetadataIsAccessible handles "all file metadata is accessible"
+func allFileMetadataIsAccessible(ctx context.Context) error {
+	// TODO: Verify all file metadata is accessible
+	return godog.ErrPending
+}
+
+func aReadonlyOpenPackage(ctx context.Context) error {
+	// TODO: Create a readonly open package
+	return godog.ErrPending
+}
+
+func xXH3HashLookupSucceeds(ctx context.Context) error {
+	// TODO: Verify XXH3 hash lookup succeeds
 	return godog.ErrPending
 }

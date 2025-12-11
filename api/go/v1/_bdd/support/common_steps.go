@@ -1,3 +1,5 @@
+//go:build bdd
+
 package support
 
 import (
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+	"github.com/novus-engine/novuspack/api/go/v1/_bdd/contextkeys"
 )
 
 // RegisterCommonSteps registers shared step definitions used across multiple domains
@@ -18,10 +21,12 @@ func RegisterCommonSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a (valid|cancelled|cancellable) context$`, aBasicContext)
 
 	// Context with timeout variations
-	ctx.Step(`^a context (?:with timeout(?: (?:configured|exceeded))?|that times out)$`, aContextWithTimeoutVariation)
+	// Capture the variation description
+	ctx.Step(`^a context (with timeout(?: (?:configured|exceeded))?|that times out)$`, aContextWithTimeoutVariation)
 
 	// Context with cancellation variations
-	ctx.Step(`^a context (?:that (?:can be cancelled|is cancelled|will be cancelled)|with (?:cancellation (?:capability|support|or timeout)))$`, aContextWithCancellationVariation)
+	// Capture the variation description
+	ctx.Step(`^a context (that (?:can be cancelled|is cancelled|will be cancelled)|with (?:cancellation (?:capability|support|or timeout)))$`, aContextWithCancellationVariation)
 
 	// Context for specific purposes
 	ctx.Step(`^a context for (cancellation|package creation|package operations|resource management)$`, aContextForPurpose)
@@ -123,9 +128,9 @@ func RegisterCommonSteps(ctx *godog.ScenarioContext) {
 
 	// Common compression steps - consolidated using regex patterns
 	// Basic compression patterns
-	ctx.Step(`^a compression (?:type|operation|use case)$`, aCompressionBasic)
-	ctx.Step(`^a compression operation (?:fails|that fails|that failed|for large packages|in progress|requiring advanced streaming|requiring predictable behavior|with generic data type|with memory constraints|with specific memory constraints|with specific memory requirements|with specific performance requirements|with specific storage requirements|with storage constraints|with strict memory constraints|with temporary files|with underlying error)$`, aCompressionOperationWithVariation)
-	ctx.Step(`^a (?:compression|decompression) operation(?: (?:fails|that failed))?$`, aCompressionOrDecompressionOperationVariation)
+	ctx.Step(`^a compression ((?:type|operation|use case))$`, aCompressionBasic)
+	ctx.Step(`^a compression operation ((?:fails|that fails|that failed|for large packages|in progress|requiring advanced streaming|requiring predictable behavior|with generic data type|with memory constraints|with specific memory constraints|with specific memory requirements|with specific performance requirements|with specific storage requirements|with storage constraints|with strict memory constraints|with temporary files|with underlying error))$`, aCompressionOperationWithVariation)
+	ctx.Step(`^a ((?:compression|decompression)) operation(?: ((?:fails|that failed)))?$`, aCompressionOrDecompressionOperationVariation)
 
 	// Legacy registrations (keep for backward compatibility)
 	ctx.Step(`^a compression type$`, aCompressionType)
@@ -156,7 +161,8 @@ func RegisterCommonSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^error type is (?:inspected|checked|(.+))$`, errorTypeIsOrChecked)
 
 	// Structured error variations - consolidated pattern
-	ctx.Step(`^(?:a )?structured (?:context|corruption|duplicate file ID|immutability|invalid (?:archive part info|compression type|encryption type|file entry|flags|format|hash data|header|optional data|path)|I/O|not found|package corruption|security|signature|unsupported|validation) error is returned$`, aStructuredErrorIsReturned)
+	// Capture the error type
+	ctx.Step(`^(?:a )?structured (context|corruption|duplicate file ID|immutability|invalid (?:archive part info|compression type|encryption type|file entry|flags|format|hash data|header|optional data|path)|I/O|not found|package corruption|security|signature|unsupported|validation) error is returned$`, aStructuredErrorIsReturned)
 
 	// Legacy registrations (keep for backward compatibility)
 	ctx.Step(`^error is returned$`, errorIsReturned)
@@ -314,7 +320,9 @@ func aFileThatIsNotAValidNovusPackPackage(ctx context.Context) (context.Context,
 		return ctx, err
 	}
 	_, err = file.WriteString("not a valid package")
-	file.Close()
+	if closeErr := file.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
 	return ctx, err
 }
 
@@ -526,7 +534,7 @@ func noErrorOccurs(ctx context.Context) error {
 func GetWorld(ctx context.Context) *World {
 	// Extract world from context
 	// This will be set by the Before hook
-	if w, ok := ctx.Value("world").(*World); ok {
+	if w, ok := ctx.Value(contextkeys.WorldContextKey).(*World); ok {
 		return w
 	}
 	return nil
@@ -546,7 +554,11 @@ func createPlaceholderPackageFile(path string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	// Write a minimal placeholder header
 	// TODO: Once format is finalized, write proper header

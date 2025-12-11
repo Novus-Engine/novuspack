@@ -1,138 +1,89 @@
-// Package steps provides BDD step definitions for NovusPack API testing.
+//go:build bdd
+
+// Package core provides BDD step definitions for NovusPack core domain testing.
 //
 // Domain: core
 // Tags: @domain:core, @phase:1
-package steps
+package core
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/cucumber/godog"
+	novuspack "github.com/novus-engine/novuspack/api/go/v1"
+	"github.com/novus-engine/novuspack/api/go/v1/_bdd/contextkeys"
 )
 
-// RegisterCoreSteps registers step definitions for the core domain.
+// RegisterCoreGenericPatterns registers consolidated generic pattern step definitions for the core domain.
 //
 // Domain: core
 // Phase: 1
 // Tags: @domain:core
-func RegisterCoreSteps(ctx *godog.ScenarioContext) {
-	// Package creation steps
-	ctx.Step(`^a package path$`, aPackagePath)
-	ctx.Step(`^a new package$`, aNewPackage)
-	ctx.Step(`^Create is called$`, createIsCalled)
-	ctx.Step(`^Create is called with package path$`, createIsCalledWithPackagePath)
-	ctx.Step(`^new package is created at specified path$`, newPackageIsCreatedAtSpecifiedPath)
-	ctx.Step(`^package is ready for use$`, packageIsReadyForUse)
-	ctx.Step(`^package file is initialized$`, packageFileIsInitialized)
-
-	// Package opening steps
-	ctx.Step(`^Open is called$`, openIsCalled)
-	ctx.Step(`^Open is called with package path$`, openIsCalledWithPackagePath)
-	ctx.Step(`^existing package is opened from specified path$`, existingPackageIsOpenedFromSpecifiedPath)
-	ctx.Step(`^package content is loaded$`, packageContentIsLoaded)
-	ctx.Step(`^package is ready for operations$`, packageIsReadyForOperations)
-
-	// Package closing steps
-	ctx.Step(`^Close is called$`, closeIsCalled)
-	ctx.Step(`^package is closed$`, packageIsClosed)
-	ctx.Step(`^resources are released$`, resourcesAreReleased)
-	ctx.Step(`^file handles are closed$`, fileHandlesAreClosed)
-
-	// Package writing steps
-	ctx.Step(`^a NovusPack package$`, aNovusPackPackage)
-	ctx.Step(`^Write is called with path and compression type$`, writeIsCalledWithPathAndCompressionType)
-	ctx.Step(`^package is written using SafeWrite or FastWrite methods$`, packageIsWrittenUsingSafeWriteOrFastWriteMethods)
-	ctx.Step(`^compression handling is applied$`, compressionHandlingIsApplied)
-	ctx.Step(`^write operation completes$`, writeOperationCompletes)
-
-	// Defragmentation steps
-	ctx.Step(`^a NovusPack package with unused space$`, aNovusPackPackageWithUnusedSpace)
-	ctx.Step(`^Defragment is called$`, defragmentIsCalled)
-	ctx.Step(`^package structure is optimized$`, packageStructureIsOptimized)
-	ctx.Step(`^unused space is removed$`, unusedSpaceIsRemoved)
-	ctx.Step(`^package is more efficient$`, packageIsMoreEfficient)
-
-	// Validation steps
-	ctx.Step(`^Validate is called$`, validateIsCalled)
-	ctx.Step(`^package format is validated$`, packageFormatIsValidated)
-	ctx.Step(`^package structure is validated$`, packageStructureIsValidated)
-	ctx.Step(`^package integrity is checked$`, packageIntegrityIsChecked)
-
-	// Package information steps
-	ctx.Step(`^GetInfo is called$`, getInfoIsCalled)
-	ctx.Step(`^comprehensive package information is retrieved$`, comprehensivePackageInformationIsRetrieved)
-	ctx.Step(`^package details are available$`, packageDetailsAreAvailable)
-	ctx.Step(`^information includes package metadata$`, informationIncludesPackageMetadata)
-
-	// Package state steps
-	ctx.Step(`^package is in valid state$`, packageIsInValidState)
-	ctx.Step(`^the NovusPack system$`, theNovusPackSystem)
-
+func RegisterCoreGenericPatterns(ctx *godog.ScenarioContext) {
 	// Consolidated "package * is" patterns - Phase 2.2
 	ctx.Step(`^package (content|state|structure|header|metadata|comment|compression|format|integrity|information|operations|must be|can be|is (?:ready|compressed|not|ready for)|serves as|remains in) (?:is|are)? (.+)$`, packagePropertyIs)
 	ctx.Step(`^the package is (.+)$`, thePackageIs)
 	ctx.Step(`^package (content|state|structure|header|metadata|comment|compression|format|integrity|information) is (.+)$`, packagePropertyIsValue)
-
 	// Additional consolidated "package * is" patterns - Phase 5 (refined)
-	ctx.Step(`^package (?:content|state|structure|header|metadata|comment|compression|format|integrity|information|operations|version|file|index|compression type|compression state|comment (?:security|data|section)|IsOpen state|lifecycle|operation|operations (?:with|that)|modifications|needs to|size|signatures|with (?:security|signature|no|multiple|mixed|validation|industry)|version (?:is|information|can)|state (?:reflects|allows)|is (?:written|still|created|configured|decompressed|associated|recompressed|processed|large|in|already)|has (?:no|invalid)|aligns with|works on|integrity considerations|integrates with|metadata (?:schema|operations)|-level metadata is) (?:is|are|with|that|to|on|can|reflects|allows|has|aligns|works|considerations|integrates|schema|operations|-level metadata is) (.+)$`, packageExtendedProperty)
-
-	// Consolidated "package has" patterns - Phase 5
-	ctx.Step(`^package has (?:a comment|active operations|CRC calculated|checksum mismatches|corrupted compressed data|corruption issues|default header values with magic number (\d+)x(\d+)E(\d+)B|deleted files with unused space|digital signatures|FileCount of (\d+)|files and metadata|files with per-file tags|format version (\d+)|fragmented data sections|invalid (?:compressed data format|format|signatures)|loaded (?:memory buffers|state and metadata)|memory buffers and caches|metadata and signatures|no (?:comment|package-level compression|regular content files)|original compressed data|PackageCRC calculated|signatures|specific configuration \(encryption, signing, compression\)|standard NovusPack header structure|traditional signatures|unsaved changes|validation issues)$`, packageHasProperty)
-
+	// Note: "package compression type is specified in header flags (bits 15-8)" is handled in file_format_steps.go
+	// We exclude it here by not matching "compression type is specified" in the pattern
+	// Capture two groups: first part (property) and second part (value)
+	// Pattern matches: "package <property> <value>" where property can be complex
+	ctx.Step(`^package (operations (?:with|that)|is|content|state|structure|header|metadata|comment|compression|format|integrity|information|version|file|index|compression state|comment (?:security|data|section)|IsOpen state|lifecycle|operation|modifications|needs to|size|signatures|with (?:security|signature|no|multiple|mixed|validation|industry)|version (?:is|information|can)|state (?:reflects|allows)|has (?:no|invalid)|aligns with|works on|integrity considerations|integrates with|metadata (?:schema|operations)|-level metadata is) (.+)$`, packageExtendedProperty)
 	// Consolidated "part" patterns - Phase 5
 	ctx.Step(`^part number equals (\d+)$`, partNumberEquals)
 
 	// Consolidated "performance" patterns - Phase 5
-	ctx.Step(`^performance (?:is (?:optimized|examined)|metrics)$`, performanceProperty)
+	ctx.Step(`^performance ((?:is (?:optimized|examined)|metrics))$`, performanceProperty)
 
 	// Consolidated "phase" patterns - Phase 5
 	ctx.Step(`^(?:first|second|third|fourth|fifth) phase is (.+)$`, phaseIs)
 
 	// Consolidated "pool" patterns - Phase 5
-	ctx.Step(`^pool (?:is (?:ready for use|not closed|closed)|respects maximum size limit|statistics are updated|utilization is included)$`, poolProperty)
+	ctx.Step(`^pool ((?:is (?:ready for use|not closed|closed)|respects maximum size limit|statistics are updated|utilization is included))$`, poolProperty)
 
 	// Consolidated "position" patterns - Phase 5
-	ctx.Step(`^position (?:is (?:valid|checked)|enables (?:random access reading|reading from any position))$`, positionProperty)
+	ctx.Step(`^position ((?:is (?:valid|checked)|enables (?:random access reading|reading from any position)))$`, positionProperty)
 
 	// Consolidated "process" patterns - Phase 5
-	ctx.Step(`^process (?:is (?:examined|performed)|handles (.+))$`, processProperty)
+	ctx.Step(`^process ((?:is (?:examined|performed)|handles (.+)))$`, processProperty)
 
 	// Consolidated "progress" patterns - Phase 5
-	ctx.Step(`^progress (?:is (?:tracked|reported)|callback (?:is (?:called|provided)|provides (.+)))$`, progressProperty)
+	ctx.Step(`^progress ((?:is (?:tracked|reported)|callback (?:is (?:called|provided)|provides (.+))))$`, progressProperty)
 
 	// Consolidated "property" patterns - Phase 5
-	ctx.Step(`^property (?:is (?:set|checked|examined)|points to (.+))$`, propertyState)
+	ctx.Step(`^property ((?:is (?:set|checked|examined)|points to (.+)))$`, propertyState)
 
 	// Consolidated "protection" patterns - Phase 5
-	ctx.Step(`^protection (?:is (?:provided|enabled|supported)|mechanisms are (?:implemented|used))$`, protectionProperty)
+	ctx.Step(`^protection ((?:is (?:provided|enabled|supported)|mechanisms are (?:implemented|used)))$`, protectionProperty)
 
 	// Consolidated "provided" patterns - Phase 5
-	ctx.Step(`^provided (?:is (?:valid|checked)|with (.+))$`, providedProperty)
+	ctx.Step(`^provided ((?:is (?:valid|checked)|with (.+)))$`, providedProperty)
 
 	// Consolidated "purpose" patterns - Phase 5
-	ctx.Step(`^purpose (?:is (?:clear|defined)|of (.+))$`, purposeProperty)
+	ctx.Step(`^purpose ((?:is (?:clear|defined)|of (.+)))$`, purposeProperty)
 
 	// Consolidated "specified" patterns - Phase 5
-	ctx.Step(`^specified (?:chunk size|compression algorithm|memory limit|metadata|path(?: does not exist in entry| is removed(?: from entry)?)|signature|strategy|tag keys|worker count) (?:is (?:used|removed|updated)|does not exist in entry)$`, specifiedProperty)
+	ctx.Step(`^specified ((?:chunk size|compression algorithm|memory limit|metadata|path(?: does not exist in entry| is removed(?: from entry)?)|signature|strategy|tag keys|worker count)) ((?:is (?:used|removed|updated)|does not exist in entry))$`, specifiedProperty)
 
 	// Consolidated "speed" patterns - Phase 5
 	ctx.Step(`^speed (?:is (?:critical for frequent access|prioritized over compression ratio)|-critical scenarios)$`, speedProperty)
 
 	// Consolidated "standard" patterns - Phase 5
-	ctx.Step(`^standard (?:encryption may be used for less sensitive data|error classifications are used|extraction (?:ensures compatibility|process uses standard file system operations)|file system operations are used|Go (?:functions work with FileStream|interfaces are (?:examined|used(?: as in example)?))|interfaces (?:are used during error|provide interoperability)|key formats are supported|library \(crypto/aes, crypto/cipher\) is used for AES|library provides AES implementation|operations ensure compatibility|-compliant signature validation fails|ized path format stores all paths consistently)$`, standardProperty)
+	ctx.Step(`^standard ((?:encryption may be used for less sensitive data|error classifications are used|extraction (?:ensures compatibility|process uses standard file system operations)|file system operations are used|Go (?:functions work with FileStream|interfaces are (?:examined|used(?: as in example)?))|interfaces (?:are used during error|provide interoperability)|key formats are supported|library \(crypto/aes, crypto/cipher\) is used for AES|library provides AES implementation|operations ensure compatibility|-compliant signature validation fails|ized path format stores all paths consistently))$`, standardProperty)
 
 	// Consolidated "state" patterns - Phase 5
-	ctx.Step(`^state (?:information enables proper data handling|is (?:checked before operations|verified before each operation)|management (?:enables (?:controlled compression|flexible workflows)|is examined)|methods work correctly|preservation maintains package consistency|tracking (?:enables stream information methods|supports eviction policies)|validation ensures correct usage)$`, stateProperty)
+	ctx.Step(`^state ((?:information enables proper data handling|is (?:checked before operations|verified before each operation)|management (?:enables (?:controlled compression|flexible workflows)|is examined)|methods work correctly|preservation maintains package consistency|tracking (?:enables stream information methods|supports eviction policies)|validation ensures correct usage))$`, stateProperty)
 
 	// Consolidated "statistics" patterns - Phase 5
-	ctx.Step(`^statistics (?:aid in monitoring and optimization|include (?:job processing information|worker (?:count and status|information|performance metrics))|provide (?:insights into buffer usage|operational insights)|support buffer pool optimization)$`, statisticsProperty)
+	ctx.Step(`^statistics ((?:aid in monitoring and optimization|include (?:job processing information|worker (?:count and status|information|performance metrics))|provide (?:insights into buffer usage|operational insights)|support buffer pool optimization))$`, statisticsProperty)
 
 	// Consolidated "status" patterns - Phase 5
-	ctx.Step(`^status (?:includes (?:all security aspects|checksum status|error reporting|security level|signature information|validation results)|indicates (?:if file (?:has encryption key set|is (?:compressed|encrypted)))|is (?:determined from metadata|populated consistently even with errors)|matches (?:CompressionType|encryption configuration|EncryptionType|header flags|SignatureOffset check)|provides complete security assessment|reflects package state)$`, statusProperty)
+	ctx.Step(`^status ((?:includes (?:all security aspects|checksum status|error reporting|security level|signature information|validation results)|indicates (?:if file (?:has encryption key set|is (?:compressed|encrypted)))|is (?:determined from metadata|populated consistently even with errors)|matches (?:CompressionType|encryption configuration|EncryptionType|header flags|SignatureOffset check)|provides complete security assessment|reflects package state))$`, statusProperty)
 
 	// Consolidated "storage" patterns - Phase 5
-	ctx.Step(`^storage (?:decision is made based on deduplication results|efficiency is (?:optimized|verified)|optimization is (?:achieved|supported)|requirements are reduced to minimum|space (?:can be saved|is reduced)|usage is controlled)$`, storageProperty)
+	ctx.Step(`^storage ((?:decision is made based on deduplication results|efficiency is (?:optimized|verified)|optimization is (?:achieved|supported)|requirements are reduced to minimum|space (?:can be saved|is reduced)|usage is controlled))$`, storageProperty)
 
 	// Consolidated "Steam" patterns - Phase 5
 	ctx.Step(`^Steam (?:AppID (?:format is demonstrated|is stored in lower (\d+) bits)|CS:GO (?:AppID is (\d+)x(\d+)DA \((\d+)\)|combination is demonstrated \(VendorID=(\d+)x(\d+), AppID=(\d+)x(\d+)DA\))|TF(\d+) AppID is (\d+)x(\d+)B(\d+) \((\d+)\)|VendorID is (\d+)x(\d+) \(STEAM\))$`, steamProperty)
@@ -155,7 +106,7 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^trade-offs (?:are (?:clearly communicated|explained))$`, tradeOffsProperty)
 
 	// Consolidated "traditional" patterns - Phase 5
-	ctx.Step(`^traditional (?:encryption (?:is validated|options are available|remains available)|signature sizes are examined|signatures are smaller than quantum-safe signatures)$`, traditionalProperty)
+	ctx.Step(`^traditional ((?:encryption (?:is validated|options are available|remains available)|signature sizes are examined|signatures are smaller than quantum-safe signatures))$`, traditionalProperty)
 
 	// Consolidated "transfer" patterns - Phase 5
 	ctx.Step(`^transfer (?:efficiency is improved|time is considered)$`, transferProperty)
@@ -164,20 +115,20 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^transformed items of type (.+) are returned$`, transformedItemsProperty)
 
 	// Consolidated "transient" patterns - Phase 5
-	ctx.Step(`^transient I/O (?:errors can be retried|failures are handled gracefully)$`, transientIOProperty)
+	ctx.Step(`^transient I/O ((?:errors can be retried|failures are handled gracefully))$`, transientIOProperty)
 
 	// Consolidated "transparency" patterns - Phase 5
-	ctx.Step(`^transparency (?:enables inspection|is maintained|requirements (?:are examined|ensure antivirus-friendly design))$`, transparencyProperty)
+	ctx.Step(`^transparency ((?:enables inspection|is maintained|requirements (?:are examined|ensure antivirus-friendly design)))$`, transparencyProperty)
 	ctx.Step(`^transparent (?:principle is applied|principles guide format design)$`, transparentProperty)
 
 	// Consolidated "true" patterns - Phase 5
 	ctx.Step(`^true (?:indicates PackageError|is returned (?:for closed streams|if (?:AppID is non-zero|compression is possible|encryption key is set|file (?:exists|is (?:compressed|encrypted))|metadata exists|package (?:has no regular files|is (?:compressed|not signed))|signature file exists|stream is closed|symlinks exist|VendorID is non-zero)))$`, trueIsReturnedCondition)
 
 	// Consolidated "truncated" patterns - Phase 5
-	ctx.Step(`^truncated (?:content is within maximum length|preserves content up to safe limit)$`, truncatedProperty)
+	ctx.Step(`^truncated ((?:content is within maximum length|preserves content up to safe limit))$`, truncatedProperty)
 
 	// Consolidated "trust" patterns - Phase 5
-	ctx.Step(`^trust (?:abuse (?:attack is considered|is prevented by enhanced security requirements|threat is identified)|and verification (?:are performed|considerations are (?:defined|examined)|mechanisms are available)|chain (?:data is accessible|information is present|is verified|requirements are enhanced|validation is (?:enhanced|more thorough|performed))|chain violations are reported|enables trust assessment|indicators are accessible|information (?:is available|supports verification)|is verified|relies on metadata integrity|status (?:can be determined|is boolean)|verification (?:has higher trust requirements|is (?:implemented|more stringent|performed|recommended)))$`, trustProperty)
+	ctx.Step(`^trust ((?:abuse (?:attack is considered|is prevented by enhanced security requirements|threat is identified)|and verification (?:are performed|considerations are (?:defined|examined)|mechanisms are available)|chain (?:data is accessible|information is present|is verified|requirements are enhanced|validation is (?:enhanced|more thorough|performed))|chain violations are reported|enables trust assessment|indicators are accessible|information (?:is available|supports verification)|is verified|relies on metadata integrity|status (?:can be determined|is boolean)|verification (?:has higher trust requirements|is (?:implemented|more stringent|performed|recommended))))$`, trustProperty)
 	ctx.Step(`^Trusted (?:field indicates whether signature is trusted|indicates (?:signature trust status|whether signature is trusted)|is set to false)$`, trustedProperty)
 	ctx.Step(`^trusted (?:signatures (?:are identified|count is provided)|source verification is performed)$`, trustedSignaturesProperty)
 	ctx.Step(`^TrustedSignatures (?:contains number of trusted signatures|field contains number of trusted signatures)$`, trustedSignaturesFieldProperty)
@@ -187,16 +138,16 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^type (?:code provides abbreviated type identifier|codes include "([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"|constraint violations are tested|contains (?:signature type identifier|signature type \(ML-DSA, SLH-DSA, PGP, X\.(\d+)\))|detection and lookup are consistent|enables type-specific processing|errors are caught at compile time)$`, typeProperty)
 
 	// Consolidated "output" patterns - Phase 5
-	ctx.Step(`^output (?:file (?:is (?:valid(?: package)?|path causes write failure)|value is returned))$`, outputProperty)
+	ctx.Step(`^output ((?:file (?:is (?:valid(?: package)?|path causes write failure)|value is returned)))$`, outputProperty)
 
 	// Consolidated "overall" patterns - Phase 5
-	ctx.Step(`^overall (?:package size is (?:reduced(?: due to compressed content)?)|security posture is (?:assessed|improved))$`, overallProperty)
+	ctx.Step(`^overall ((?:package size is (?:reduced(?: due to compressed content)?)|security posture is (?:assessed|improved)))$`, overallProperty)
 
 	// Consolidated "overflow" patterns - Phase 5
 	ctx.Step(`^overflow prevention ensures safety$`, overflowPrevention)
 
 	// Consolidated "overly" patterns - Phase 5
-	ctx.Step(`^overly (?:long content is truncated to safe limits)$`, overlyProperty)
+	ctx.Step(`^overly ((?:long content is truncated to safe limits))$`, overlyProperty)
 
 	// Phase 1: Generic Method Call Patterns - Highest Impact
 	// Phase 1: Escaped Character Patterns - Handle special characters
@@ -227,9 +178,15 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 
 	// Phase 3: Generic Type/Value Patterns
 	// Consolidated "a/an/the X" patterns with capitalized types (e.g., "a PackageComment", "an AppID value") - Phase 1 Enhanced
+	// Exclude common lowercase patterns that have specific handlers (compression operation, use case, etc.)
+	// Pattern matches: "a PackageComment", "an AppID value" but NOT "a compression operation" (lowercase after article)
 	ctx.Step(`^(a|an) ([A-Z][a-zA-Z0-9]+)(?: (value|instance|implementation|type|type instance))?$`, typeInstancePattern)
 
 	// Consolidated "a/an/the X" patterns - Phase 3
+	// Exclude patterns that have specific handlers registered in domain-specific files
+	// This pattern should match LAST, after all specific patterns
+	// Note: Specific patterns like "a compression operation" are registered in compression_steps.go
+	// and will match before this generic pattern due to registration order
 	ctx.Step(`^(a|an|the) ([a-z][a-zA-Z0-9 ]+)$`, typeValue)
 
 	// Phase 4: Domain-Specific Consolidations - Error Patterns
@@ -258,6 +215,29 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	// Phase 2: Two-Word Capitalized Patterns - Must come BEFORE single-word capitalized patterns
 	// Handle "X Y" where both X and Y are capitalized (e.g., "Asset Metadata", "API definitions")
 	ctx.Step(`^([A-Z][a-zA-Z0-9]+ [A-Z][a-zA-Z0-9]+) (.+)$`, twoWordCapitalizedPattern)
+
+	// Specific two-word lowercase patterns - registered BEFORE generic pattern
+	ctx.Step(`^operation exceeds timeout$`, operationExceedsTimeout)
+	ctx.Step(`^errors are handled$`, errorsAreHandled)
+	ctx.Step(`^error examples are applied$`, errorExamplesAreApplied)
+	ctx.Step(`^compression or decompression operation fails$`, compressionOrDecompressionOperationFails)
+	ctx.Step(`^invalid compression parameters are provided$`, invalidCompressionParametersAreProvided)
+	ctx.Step(`^I/O error occurs during compression$`, ioErrorOccursDuringCompression)
+	ctx.Step(`^context is cancelled or timeout occurs$`, contextIsCancelledOrTimeoutOccurs)
+	ctx.Step(`^compressed data is corrupted$`, compressedDataIsCorrupted)
+	ctx.Step(`^unsupported compression algorithm is used$`, unsupportedCompressionAlgorithmIsUsed)
+	ctx.Step(`^proper workflow is followed$`, properWorkflowIsFollowed)
+	ctx.Step(`^structured compression error is created$`, structuredCompressionErrorIsCreated)
+	ctx.Step(`^error occurs during compression$`, errorOccursDuringCompression)
+	ctx.Step(`^structured error system is used$`, structuredErrorSystemIsUsed)
+	ctx.Step(`^validation errors occur$`, validationErrorsOccur)
+	ctx.Step(`^unsupported operations are attempted$`, unsupportedOperationsAreAttempted)
+	ctx.Step(`^context cancellation or timeout occurs$`, contextCancellationOrTimeoutOccurs)
+	ctx.Step(`^security errors occur$`, securityErrorsOccur)
+	ctx.Step(`^I/O errors occur$`, ioErrorsOccur)
+	ctx.Step(`^error types are not handled appropriately$`, errorTypesAreNotHandledAppropriately)
+	ctx.Step(`^defragmentation is cancelled$`, defragmentationIsCancelled)
+	ctx.Step(`^validation is cancelled$`, validationIsCancelled)
 
 	// Phase 3: Two-Word Lowercase End Patterns - Must come AFTER continuation patterns
 	// Handle "X Y" where both are lowercase (may end here or continue)
@@ -341,7 +321,7 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^([A-Z][a-zA-Z0-9]+) type \((\d+)x(\d+)(?:[A-Z])?\) supports (.+)$`, typeSupportsPattern)
 
 	// Consolidated Version Patterns (13 → 1) - Phase 11
-	ctx.Step(`^([A-Z][a-zA-Z0-9]*Version) (?:has (current|initial) value|increments(?: again| but ([A-Z][a-zA-Z0-9]*Version) remains unchanged)?|remains unchanged|reflects (.+)|tracks (.+))$`, versionPattern)
+	ctx.Step(`^([A-Z][a-zA-Z0-9]*Version) (?:has ((?:current|initial)) value|increments(?: (again)| but ([A-Z][a-zA-Z0-9]*Version) remains unchanged)?|remains unchanged|reflects ((?:.+))|tracks ((?:.+)))$`, versionPattern)
 
 	// Consolidated Entries Parse Correctly Patterns (12 → 1) - Phase 11
 	ctx.Step(`^([A-Z][a-zA-Z0-9]*(?:\d+)?) \((\d+)x(\d+)\) entries parse correctly$`, entriesParseCorrectlyPattern)
@@ -350,7 +330,7 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^([A-Z][a-zA-Z0-9]+) structure(?: provides (.+))?$`, structurePattern)
 
 	// Consolidated Hash Patterns (10 → 1) - Phase 11
-	ctx.Step(`^Hash([A-Z][a-zA-Z0-9]*) (?:\((\d+) (?:byte|bytes)\) (?:comes first|follows)|matches (.+)|does not (?:match|exceed) (.+)|indicates (.+)|validation passes)$`, hashPattern)
+	ctx.Step(`^Hash([A-Z][a-zA-Z0-9]*) (?:\((\d+) (?:byte|bytes)\) ((?:comes first|follows))|matches ((?:.+))|does not (?:match|exceed) ((?:.+))|indicates ((?:.+))|(validation passes))$`, hashPattern)
 
 	// Consolidated Method Call Patterns (4 → 1) - Phase 11
 	ctx.Step(`^([A-Z][a-zA-Z0-9]+) call includes error check$`, methodCallErrorCheckPattern)
@@ -366,7 +346,6 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^AES-(\d+)-GCM implementation meets industry standards$`, aesGCMImplementationMeetsIndustryStandards)
 	ctx.Step(`^AES support provides user preference option$`, aesSupportProvidesUserPreferenceOption)
 	ctx.Step(`^API definitions reference Package Metadata API specification$`, apiDefinitionsReferencePackageMetadataAPISpecification)
-	ctx.Step(`^a Validator implementation that rejects the value$`, aValidatorImplementationThatRejectsTheValue)
 	ctx.Step(`^ArchiveChainID links related archive parts$`, archiveChainIDLinksRelatedArchiveParts)
 	ctx.Step(`^ArchivePartInfo encodes single archive format$`, archivePartInfoEncodesSingleArchiveFormat)
 	ctx.Step(`^auto-detection logic runs$`, autoDetectionLogicRuns)
@@ -495,10 +474,8 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I apply the default compression settings$`, iApplyTheDefaultCompressionSettings)
 	ctx.Step(`^I\/O and context sentinel errors occur$`, ioAndContextSentinelErrorsOccur)
 	ctx.Step(`^I\/O error occurs$`, ioErrorOccurs)
-	ctx.Step(`^I\/O error occurs during compression$`, ioErrorOccursDuringCompression)
 	ctx.Step(`^I\/O error occurs during loading$`, ioErrorOccursDuringLoading)
 	ctx.Step(`^I\/O errors get retry consideration$`, ioErrorsGetRetryConsideration)
-	ctx.Step(`^I\/O errors occur$`, ioErrorsOccur)
 	ctx.Step(`^I\/O errors occur during read\/write operations$`, ioErrorsOccurDuringReadWriteOperations)
 	ctx.Step(`^I\/O errors receive targeted handling$`, ioErrorsReceiveTargetedHandling)
 	ctx.Step(`^I\/O errors trigger retry logic$`, ioErrorsTriggerRetryLogic)
@@ -531,6 +508,7 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^ListDirectories lists all directories$`, listDirectoriesListsAllDirectories)
 	ctx.Step(`^locale\/creator identification provides attribution$`, localeCreatorIdentificationProvidesAttribution)
 	ctx.Step(`^long-running package operations$`, longRunningPackageOperations)
+	ctx.Step(`^a long-running operation$`, aLongrunningOperation)
 	ctx.Step(`^low-level interface enables external service integration$`, lowLevelInterfaceEnablesExternalServiceIntegration)
 	ctx.Step(`^ML-DSA implementation follows NIST PQC standards$`, mlDSAImplementationFollowsNISTPQCStandards)
 	ctx.Step(`^ML-DSA key generation requirements$`, mlDSAKeyGenerationRequirements)
@@ -777,6 +755,13 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	// Consolidated "X results in Y" patterns - Phase 11 Extended
 	ctx.Step(`^(.+) results in (.+)$`, resultsInPattern)
 
+	// Specific "X is Y" patterns - registered BEFORE generic pattern
+	ctx.Step(`^ThreadSafetyNone mode is configured$`, threadSafetyNoneModeIsConfigured)
+	ctx.Step(`^ThreadSafetyReadOnly mode is configured$`, threadSafetyReadOnlyModeIsConfigured)
+	ctx.Step(`^header magic number is set to 0x4E56504B$`, headerMagicNumberIsSetTo0x4E56504B)
+	ctx.Step(`^operation exceeds timeout duration$`, operationExceedsTimeoutDuration)
+	ctx.Step(`^package is configured$`, packageIsConfigured)
+
 	// Additional comprehensive catch-all patterns
 	// Consolidated "X can/must/should/may/will Y" patterns - Phase 11 Extended
 	ctx.Step(`^(.+) (can|must|should|may|will|would|could|shall|might|ought) (.+)$`, modalVerbPattern)
@@ -845,7 +830,7 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^part (?:number equals (\d+)|changes are rolled back|cleanup is attempted|recovery is (?:attempted|possible)|state is cleaned up|updates work correctly)$`, partProperty)
 
 	// Consolidated "specific" patterns - Phase 5
-	ctx.Step(`^specific (?:memory constraints (?:are supported|can be set)|signature error types are examined|specification version information|chunk size is used|compression algorithm is used|memory limit is used|metadata is updated|path (?:does not exist in entry|is removed(?: from entry)?)|signature is removed|strategy is used|tag keys are removed|worker count is used)$`, specificProperty)
+	ctx.Step(`^specific ((?:memory constraints (?:are supported|can be set)|signature error types are examined|specification version information|chunk size is used|compression algorithm is used|memory limit is used|metadata is updated|path (?:does not exist in entry|is removed(?: from entry)?)|signature is removed|strategy is used|tag keys are removed|worker count is used))$`, specificProperty)
 
 	// Consolidated "specification" patterns - Phase 5
 	ctx.Step(`^specification (?:version information)$`, specificationProperty)
@@ -862,7 +847,7 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^Start is called(?: with context)?$`, startIsCalled)
 
 	// Consolidated "state" patterns - Phase 5
-	ctx.Step(`^state (?:information enables proper data handling|is (?:checked before operations|verified before each operation)|management (?:enables (?:controlled compression|flexible workflows)|is examined)|methods work correctly|preservation maintains package consistency|tracking (?:enables stream information methods|supports eviction policies)|validation ensures correct usage)$`, stateProperty)
+	ctx.Step(`^state ((?:information enables proper data handling|is (?:checked before operations|verified before each operation)|management (?:enables (?:controlled compression|flexible workflows)|is examined)|methods work correctly|preservation maintains package consistency|tracking (?:enables stream information methods|supports eviction policies)|validation ensures correct usage))$`, stateProperty)
 
 	// Consolidated "stateless" patterns - Phase 5
 	ctx.Step(`^stateless design simplifies key management$`, statelessDesignSimplifiesKeyManagement)
@@ -899,13 +884,13 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^transformed items of type (.+) are returned$`, transformedItemsProperty)
 
 	// Consolidated "transient" patterns - Phase 5
-	ctx.Step(`^transient I\/O (?:errors can be retried|failures are handled gracefully)$`, transientIOProperty)
+	ctx.Step(`^transient I\/O ((?:errors can be retried|failures are handled gracefully))$`, transientIOProperty)
 
 	// Consolidated "transparency" patterns - Phase 5
 	ctx.Step(`^transparency (?:enables inspection|is maintained|requirements (?:are examined|ensure antivirus-friendly design))$`, transparencyProperty)
 
 	// Consolidated "transparent" patterns - Phase 5
-	ctx.Step(`^transparent (?:principle is applied|principles guide format design)$`, transparentProperty)
+	ctx.Step(`^transparent ((?:principle is applied|principles guide format design))$`, transparentProperty)
 
 	// Consolidated "true" patterns - Phase 5 (already registered above in trueIsReturnedCondition)
 
@@ -1724,7 +1709,7 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	// Consolidated transparent patterns - Phase 5 (already registered above)
 
 	// Consolidated transient patterns - Phase 5
-	ctx.Step(`^transient (?:is (?:examined|identified|retrieved|set|supported|used)|matches|supports (?:multiple algorithms|various key types))$`, transientProperty)
+	ctx.Step(`^transient ((?:is (?:examined|identified|retrieved|set|supported|used)|matches|supports (?:multiple algorithms|various key types)))$`, transientProperty)
 
 	// Consolidated transfer patterns - Phase 5 (already registered above)
 
@@ -2552,6 +2537,12 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a package builder with configurations$`, aPackageBuilderWithConfigurations)
 	ctx.Step(`^a package builder with invalid configuration$`, aPackageBuilderWithInvalidConfiguration)
 	ctx.Step(`^a package builder with multiple configurations$`, aPackageBuilderWithMultipleConfigurations)
+	ctx.Step(`^NewPackageComment is called$`, newPackageCommentIsCalled)
+	ctx.Step(`^a PackageComment is returned$`, aPackageCommentIsReturned)
+	ctx.Step(`^CommentLength is 0$`, commentLengthIs0)
+	ctx.Step(`^Comment is empty$`, commentIsEmpty)
+	ctx.Step(`^Reserved bytes are all zero$`, reservedBytesAreAllZero)
+	ctx.Step(`^comment is in empty state$`, commentIsInEmptyState)
 	ctx.Step(`^a package comment$`, aPackageComment)
 	ctx.Step(`^a package comment exceeding length limit$`, aPackageCommentExceedingLengthLimit)
 	ctx.Step(`^a package comment is added$`, aPackageCommentIsAdded)
@@ -2823,506 +2814,45 @@ func RegisterCoreSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^current vendor identifier is retrieved$`, currentVendorIdentifierIsRetrieved)
 }
 
-// getWorld extracts the World from the context
-// Note: Using interface{} to avoid import cycle with support package
-func getWorld(ctx context.Context) interface{} {
-	return ctx.Value("world")
+// getWorld is defined in package_lifecycle.go (shared helper)
+
+// worldFileFormatCore is an interface for world methods needed by core steps
+type worldFileFormatCore interface {
+	SetComment(*novuspack.PackageComment)
+	GetComment() *novuspack.PackageComment
+	GetHeader() *novuspack.PackageHeader
+	SetHeader(*novuspack.PackageHeader)
+	SetError(error)
 }
 
-// getWorldTyped extracts the World from context and returns it as the World type
-// This is a helper to avoid import cycles
-func getWorldTyped(ctx context.Context) interface {
-	GetPackage() interface {
-		IsOpen() bool
-		Close() error
-	}
-	SetError(error)
-	GetError() error
-	TempPath(string) string
-	Resolve(string) string
-} {
-	w := getWorld(ctx)
+// getWorldFileFormatFromContext extracts world with file format methods from context
+func getWorldFileFormatFromContext(ctx context.Context) worldFileFormatCore {
+	// getWorld is defined in package_lifecycle.go
+	w := ctx.Value(contextkeys.WorldContextKey)
 	if w == nil {
 		return nil
 	}
-	// Type assertion will work at runtime
-	return w.(interface {
-		GetPackage() interface {
-			IsOpen() bool
-			Close() error
-		}
-		SetError(error)
-		GetError() error
-		TempPath(string) string
-		Resolve(string) string
-	})
+	if wf, ok := w.(worldFileFormatCore); ok {
+		return wf
+	}
+	return nil
 }
 
 // Package creation steps
 
-func aPackagePath(ctx context.Context) error {
-	world := getWorld(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// Package path will be stored when Create is called
-	return nil
-}
-
-func aNewPackage(ctx context.Context) error {
-	world := getWorld(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, create a new package
-	// pkg := novuspack.NewPackage(ctx)
-	// world.SetPackage(pkg, "")
-	return nil
-}
-
-func createIsCalled(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, call Create
-	// pkg := world.GetPackage()
-	// if pkg == nil {
-	//     pkg = novuspack.NewPackage(ctx)
-	// }
-	// path := world.TempPath("package.npk")
-	// err := pkg.Create(ctx, path)
-	// if err != nil {
-	//     world.SetError(err)
-	//     return ctx, err
-	// }
-	// world.SetPackage(pkg, path)
-	return ctx, nil
-}
-
-func createIsCalledWithPackagePath(ctx context.Context) (context.Context, error) {
-	return createIsCalled(ctx)
-}
-
-func newPackageIsCreatedAtSpecifiedPath(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package was created at path
-	// For now, check if package path exists in world
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	// Basic check: if package is set, assume it was created
-	// Full verification will require API implementation
-	return nil
-}
-
-func packageIsReadyForUse(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// Get package and verify it's ready
-	pkg := world.GetPackage()
-	if pkg == nil {
-		// Package might not be set yet, which is okay for placeholder
-		return nil
-	}
-	// TODO: Once API is implemented, verify package is actually ready
-	// For now, check if package is open (basic readiness check)
-	if !pkg.IsOpen() {
-		return fmt.Errorf("package is not open")
-	}
-	return nil
-}
-
-func packageFileIsInitialized(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package file is initialized
-	// For now, check if package exists
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	// Basic check: if package is set, assume file is initialized
-	// Full verification will require API implementation
-	return nil
-}
-
 // Package opening steps
-
-func openIsCalled(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, call Open
-	// pkg := novuspack.NewPackage(ctx)
-	// path := world.TempPath("test-package.npk")
-	// err := pkg.Open(ctx, path)
-	// if err != nil {
-	//     world.SetError(err)
-	//     return ctx, err
-	// }
-	// world.SetPackage(pkg, path)
-	return ctx, nil
-}
-
-func openIsCalledWithPackagePath(ctx context.Context) (context.Context, error) {
-	return openIsCalled(ctx)
-}
-
-func existingPackageIsOpenedFromSpecifiedPath(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package was opened
-	// For now, check if package exists and is open
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	if !pkg.IsOpen() {
-		return fmt.Errorf("package is not open")
-	}
-	return nil
-}
-
-func packageContentIsLoaded(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package content is loaded
-	// For now, check if package is open (content should be loaded if open)
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	if !pkg.IsOpen() {
-		return fmt.Errorf("package is not open, content not loaded")
-	}
-	return nil
-}
-
-func packageIsReadyForOperations(ctx context.Context) error {
-	return packageIsReadyForUse(ctx)
-}
 
 // Package closing steps
 
-func closeIsCalled(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Get package and close it
-	// pkg := world.GetPackage()
-	// if pkg == nil {
-	//     return ctx, nil // No package to close
-	// }
-	// TODO: Once API is implemented, call Close
-	// err := pkg.Close()
-	// if err != nil {
-	//     world.SetError(err)
-	//     return ctx, err
-	// }
-	return ctx, nil
-}
-
-func packageIsClosed(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// Get package and verify it's closed
-	pkg := world.GetPackage()
-	if pkg != nil {
-		if pkg.IsOpen() {
-			return fmt.Errorf("package is still open")
-		}
-	}
-	// If package is nil or not open, assume it's closed
-	return nil
-}
-
-func resourcesAreReleased(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify resources are released
-	// For now, check if package is closed (resources should be released)
-	pkg := world.GetPackage()
-	if pkg != nil && pkg.IsOpen() {
-		return fmt.Errorf("package is still open, resources may not be released")
-	}
-	return nil
-}
-
-func fileHandlesAreClosed(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify file handles are closed
-	// For now, check if package is closed (file handles should be closed)
-	pkg := world.GetPackage()
-	if pkg != nil && pkg.IsOpen() {
-		return fmt.Errorf("package is still open, file handles may not be closed")
-	}
-	return nil
-}
-
 // Package writing steps
-
-func aNovusPackPackage(ctx context.Context) error {
-	world := getWorld(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// This is equivalent to an open package
-	return nil
-}
-
-func writeIsCalledWithPathAndCompressionType(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, call Write
-	// pkg := world.GetPackage()
-	// if pkg == nil {
-	//     return ctx, fmt.Errorf("no package available")
-	// }
-	// path := world.TempPath("output.npk")
-	// err := pkg.Write(ctx, path, 0, false) // compression type 0, no signing
-	// if err != nil {
-	//     world.SetError(err)
-	//     return ctx, err
-	// }
-	return ctx, nil
-}
-
-func packageIsWrittenUsingSafeWriteOrFastWriteMethods(ctx context.Context) error {
-	// TODO: Verify package was written
-	return nil
-}
-
-func compressionHandlingIsApplied(ctx context.Context) error {
-	// TODO: Verify compression handling was applied
-	return nil
-}
-
-func writeOperationCompletes(ctx context.Context) error {
-	// TODO: Verify write operation completed
-	return nil
-}
 
 // Defragmentation steps
 
-func aNovusPackPackageWithUnusedSpace(ctx context.Context) error {
-	world := getWorld(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Create a package with unused space
-	return nil
-}
-
-func defragmentIsCalled(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Get package and call Defragment
-	// pkg := world.GetPackage()
-	// if pkg == nil {
-	//     return ctx, nil
-	// }
-	// TODO: Once API is implemented, call Defragment
-	// err := pkg.Defragment(ctx)
-	// if err != nil {
-	//     world.SetError(err)
-	//     return ctx, err
-	// }
-	return ctx, nil
-}
-
-func packageStructureIsOptimized(ctx context.Context) error {
-	// TODO: Verify package structure is optimized
-	return nil
-}
-
-func unusedSpaceIsRemoved(ctx context.Context) error {
-	// TODO: Verify unused space is removed
-	return nil
-}
-
-func packageIsMoreEfficient(ctx context.Context) error {
-	// TODO: Verify package is more efficient
-	return nil
-}
-
 // Validation steps
-
-func validateIsCalled(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Get package and call Validate
-	// pkg := world.GetPackage()
-	// if pkg == nil {
-	//     return ctx, nil
-	// }
-	// TODO: Once API is implemented, call Validate
-	// err := pkg.Validate(ctx)
-	// if err != nil {
-	//     world.SetError(err)
-	//     return ctx, err
-	// }
-	return ctx, nil
-}
-
-func packageFormatIsValidated(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package format was validated
-	// For now, check if there's no validation error
-	err := world.GetError()
-	if err != nil {
-		return fmt.Errorf("package format validation failed: %v", err)
-	}
-	return nil
-}
-
-func packageStructureIsValidated(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package structure was validated
-	// For now, check if there's no validation error
-	err := world.GetError()
-	if err != nil {
-		return fmt.Errorf("package structure validation failed: %v", err)
-	}
-	return nil
-}
-
-func packageIntegrityIsChecked(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package integrity was checked
-	// For now, check if there's no integrity error
-	err := world.GetError()
-	if err != nil {
-		return fmt.Errorf("package integrity check failed: %v", err)
-	}
-	return nil
-}
 
 // Package information steps
 
-func getInfoIsCalled(ctx context.Context) (context.Context, error) {
-	world := getWorld(ctx)
-	if world == nil {
-		return ctx, godog.ErrUndefined
-	}
-	// TODO: Get package and call GetInfo
-	// pkg := world.GetPackage()
-	// if pkg == nil {
-	//     return ctx, nil
-	// }
-	// TODO: Once API is implemented, call GetInfo
-	// info := pkg.GetInfo(ctx)
-	// Store info in world for later verification
-	return ctx, nil
-}
-
-func comprehensivePackageInformationIsRetrieved(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify comprehensive package information was retrieved
-	// For now, check if package exists (info retrieval would require package)
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	return nil
-}
-
-func packageDetailsAreAvailable(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package details are available
-	// For now, check if package exists (details would be available if package exists)
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	return nil
-}
-
-func informationIncludesPackageMetadata(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify information includes package metadata
-	// For now, just verify package exists (metadata would be included if package exists)
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	return nil
-}
-
 // Package state steps
-
-func packageIsInValidState(ctx context.Context) error {
-	world := getWorldTyped(ctx)
-	if world == nil {
-		return godog.ErrUndefined
-	}
-	// Get package and verify it's in valid state
-	pkg := world.GetPackage()
-	if pkg == nil {
-		return godog.ErrUndefined
-	}
-	// TODO: Once API is implemented, verify package is actually in valid state
-	// For now, check if package is open (basic validity check)
-	if !pkg.IsOpen() {
-		return fmt.Errorf("package is not open")
-	}
-	// Check if there's an error indicating invalid state
-	err := world.GetError()
-	if err != nil {
-		return fmt.Errorf("package is in invalid state: %v", err)
-	}
-	return nil
-}
-
-func theNovusPackSystem(ctx context.Context) error {
-	// This step just indicates the NovusPack system context
-	return nil
-}
 
 // File management step implementations
 
@@ -4212,6 +3742,96 @@ func aPackageBuilderWithInvalidConfiguration(ctx context.Context) error {
 func aPackageBuilderWithMultipleConfigurations(ctx context.Context) error {
 	// TODO: Create a package builder with multiple configurations
 	return godog.ErrPending
+}
+
+// newPackageCommentIsCalled handles "NewPackageComment is called"
+func newPackageCommentIsCalled(ctx context.Context) (context.Context, error) {
+	comment := novuspack.NewPackageComment()
+	wf := getWorldFileFormatFromContext(ctx)
+	if wf == nil {
+		return ctx, fmt.Errorf("world file format not found in context")
+	}
+	wf.SetComment(comment)
+	return ctx, nil
+}
+
+// aPackageCommentIsReturned handles "a PackageComment is returned"
+func aPackageCommentIsReturned(ctx context.Context) error {
+	wf := getWorldFileFormatFromContext(ctx)
+	if wf == nil {
+		return fmt.Errorf("world file format not found in context")
+	}
+	comment := wf.GetComment()
+	if comment == nil {
+		return fmt.Errorf("PackageComment is nil, expected non-nil")
+	}
+	return nil
+}
+
+// commentLengthIs0 handles "CommentLength is 0"
+func commentLengthIs0(ctx context.Context) error {
+	wf := getWorldFileFormatFromContext(ctx)
+	if wf == nil {
+		return fmt.Errorf("world file format not found in context")
+	}
+	comment := wf.GetComment()
+	if comment == nil {
+		return fmt.Errorf("PackageComment is nil")
+	}
+	if comment.CommentLength != 0 {
+		return fmt.Errorf("CommentLength = %d, want 0", comment.CommentLength)
+	}
+	return nil
+}
+
+// commentIsEmpty handles "Comment is empty"
+func commentIsEmpty(ctx context.Context) error {
+	wf := getWorldFileFormatFromContext(ctx)
+	if wf == nil {
+		return fmt.Errorf("world file format not found in context")
+	}
+	comment := wf.GetComment()
+	if comment == nil {
+		return fmt.Errorf("PackageComment is nil")
+	}
+	if comment.Comment != "" {
+		return fmt.Errorf("comment = %q, want empty", comment.Comment)
+	}
+	return nil
+}
+
+// reservedBytesAreAllZero handles "Reserved bytes are all zero"
+func reservedBytesAreAllZero(ctx context.Context) error {
+	wf := getWorldFileFormatFromContext(ctx)
+	if wf == nil {
+		return fmt.Errorf("world file format not found in context")
+	}
+	comment := wf.GetComment()
+	if comment == nil {
+		return fmt.Errorf("PackageComment is nil")
+	}
+	for i, b := range comment.Reserved {
+		if b != 0 {
+			return fmt.Errorf("reserved[%d] = %d, want 0", i, b)
+		}
+	}
+	return nil
+}
+
+// commentIsInEmptyState handles "comment is in empty state"
+func commentIsInEmptyState(ctx context.Context) error {
+	wf := getWorldFileFormatFromContext(ctx)
+	if wf == nil {
+		return fmt.Errorf("world file format not found in context")
+	}
+	comment := wf.GetComment()
+	if comment == nil {
+		return fmt.Errorf("PackageComment is nil")
+	}
+	if !comment.IsEmpty() {
+		return fmt.Errorf("IsEmpty() = false, want true for empty state")
+	}
+	return nil
 }
 
 func aPackageComment(ctx context.Context) error {
@@ -5569,13 +5189,31 @@ func vendorIDAndAppIDIsSet(ctx context.Context) error {
 	return godog.ErrPending
 }
 
+// Specific "package has" step implementations
+
+// packageHasAComment creates a package with a comment
+
+// packageHasNoComment creates a package without a comment
+
+// packageHasCRCCalculated indicates package has CRC calculated
+
+// packageHasPackageCRCCalculated same as packageHasCRCCalculated
+
+// packageHasDigitalSignatures indicates package has digital signatures
+
+// packageHasFilesWithPerFileTags indicates package has files with per-file tags
+
+// Specific "package has" handlers with captured values
+
+// packageHasFormatVersion handles "package has format version X"
+
+// packageHasFileCount handles "package has FileCount of X"
+
+// packageHasMagicNumber handles "package has default header values with magic number XxYEZ"
+
 // Consolidated "package has" pattern implementation - Phase 5
 
-// packageHasProperty handles "package has ..." patterns
-func packageHasProperty(ctx context.Context, property string, magic1, magic2, magic3, fileCount, formatVersion string) error {
-	// TODO: Handle package has property
-	return godog.ErrPending
-}
+// packageHasProperty handles "package has ..." patterns (simple cases without captured values)
 
 // Consolidated "package header" pattern implementation - Phase 5
 
@@ -5626,8 +5264,26 @@ func partProperty(ctx context.Context, property, number string) error {
 }
 
 // packageExtendedProperty handles extended "package * is" patterns
+// Specific "package * is" step implementations
+
+// packageDataVersionIsExamined examines PackageDataVersion field
+
+// packageDataVersionHasInitialValue verifies PackageDataVersion has initial value
+
+// packageCommentHasInvalidUTF8Bytes creates a package comment with invalid UTF-8
+
+// packageCompressionTypeIsSpecifiedInHeaderFlagsCore handles "package compression type is specified in header flags (bits 15-8)"
+// This is a wrapper that delegates to the implementation in file_format_steps.go
+
 func packageExtendedProperty(ctx context.Context, property, value string) error {
-	// TODO: Handle package extended property
+	// Handle specific cases
+	switch property {
+	case "PackageDataVersion is examined":
+		return packageDataVersionIsExamined(ctx)
+	case "PackageDataVersion has initial value":
+		return packageDataVersionHasInitialValue(ctx)
+	}
+	// TODO: Handle other package extended properties
 	return godog.ErrPending
 }
 
@@ -5675,6 +5331,8 @@ func positionProperty(ctx context.Context, property string) error {
 
 // processProperty handles "process is examined", etc.
 func processProperty(ctx context.Context, property, handles string) error {
+	// property contains the full matched text
+	// handles contains the specific thing being handled when "handles X" matches, empty otherwise
 	// TODO: Handle process property
 	return godog.ErrPending
 }
@@ -5683,6 +5341,8 @@ func processProperty(ctx context.Context, property, handles string) error {
 
 // progressProperty handles "progress is tracked", etc.
 func progressProperty(ctx context.Context, property, provides string) error {
+	// property contains the full matched text
+	// provides contains the specific thing provided when "callback provides X" matches, empty otherwise
 	// TODO: Handle progress property
 	return godog.ErrPending
 }
@@ -5691,6 +5351,8 @@ func progressProperty(ctx context.Context, property, provides string) error {
 
 // propertyState handles "property is set", etc.
 func propertyState(ctx context.Context, state, pointsTo string) error {
+	// state contains the full matched text
+	// pointsTo contains the specific thing pointed to when "points to X" matches, empty otherwise
 	// TODO: Handle property state
 	return godog.ErrPending
 }
@@ -5707,6 +5369,8 @@ func protectionProperty(ctx context.Context, property string) error {
 
 // providedProperty handles "provided is valid", etc.
 func providedProperty(ctx context.Context, property, with string) error {
+	// property contains the full matched text
+	// with contains the specific thing when "with X" matches, empty otherwise
 	// TODO: Handle provided property
 	return godog.ErrPending
 }
@@ -5715,6 +5379,8 @@ func providedProperty(ctx context.Context, property, with string) error {
 
 // purposeProperty handles "purpose is clear", etc.
 func purposeProperty(ctx context.Context, property, of string) error {
+	// property contains the full matched text
+	// of contains the specific thing when "of X" matches, empty otherwise
 	// TODO: Handle purpose property
 	return godog.ErrPending
 }
@@ -9682,8 +9348,10 @@ func methodIsCalledWithTyped(ctx context.Context, methodName string, paramType s
 // Phase 2: Generic Property/State Pattern Implementation
 
 // propertyStatePhase2 handles "X is Y" patterns (property state variations for capitalized identifiers)
-func propertyStatePhase2(ctx context.Context, propertyName string, state string) error {
-	// TODO: Handle property state: propertyName is state
+func propertyStatePhase2(ctx context.Context, propertyName string) error {
+	// Handle property state: propertyName is [state]
+	// The state is embedded in the pattern alternation, not captured separately
+	// TODO: Implement actual property state handling
 	return godog.ErrPending
 }
 
@@ -9705,13 +9373,17 @@ func typeValue(ctx context.Context, article string, typeName string) error {
 
 // errorOperationProperty handles "error X" patterns
 func errorOperationProperty(ctx context.Context, details string) error {
-	// TODO: Handle error operation: details
+	// Handle error operation: details
+	// details is required (pattern always captures it)
+	// TODO: Implement actual error operation handling
 	return godog.ErrPending
 }
 
 // packageOperationProperty handles "package X" patterns
 func packageOperationProperty(ctx context.Context, details string) error {
-	// TODO: Handle package operation: details
+	// Handle package operation: details
+	// details is required (pattern always captures it)
+	// TODO: Implement actual package operation handling
 	return godog.ErrPending
 }
 
@@ -9729,9 +9401,118 @@ func twoWordCapitalizedPattern(ctx context.Context, twoWords string, details str
 	return godog.ErrPending
 }
 
+// Specific two-word lowercase pattern handlers
+
+func operationExceedsTimeout(ctx context.Context) error {
+	// TODO: Implement operation exceeds timeout
+	return godog.ErrPending
+}
+
+func errorsAreHandled(ctx context.Context) error {
+	// TODO: Implement errors are handled
+	return godog.ErrPending
+}
+
+func errorExamplesAreApplied(ctx context.Context) error {
+	// TODO: Implement error examples are applied
+	return godog.ErrPending
+}
+
+func compressionOrDecompressionOperationFails(ctx context.Context) error {
+	// TODO: Implement compression or decompression operation fails
+	return godog.ErrPending
+}
+
+func invalidCompressionParametersAreProvided(ctx context.Context) error {
+	// TODO: Implement invalid compression parameters are provided
+	return godog.ErrPending
+}
+
+func ioErrorOccursDuringCompression(ctx context.Context) error {
+	// TODO: Implement I/O error occurs during compression
+	return godog.ErrPending
+}
+
+func contextIsCancelledOrTimeoutOccurs(ctx context.Context) error {
+	// TODO: Implement context is cancelled or timeout occurs
+	return godog.ErrPending
+}
+
+func compressedDataIsCorrupted(ctx context.Context) error {
+	// TODO: Implement compressed data is corrupted
+	return godog.ErrPending
+}
+
+func unsupportedCompressionAlgorithmIsUsed(ctx context.Context) error {
+	// TODO: Implement unsupported compression algorithm is used
+	return godog.ErrPending
+}
+
+func properWorkflowIsFollowed(ctx context.Context) error {
+	// TODO: Implement proper workflow is followed
+	return godog.ErrPending
+}
+
+func structuredCompressionErrorIsCreated(ctx context.Context) error {
+	// TODO: Implement structured compression error is created
+	return godog.ErrPending
+}
+
+func errorOccursDuringCompression(ctx context.Context) error {
+	// TODO: Implement error occurs during compression
+	return godog.ErrPending
+}
+
+func structuredErrorSystemIsUsed(ctx context.Context) error {
+	// TODO: Implement structured error system is used
+	return godog.ErrPending
+}
+
+func validationErrorsOccur(ctx context.Context) error {
+	// TODO: Implement validation errors occur
+	return godog.ErrPending
+}
+
+func unsupportedOperationsAreAttempted(ctx context.Context) error {
+	// TODO: Implement unsupported operations are attempted
+	return godog.ErrPending
+}
+
+func contextCancellationOrTimeoutOccurs(ctx context.Context) error {
+	// TODO: Implement context cancellation or timeout occurs
+	return godog.ErrPending
+}
+
+func securityErrorsOccur(ctx context.Context) error {
+	// TODO: Implement security errors occur
+	return godog.ErrPending
+}
+
+func ioErrorsOccur(ctx context.Context) error {
+	// TODO: Implement I/O errors occur
+	return godog.ErrPending
+}
+
+func errorTypesAreNotHandledAppropriately(ctx context.Context) error {
+	// TODO: Implement error types are not handled appropriately
+	return godog.ErrPending
+}
+
+func defragmentationIsCancelled(ctx context.Context) error {
+	// TODO: Implement defragmentation is cancelled
+	return godog.ErrPending
+}
+
+func validationIsCancelled(ctx context.Context) error {
+	// TODO: Implement validation is cancelled
+	return godog.ErrPending
+}
+
 // twoWordLowercaseEndPattern handles "X Y" where both are lowercase (may end here or continue)
 func twoWordLowercaseEndPattern(ctx context.Context, twoWords string, continuation string) error {
-	// TODO: Handle two-word lowercase end pattern: twoWords continuation
+	// Handle two-word lowercase end pattern: twoWords [continuation]
+	// continuation is optional (empty string if not provided)
+	// TODO: Implement actual two-word pattern handling
 	return godog.ErrPending
 }
 
@@ -9863,18 +9644,6 @@ func streamingOperationProperty(ctx context.Context, details string) error {
 	return godog.ErrPending
 }
 
-// capitalizedActionVerbPattern handles "X Y" patterns where X is capitalized and Y is an action verb
-func capitalizedActionVerbPattern(ctx context.Context, subject string, action string) error {
-	// TODO: Handle capitalized action verb pattern: subject action
-	return godog.ErrPending
-}
-
-// lowercaseActionPattern handles "X Y" patterns where X is lowercase and Y is an action verb
-func lowercaseActionPattern(ctx context.Context, subject string, verb string, details string) error {
-	// TODO: Handle lowercase action pattern: subject verb details
-	return godog.ErrPending
-}
-
 // Phase 9: Two-Word Lowercase Pattern Implementation
 
 // twoWordPattern handles two-word lowercase patterns (e.g., "compression type", "error message")
@@ -9968,6 +9737,33 @@ func modalVerbPattern(ctx context.Context, subject string, modal string, action 
 }
 
 // isPattern handles "X is Y" patterns (catch-all)
+// Specific "X is Y" pattern handlers
+
+func threadSafetyNoneModeIsConfigured(ctx context.Context) error {
+	// TODO: Implement ThreadSafetyNone mode is configured
+	return godog.ErrPending
+}
+
+func threadSafetyReadOnlyModeIsConfigured(ctx context.Context) error {
+	// TODO: Implement ThreadSafetyReadOnly mode is configured
+	return godog.ErrPending
+}
+
+func headerMagicNumberIsSetTo0x4E56504B(ctx context.Context) error {
+	// TODO: Implement header magic number is set to 0x4E56504B
+	return godog.ErrPending
+}
+
+func operationExceedsTimeoutDuration(ctx context.Context) error {
+	// TODO: Implement operation exceeds timeout duration
+	return godog.ErrPending
+}
+
+func packageIsConfigured(ctx context.Context) error {
+	// TODO: Implement package is configured
+	return godog.ErrPending
+}
+
 func isPattern(ctx context.Context, subject string, predicate string) error {
 	// TODO: Handle is pattern: subject is predicate
 	return godog.ErrPending
@@ -10030,60 +9826,6 @@ func forPattern(ctx context.Context, subject string, purpose string) error {
 // inPattern handles "X in Y" patterns
 func inPattern(ctx context.Context, subject string, container string) error {
 	// TODO: Handle in pattern: subject in container
-	return godog.ErrPending
-}
-
-// ofPattern handles "X of Y" patterns
-func ofPattern(ctx context.Context, subject string, object string) error {
-	// TODO: Handle of pattern: subject of object
-	return godog.ErrPending
-}
-
-// thatClausePattern handles "X that Y" patterns
-func thatClausePattern(ctx context.Context, subject string, clause string) error {
-	// TODO: Handle that clause pattern: subject that clause
-	return godog.ErrPending
-}
-
-// whenClausePattern handles "X when Y" patterns
-func whenClausePattern(ctx context.Context, subject string, condition string) error {
-	// TODO: Handle when clause pattern: subject when condition
-	return godog.ErrPending
-}
-
-// temporalPattern handles "X before/after Y" patterns
-func temporalPattern(ctx context.Context, subject string, temporal string, object string) error {
-	// TODO: Handle temporal pattern: subject temporal object
-	return godog.ErrPending
-}
-
-// usingPattern handles "X using Y" patterns
-func usingPattern(ctx context.Context, subject string, method string) error {
-	// TODO: Handle using pattern: subject using method
-	return godog.ErrPending
-}
-
-// duringPattern handles "X during Y" patterns
-func duringPattern(ctx context.Context, subject string, event string) error {
-	// TODO: Handle during pattern: subject during event
-	return godog.ErrPending
-}
-
-// favorPattern handles "X favor Y" patterns
-func favorPattern(ctx context.Context, subject string, preference string) error {
-	// TODO: Handle favor pattern: subject favor preference
-	return godog.ErrPending
-}
-
-// andPattern handles "X and Y" patterns
-func andPattern(ctx context.Context, first string, second string) error {
-	// TODO: Handle and pattern: first and second
-	return godog.ErrPending
-}
-
-// orPattern handles "X or Y" patterns
-func orPattern(ctx context.Context, first string, second string) error {
-	// TODO: Handle or pattern: first or second
 	return godog.ErrPending
 }
 
@@ -10795,10 +10537,7 @@ func ioErrorOccurs(ctx context.Context) error {
 	return godog.ErrPending
 }
 
-func ioErrorOccursDuringCompression(ctx context.Context) error {
-	// TODO: Handle I/O error occurs during compression
-	return godog.ErrPending
-}
+// ioErrorOccursDuringCompression and ioErrorsOccur are defined earlier in the file (around line 10143 and 10203)
 
 func ioErrorOccursDuringLoading(ctx context.Context) error {
 	// TODO: Handle I/O error occurs during loading
@@ -10807,11 +10546,6 @@ func ioErrorOccursDuringLoading(ctx context.Context) error {
 
 func ioErrorsGetRetryConsideration(ctx context.Context) error {
 	// TODO: Handle I/O errors get retry consideration
-	return godog.ErrPending
-}
-
-func ioErrorsOccur(ctx context.Context) error {
-	// TODO: Handle I/O errors occur
 	return godog.ErrPending
 }
 
@@ -10972,6 +10706,11 @@ func localeCreatorIdentificationProvidesAttribution(ctx context.Context) error {
 
 func longRunningPackageOperations(ctx context.Context) error {
 	// TODO: Handle long-running package operations
+	return godog.ErrPending
+}
+
+func aLongrunningOperation(ctx context.Context) error {
+	// TODO: Handle a long-running operation
 	return godog.ErrPending
 }
 
@@ -12022,6 +11761,18 @@ func withRandomIVSetsRandomIVSetting(ctx context.Context) error {
 
 func withSignatureTypeSetsSignatureTypeConfiguration(ctx context.Context) error {
 	// TODO: Handle WithSignatureType sets signature type configuration
+	return godog.ErrPending
+}
+
+// bufferPoolManagesBuffersEfficiently handles "BufferPool manages buffers efficiently"
+func bufferPoolManagesBuffersEfficiently(ctx context.Context) error {
+	// TODO: Verify BufferPool manages buffers efficiently
+	return godog.ErrPending
+}
+
+// bufferPoolManagesBuffersOfAnyType handles "BufferPool manages buffers of any type"
+func bufferPoolManagesBuffersOfAnyType(ctx context.Context) error {
+	// TODO: Verify BufferPool manages buffers of any type
 	return godog.ErrPending
 }
 

@@ -1,3 +1,5 @@
+//go:build bdd
+
 package support
 
 import (
@@ -6,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	novuspack "github.com/novus-engine/novuspack/api/go/v1"
 )
 
 // Package represents a NovusPack package instance
@@ -40,6 +44,16 @@ type World struct {
 
 	// Package metadata storage for verification
 	packageMetadata map[string]interface{} // key -> value
+
+	// Test object storage for file format structures
+	currentHeader       *novuspack.PackageHeader
+	currentFileEntry    *novuspack.FileEntry
+	currentComment      *novuspack.PackageComment
+	currentFileIndex    *novuspack.FileIndex
+	currentHashEntry    *novuspack.HashEntry
+	currentPathEntry    *novuspack.PathEntry
+	currentOptionalData *novuspack.OptionalDataEntry
+	currentSignature    *novuspack.Signature
 }
 
 // NewWorld creates a new test world instance
@@ -55,10 +69,10 @@ func NewWorld() (*World, error) {
 	}
 
 	return &World{
-		WorkDir:        workDir,
-		TempDir:        tempDir,
-		packages:       make(map[string]Package),
-		files:          make(map[string][]byte),
+		WorkDir:         workDir,
+		TempDir:         tempDir,
+		packages:        make(map[string]Package),
+		files:           make(map[string][]byte),
 		packageMetadata: make(map[string]interface{}),
 	}, nil
 }
@@ -192,6 +206,14 @@ func (w *World) Cleanup() error {
 	w.packageMetadata = make(map[string]interface{})
 	w.testContext = nil
 	w.testCancel = nil
+	w.currentHeader = nil
+	w.currentFileEntry = nil
+	w.currentComment = nil
+	w.currentFileIndex = nil
+	w.currentHashEntry = nil
+	w.currentPathEntry = nil
+	w.currentOptionalData = nil
+	w.currentSignature = nil
 
 	// Remove temporary directory
 	if w.TempDir != "" {
@@ -219,4 +241,116 @@ func (w *World) GetPackageMetadata(key string) (interface{}, bool) {
 	}
 	value, exists := w.packageMetadata[key]
 	return value, exists
+}
+
+// SetHeader stores a PackageHeader for testing
+func (w *World) SetHeader(header *novuspack.PackageHeader) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentHeader = header
+}
+
+// GetHeader retrieves the stored PackageHeader
+func (w *World) GetHeader() *novuspack.PackageHeader {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentHeader
+}
+
+// SetFileEntry stores a FileEntry for testing
+func (w *World) SetFileEntry(entry *novuspack.FileEntry) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentFileEntry = entry
+}
+
+// GetFileEntry retrieves the stored FileEntry
+func (w *World) GetFileEntry() *novuspack.FileEntry {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentFileEntry
+}
+
+// SetComment stores a PackageComment for testing
+func (w *World) SetComment(comment *novuspack.PackageComment) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentComment = comment
+}
+
+// GetComment retrieves the stored PackageComment
+func (w *World) GetComment() *novuspack.PackageComment {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentComment
+}
+
+// SetFileIndex stores a FileIndex for testing
+func (w *World) SetFileIndex(index *novuspack.FileIndex) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentFileIndex = index
+}
+
+// GetFileIndex retrieves the stored FileIndex
+func (w *World) GetFileIndex() *novuspack.FileIndex {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentFileIndex
+}
+
+// SetHashEntry stores a HashEntry for testing
+func (w *World) SetHashEntry(entry *novuspack.HashEntry) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentHashEntry = entry
+}
+
+// GetHashEntry retrieves the stored HashEntry
+func (w *World) GetHashEntry() *novuspack.HashEntry {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentHashEntry
+}
+
+// SetPathEntry stores a PathEntry for testing
+func (w *World) SetPathEntry(entry *novuspack.PathEntry) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentPathEntry = entry
+}
+
+// GetPathEntry retrieves the stored PathEntry
+func (w *World) GetPathEntry() *novuspack.PathEntry {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentPathEntry
+}
+
+// SetOptionalData stores an OptionalDataEntry for testing
+func (w *World) SetOptionalData(entry *novuspack.OptionalDataEntry) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentOptionalData = entry
+}
+
+// GetOptionalData retrieves the stored OptionalDataEntry
+func (w *World) GetOptionalData() *novuspack.OptionalDataEntry {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentOptionalData
+}
+
+// SetSignature stores a Signature for testing
+func (w *World) SetSignature(sig *novuspack.Signature) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.currentSignature = sig
+}
+
+// GetSignature retrieves the stored Signature
+func (w *World) GetSignature() *novuspack.Signature {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.currentSignature
 }

@@ -1,3 +1,5 @@
+//go:build bdd
+
 package bdd
 
 import (
@@ -7,7 +9,7 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/cucumber/godog/colors"
-	support "github.com/novus-engine/novuspack/api/go/v1/bdd/support"
+	support "github.com/novus-engine/novuspack/api/go/v1/_bdd/support"
 )
 
 var opt = godog.Options{
