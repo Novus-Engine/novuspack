@@ -36,7 +36,7 @@
 
 #### 1. Environment Setup
 
-- Verify Go 1.23.0+ installation
+- Verify Go 1.25.0+ installation
 - Check PATH configuration
 - Install required tools (gofmt, golangci-lint)
 

@@ -98,9 +98,8 @@ func (pc *PackageComment) Validate() error
 
 #### 1.1.3 Error Conditions
 
-- `ErrIOError`: I/O error during read/write operations
-- `ErrInvalidComment`: Comment format is invalid
-- `ErrCommentTooLarge`: Comment exceeds size limits
+- `ErrTypeValidation`: Comment format is invalid, comment exceeds size limits
+- `ErrTypeIO`: I/O error during read/write operations
 
 #### 1.1.4 Example Usage
 
@@ -181,13 +180,13 @@ func AuditSignatureComment(comment string, signatureIndex int) error
 
 ```go
 // SetAppID sets or updates the package AppID
-func (p *Package) SetAppID(ctx context.Context, appID uint64) error
+func (p *Package) SetAppID(appID uint64) error
 
 // GetAppID retrieves the current package AppID
 func (p *Package) GetAppID() uint64
 
 // ClearAppID removes the package AppID (set to 0)
-func (p *Package) ClearAppID(ctx context.Context) error
+func (p *Package) ClearAppID() error
 
 // HasAppID checks if the package has an AppID (non-zero)
 func (p *Package) HasAppID() bool
@@ -200,13 +199,13 @@ func (p *Package) GetAppIDInfo() AppIDInfo
 
 ```go
 // SetVendorID sets or updates the package VendorID
-func (p *Package) SetVendorID(ctx context.Context, vendorID uint32) error
+func (p *Package) SetVendorID(vendorID uint32) error
 
 // GetVendorID retrieves the current package VendorID
 func (p *Package) GetVendorID() uint32
 
 // ClearVendorID removes the package VendorID (set to 0)
-func (p *Package) ClearVendorID(ctx context.Context) error
+func (p *Package) ClearVendorID() error
 
 // HasVendorID checks if the package has a VendorID (non-zero)
 func (p *Package) HasVendorID() bool
@@ -481,16 +480,15 @@ func (p *Package) ValidateMetadataOnlyIntegrity() error
 #### 6.4.1 Metadata-Only Package Validation
 
 ```go
-// ValidateMetadataOnlyPackage performs comprehensive validation
-func (p *Package) ValidateMetadataOnlyPackage() error {
-    // Ensure FileCount == 0
-    // Ensure HasSpecialMetadataFiles == true
-    // Validate all special metadata files
-    // Check for malicious metadata patterns
-    // Verify signature scope includes all metadata
-    // Ensure metadata consistency
-    // Validate package structure
-}
+// ValidateMetadataOnlyPackage performs comprehensive validation:
+//     Ensure FileCount == 0
+//     Ensure HasSpecialMetadataFiles == true
+//     Validate all special metadata files
+//     Check for malicious metadata patterns
+//     Verify signature scope includes all metadata
+//     Ensure metadata consistency
+//     Validate package structure
+func (p *Package) ValidateMetadataOnlyPackage() error
 ```
 
 #### 6.4.2 Enhanced Security Requirements
@@ -672,165 +670,61 @@ type ACLEntry struct {
 }
 
 // DirectoryEntry tag management methods
-func (de *DirectoryEntry) GetTags(ctx context.Context) []Tag {
-    return de.Properties
-}
+func (de *DirectoryEntry) GetTags() []Tag
 
-func (de *DirectoryEntry) SetTags(ctx context.Context, tags []Tag) {
-    de.Properties = tags
-}
+func (de *DirectoryEntry) SetTags(tags []Tag)
 
-func (de *DirectoryEntry) SetTag(ctx context.Context, key string, valueType TagValueType, value string) {
-    for i, tag := range de.Properties {
-        if tag.Key == key {
-            de.Properties[i] = Tag{Key: key, ValueType: valueType, Value: value}
-            return
-        }
-    }
-    de.Properties = append(de.Properties, Tag{Key: key, ValueType: valueType, Value: value})
-}
+func (de *DirectoryEntry) SetTag(key string, valueType TagValueType, value string)
 
-func (de *DirectoryEntry) GetTag(ctx context.Context, key string) (Tag, bool) {
-    for _, tag := range de.Properties {
-        if tag.Key == key {
-            return tag, true
-        }
-    }
-    return Tag{}, false
-}
+func (de *DirectoryEntry) GetTag(key string) (Tag, bool)
 
-func (de *DirectoryEntry) RemoveTag(ctx context.Context, key string) {
-    for i, tag := range de.Properties {
-        if tag.Key == key {
-            de.Properties = append(de.Properties[:i], de.Properties[i+1:]...)
-            return
-        }
-    }
-}
+func (de *DirectoryEntry) RemoveTag(key string)
 
-func (de *DirectoryEntry) HasTag(ctx context.Context, key string) bool {
-    _, exists := de.GetTag(ctx, key)
-    return exists
-}
+func (de *DirectoryEntry) HasTag(key string) bool
 
 // Convenience methods for common tag types
-func (de *DirectoryEntry) SetStringTag(ctx context.Context, key, value string) {
-    de.SetTag(ctx, key, TagValueTypeString, value)
-}
+func (de *DirectoryEntry) SetStringTag(key, value string)
 
-func (de *DirectoryEntry) GetStringTag(ctx context.Context, key string) (string, bool) {
-    tag, exists := de.GetTag(ctx, key)
-    if !exists || tag.ValueType != TagValueTypeString {
-        return "", false
-    }
-    return tag.Value, true
-}
+func (de *DirectoryEntry) GetStringTag(key string) (string, bool)
 
-func (de *DirectoryEntry) SetIntegerTag(ctx context.Context, key string, value int64) {
-    de.SetTag(ctx, key, TagValueTypeInteger, strconv.FormatInt(value, 10))
-}
+func (de *DirectoryEntry) SetIntegerTag(key string, value int64)
 
-func (de *DirectoryEntry) GetIntegerTag(ctx context.Context, key string) (int64, bool) {
-    tag, exists := de.GetTag(ctx, key)
-    if !exists || tag.ValueType != TagValueTypeInteger {
-        return 0, false
-    }
-    val, err := strconv.ParseInt(tag.Value, 10, 64)
-    if err != nil {
-        return 0, false
-    }
-    return val, true
-}
+func (de *DirectoryEntry) GetIntegerTag(key string) (int64, bool)
 
-func (de *DirectoryEntry) SetBooleanTag(ctx context.Context, key string, value bool) {
-    de.SetTag(ctx, key, TagValueTypeBoolean, strconv.FormatBool(value))
-}
+func (de *DirectoryEntry) SetBooleanTag(key string, value bool)
 
-func (de *DirectoryEntry) GetBooleanTag(ctx context.Context, key string) (bool, bool) {
-    tag, exists := de.GetTag(ctx, key)
-    if !exists || tag.ValueType != TagValueTypeBoolean {
-        return false, false
-    }
-    val, err := strconv.ParseBool(tag.Value)
-    if err != nil {
-        return false, false
-    }
-    return val, true
-}
+func (de *DirectoryEntry) GetBooleanTag(key string) (bool, bool)
 
 // Path management methods for DirectoryEntry
-func (de *DirectoryEntry) SetPath(ctx context.Context, path string) {
-    de.Path.Path = path
-}
+func (de *DirectoryEntry) SetPath(path string)
 
-func (de *DirectoryEntry) GetPath(ctx context.Context) string {
-    return de.Path.Path
-}
+func (de *DirectoryEntry) GetPath() string
 
-func (de *DirectoryEntry) GetPathEntry(ctx context.Context) PathEntry {
-    return de.Path
-}
+func (de *DirectoryEntry) GetPathEntry() PathEntry
 
 // Symbolic link methods for DirectoryEntry
-func (de *DirectoryEntry) SetSymlink(ctx context.Context, target string) {
-    de.Path.SetSymlink(ctx, target)
-}
+func (de *DirectoryEntry) SetSymlink(target string)
 
-func (de *DirectoryEntry) ClearSymlink(ctx context.Context) {
-    de.Path.ClearSymlink(ctx)
-}
+func (de *DirectoryEntry) ClearSymlink()
 
-func (de *DirectoryEntry) IsSymbolicLink(ctx context.Context) bool {
-    return de.Path.IsSymbolicLink(ctx)
-}
+func (de *DirectoryEntry) IsSymbolicLink() bool
 
-func (de *DirectoryEntry) GetLinkTarget(ctx context.Context) string {
-    return de.Path.GetLinkTarget(ctx)
-}
+func (de *DirectoryEntry) GetLinkTarget() string
 
-func (de *DirectoryEntry) ResolveSymlink(ctx context.Context) string {
-    return de.Path.ResolveSymlink(ctx)
-}
+func (de *DirectoryEntry) ResolveSymlink() string
 
 // Parent directory management methods for DirectoryEntry
-func (de *DirectoryEntry) SetParentDirectory(ctx context.Context, parent *DirectoryEntry) {
-    de.ParentDirectory = parent
-}
+func (de *DirectoryEntry) SetParentDirectory(parent *DirectoryEntry)
 
-func (de *DirectoryEntry) GetParentDirectory(ctx context.Context) *DirectoryEntry {
-    return de.ParentDirectory
-}
+func (de *DirectoryEntry) GetParentDirectory() *DirectoryEntry
 
-func (de *DirectoryEntry) GetParentPath(ctx context.Context) string {
-    if de.ParentDirectory == nil {
-        return ""
-    }
-    return de.ParentDirectory.GetPath(ctx)
-}
+func (de *DirectoryEntry) GetParentPath() string
 
-func (de *DirectoryEntry) GetDepth(ctx context.Context) int {
-    depth := 0
-    current := de.ParentDirectory
-    for current != nil {
-        depth++
-        current = current.ParentDirectory
-    }
-    return depth
-}
+func (de *DirectoryEntry) GetDepth() int
 
-func (de *DirectoryEntry) IsRoot(ctx context.Context) bool {
-    return de.ParentDirectory == nil
-}
+func (de *DirectoryEntry) IsRoot() bool
 
-func (de *DirectoryEntry) GetAncestors(ctx context.Context) []*DirectoryEntry {
-    var ancestors []*DirectoryEntry
-    current := de.ParentDirectory
-    for current != nil {
-        ancestors = append(ancestors, current)
-        current = current.ParentDirectory
-    }
-    return ancestors
-}
+func (de *DirectoryEntry) GetAncestors() []*DirectoryEntry
 
 // DirectoryInfo provides runtime directory information
 type DirectoryInfo struct {
@@ -923,47 +817,40 @@ Special metadata files must be saved with specific flags and file types to ensur
 
 ```go
 // SaveDirectoryMetadataFile creates and saves the directory metadata file
-func (p *Package) SaveDirectoryMetadataFile(ctx context.Context) error {
-    // 1. Get current directory metadata
-    entries, err := p.GetDirectoryMetadata(ctx)
-    if err != nil {
-        return err
-    }
-
-    // 2. Marshal to YAML
-    yamlData, err := yaml.Marshal(map[string]interface{}{
-        "directories": entries,
-    })
-    if err != nil {
-        return err
-    }
-
-    // 3. Create special metadata file entry
-    fileEntry, err := p.CreateSpecialMetadataFile(ctx, 65001, "__NPK_DIR_65001__.npkdir", yamlData)
-    if err != nil {
-        return err
-    }
-
-    // 4. Set appropriate tags
-    fileEntry.SetStringTag("file_type", "special_metadata")
-    fileEntry.SetStringTag("metadata_type", "directory")
-    fileEntry.SetStringTag("format", "yaml")
-    fileEntry.SetIntegerTag("version", 1)
-
-    // 5. Update package flags
-    return p.UpdateSpecialMetadataFlags(ctx)
-}
+func (p *Package) SaveDirectoryMetadataFile(ctx context.Context) error
 
 // UpdateSpecialMetadataFlags updates package header flags based on special files
-func (p *Package) UpdateSpecialMetadataFlags(ctx context.Context) error {
-    // Check for special metadata files
-    hasSpecialFiles := p.hasSpecialMetadataFiles()
-    hasPerFileTags := p.hasPerFileTags()
-
-    // Update package header flags
-    return p.updatePackageFlags(hasSpecialFiles, hasPerFileTags)
-}
+func (p *Package) UpdateSpecialMetadataFlags(ctx context.Context) error
 ```
+
+**SaveDirectoryMetadataFile** creates and saves the directory metadata file as a special metadata file in the package.
+
+The function performs the following operations:
+
+1. Retrieves the current directory metadata entries using `GetDirectoryMetadata`.
+2. Marshals the directory entries to YAML format, wrapping them in a map with the key `"directories"`.
+3. Creates a special metadata file entry using `CreateSpecialMetadataFile` with:
+   - File type `65001` (directory metadata)
+   - File name `"__NPK_DIR_65001__.npkdir"`
+   - The marshaled YAML data as content
+4. Sets the required tags on the file entry:
+   - `file_type` = `"special_metadata"` (string tag)
+   - `metadata_type` = `"directory"` (string tag)
+   - `format` = `"yaml"` (string tag)
+   - `version` = `1` (integer tag)
+5. Updates the package header flags by calling `UpdateSpecialMetadataFlags`.
+
+**UpdateSpecialMetadataFlags** updates the package header flags to reflect the current state of special metadata files and per-file tags.
+
+The function:
+
+1. Checks for the presence of special metadata files using `hasSpecialMetadataFiles()`.
+2. Checks for per-file tags using `hasPerFileTags()`.
+3. Updates the package header flags accordingly:
+   - Sets Bit 6 to 1 if special metadata files exist
+   - Sets Bit 5 to 1 if per-file tags are present
+
+This ensures the package header accurately reflects the package structure and capabilities.
 
 ### 8.4 Directory Association System
 
@@ -990,79 +877,46 @@ The directory association system links FileEntry objects to their corresponding 
 
 ```go
 // AssociateFileWithDirectory links a file to its directory metadata
-func (p *Package) AssociateFileWithDirectory(ctx context.Context, filePath string, dirPath string) error {
-    // 1. Get file entry
-    fileEntry, err := p.GetFileByPath(ctx, filePath)
-    if err != nil {
-        return err
-    }
-
-    // 2. Get directory entry
-    dirInfo, err := p.GetDirectoryInfo(ctx, dirPath)
-    if err != nil {
-        return err
-    }
-
-    // 3. Set association
-    fileEntry.SetDirectoryEntry(ctx, &dirInfo.Entry)
-
-    // 4. Resolve parent directory
-    parentPath := filepath.Dir(dirPath)
-    if parentPath != dirPath && parentPath != "." {
-        parentInfo, err := p.GetDirectoryInfo(ctx, parentPath)
-        if err == nil {
-            fileEntry.SetParentDirectory(ctx, &parentInfo.Entry)
-        }
-    }
-
-    // 5. Resolve inherited tags
-    inheritedTags, err := p.resolveInheritedTags(ctx, filePath)
-    if err == nil {
-        fileEntry.UpdateInheritedTags(ctx, inheritedTags)
-    }
-
-    return nil
-}
+func (p *Package) AssociateFileWithDirectory(ctx context.Context, filePath string, dirPath string) error
 
 // UpdateFileDirectoryAssociations rebuilds all file-directory associations
-func (p *Package) UpdateFileDirectoryAssociations(ctx context.Context) error {
-    // 1. Get all files
-    files, err := p.ListFiles(ctx)
-    if err != nil {
-        return err
-    }
-
-    // 2. Get all directories
-    dirs, err := p.GetDirectoryMetadata(ctx)
-    if err != nil {
-        return err
-    }
-
-    // 3. Build directory path map
-    dirMap := make(map[string]*DirectoryEntry)
-    for _, dir := range dirs {
-        dirMap[dir.Path] = &dir
-    }
-
-    // 4. Associate each file with its directory
-    for _, file := range files {
-        for _, path := range file.Paths {
-            dirPath := filepath.Dir(path.Path)
-            if dirEntry, exists := dirMap[dirPath]; exists {
-                file.SetDirectoryEntry(ctx, dirEntry)
-
-                // Set parent directory
-                parentPath := filepath.Dir(dirPath)
-                if parentEntry, exists := dirMap[parentPath]; exists {
-                    file.SetParentDirectory(ctx, parentEntry)
-                }
-            }
-        }
-    }
-
-    return nil
-}
+func (p *Package) UpdateFileDirectoryAssociations(ctx context.Context) error
 ```
+
+**AssociateFileWithDirectory** links a file to its directory metadata, establishing the association between a FileEntry and its corresponding DirectoryEntry.
+
+The function performs the following operations:
+
+1. Retrieves the file entry using `GetFileByPath` with the provided file path.
+2. Retrieves the directory information using `GetDirectoryInfo` with the provided directory path.
+3. Sets the directory association by calling `SetDirectoryEntry` on the file entry with the directory entry from the directory information.
+4. Resolves and sets the parent directory association:
+   - Derives the parent directory path using `filepath.Dir` on the directory path
+   - Validates that the parent path is different from the directory path and not the current directory (`.`)
+   - If valid, retrieves the parent directory information and sets it using `SetParentDirectory`
+   - Parent directory resolution errors are handled gracefully (non-fatal)
+5. Resolves and updates inherited tags:
+   - Calls `resolveInheritedTags` to compute tags inherited from the directory hierarchy
+   - If successful, updates the file entry's inherited tags using `UpdateInheritedTags`
+   - Tag resolution errors are handled gracefully (non-fatal)
+
+**UpdateFileDirectoryAssociations** rebuilds all file-directory associations for all files in the package, ensuring that every file is properly linked to its directory metadata.
+
+The function performs the following operations:
+
+1. Retrieves all files in the package using `ListFiles`.
+2. Retrieves all directory metadata entries using `GetDirectoryMetadata`.
+3. Builds a directory path map for efficient lookup:
+   - Creates a map keyed by directory path strings
+   - Maps each directory path to its corresponding DirectoryEntry pointer
+4. Associates each file with its directory:
+   - Iterates through all files and their associated paths
+   - For each file path, derives the directory path using `filepath.Dir`
+   - If a matching directory entry exists in the map, sets the directory association using `SetDirectoryEntry`
+   - Also resolves and sets the parent directory association if the parent directory exists in the map
+   - Processes all paths for each file to handle files with multiple path entries
+
+This function ensures that the entire package has consistent file-directory associations, enabling proper tag inheritance and filesystem property management across all files.
 
 ### 8.5 File-Directory Association
 

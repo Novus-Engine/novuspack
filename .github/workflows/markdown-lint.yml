@@ -1,5 +1,10 @@
 name: Markdown Lint
 
+# NOTE: This workflow must be kept in sync with the 'markdown-lint' target in the root Makefile.
+#       The Makefile target performs the same checks locally. When adding or modifying
+#       markdown linting configuration, update both this workflow and the Makefile to ensure consistency.
+#       The workflow runs: markdownlint-cli2 "**/*.md"
+
 on:
   push:
     paths:
@@ -23,4 +28,4 @@ jobs:
         run: npm install -g markdownlint-cli2
 
       - name: Run markdownlint
-        run: markdownlint-cli2 "**/*.md"
+        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md"

@@ -70,3 +70,33 @@ Feature: Parse Optional Data Entries
     Then a structured invalid optional data error is returned
     And error indicates invalid offset
     And error follows structured error format
+
+  @happy
+  Scenario: WriteTo serializes optional data entry to binary format
+    Given an OptionalDataEntry with values
+    When optional data entry WriteTo is called with writer
+    Then optional data entry is written to writer
+    And written data matches optional data entry content
+
+  @happy
+  Scenario: ReadFrom deserializes optional data entry from binary format
+    Given a reader with valid optional data entry data
+    When optional data entry ReadFrom is called with reader
+    Then optional data entry is read from reader
+    And optional data entry fields match reader data
+    And optional data entry is valid
+
+  @happy
+  Scenario: Optional data entry round-trip serialization preserves all fields
+    Given an OptionalDataEntry with all fields set
+    When optional data entry WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then all optional data entry fields are preserved
+    And optional data entry is valid
+
+  @error
+  Scenario: ReadFrom fails with incomplete data
+    Given a reader with incomplete optional data entry data
+    When optional data entry ReadFrom is called with reader
+    Then structured IO error is returned
+    And error indicates read failure

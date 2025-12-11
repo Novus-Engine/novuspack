@@ -80,7 +80,7 @@ Feature: Parse and validate header fields
 
     Examples:
       | API        | Part | Total |
-      | 0x00010000 | 1    | 1     |
+      | 0x00010001 | 1    | 1     |
       | 0x00020003 | 2    | 3     |
       | 0x00000000 | 0    | 0     |
 
@@ -97,3 +97,18 @@ Feature: Parse and validate header fields
       | 4096     | 3072  | 512  | valid    |
       | 4096     | 4096  | 1    | invalid  |
       | 4096     | 1024  | 4096 | invalid  |
+
+  # Binary serialization
+  @happy
+  Scenario: Header can be serialized and deserialized
+    Given a PackageHeader with all fields set
+    When WriteTo serializes header to binary
+    And ReadFrom deserializes header from binary
+    Then all header fields are preserved
+    And header validation passes
+
+  @error
+  Scenario: ReadFrom fails with truncated data
+    Given a reader with less than 112 bytes of header data
+    When header ReadFrom is called with reader
+    Then structured IO error is returned

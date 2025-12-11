@@ -205,7 +205,7 @@ type ValidationRule[T any] struct {
     Message   string
 }
 
-func (r *ValidationRule[T]) Validate(ctx context.Context, value T) error
+func (r *ValidationRule[T]) Validate(value T) error
 ```
 
 ### 1.7 Generic Concurrency Patterns

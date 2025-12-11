@@ -19,7 +19,7 @@ Feature: Header initialization on package creation
     And VendorID equals 0 or specified vendor identifier
     And CreatorID equals 0
     And ArchiveChainID equals 0 or archive chain identifier
-    And ArchivePartInfo equals 0x00010000 for single archive
+    And ArchivePartInfo equals 0x00010001 for single archive
     And CommentSize equals 0 if no comment
     And CommentStart equals 0 if no comment
     And SignatureOffset equals 0 if no signatures
@@ -83,7 +83,7 @@ Feature: Header initialization on package creation
   Scenario: ArchivePartInfo defaults to single archive
     Given a new NovusPack package for a single archive
     When the header is initialized
-    Then ArchivePartInfo equals 0x00010000
+    Then ArchivePartInfo equals 0x00010001
     And part number equals 1
     And total parts equals 1
 
@@ -94,3 +94,53 @@ Feature: Header initialization on package creation
     Then ArchivePartInfo encodes part N in bits 31-16
     And ArchivePartInfo encodes total M in bits 15-0
     And ArchiveChainID links related archive parts
+
+  @happy
+  Scenario: NewPackageHeader creates header with default values
+    Given NewPackageHeader is called
+    Then a PackageHeader is returned
+    And Magic equals 0x4E56504B
+    And FormatVersion equals 1
+    And PackageDataVersion equals 1
+    And MetadataVersion equals 1
+    And Reserved equals 0
+    And ArchivePartInfo equals 0x00010001
+    And header is in initialized state
+
+  @happy
+  Scenario: WriteTo serializes header to binary format
+    Given a PackageHeader with values
+    When header WriteTo is called with writer
+    Then header is written to writer
+    And written data is 112 bytes
+    And written data matches header content
+
+  @happy
+  Scenario: ReadFrom deserializes header from binary format
+    Given a reader with valid header data
+    When header ReadFrom is called with reader
+    Then header is read from reader
+    And header fields match reader data
+    And header is valid
+
+  @happy
+  Scenario: Header round-trip serialization preserves all fields
+    Given a PackageHeader with all fields set
+    When header WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then all header fields are preserved
+    And header is valid
+
+  @error
+  Scenario: ReadFrom fails with invalid magic number
+    Given a reader with header data where magic is invalid
+    When header ReadFrom is called with reader
+    Then structured validation error is returned
+    And error indicates invalid magic number
+
+  @error
+  Scenario: ReadFrom fails with incomplete data
+    Given a reader with incomplete header data
+    When header ReadFrom is called with reader
+    Then structured IO error is returned
+    And error indicates read failure

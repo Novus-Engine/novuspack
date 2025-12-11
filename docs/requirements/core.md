@@ -31,8 +31,8 @@
 
 ## Context Integration
 
-- REQ-CORE-015: All public methods accept context.Context as first parameter [type: constraint]. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
-- REQ-CORE-016: Context cancellation must be checked and respected in all operations [type: constraint]. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
+- REQ-CORE-015: Methods performing I/O operations, network calls, or long-running operations accept context.Context as first parameter [type: constraint]. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
+- REQ-CORE-016: Context cancellation must be checked and respected in operations that accept context [type: constraint]. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
 - REQ-CORE-017: Context timeout errors returned as structured context errors. [api_core.md#02-context-integration](../tech_specs/api_core.md#02-context-integration)
 
 ## Package Compression

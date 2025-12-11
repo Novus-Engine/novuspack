@@ -63,3 +63,33 @@ Feature: Validate Path Entries and Per-Path Metadata
     Then a structured invalid path error is returned
     And error indicates length mismatch
     And error follows structured error format
+
+  @happy
+  Scenario: WriteTo serializes path entry to binary format
+    Given a PathEntry with values
+    When path entry WriteTo is called with writer
+    Then path entry is written to writer
+    And written data matches path entry content
+
+  @happy
+  Scenario: ReadFrom deserializes path entry from binary format
+    Given a reader with valid path entry data
+    When path entry ReadFrom is called with reader
+    Then path entry is read from reader
+    And path entry fields match reader data
+    And path entry is valid
+
+  @happy
+  Scenario: Path entry round-trip serialization preserves all fields
+    Given a PathEntry with all fields set
+    When path entry WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then all path entry fields are preserved
+    And path entry is valid
+
+  @error
+  Scenario: ReadFrom fails with incomplete data
+    Given a reader with incomplete path entry data
+    When path entry ReadFrom is called with reader
+    Then structured IO error is returned
+    And error indicates read failure

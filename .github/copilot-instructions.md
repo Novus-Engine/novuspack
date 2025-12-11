@@ -6,6 +6,8 @@ alwaysApply: true
 
 ## General Rules
 
+- Always check existing files before making changes.
+- When creating new files, use `touch` to create the file first, then edit it.
 - Check the actual date before writing the date.
 - See [../ai_files/](../ai_files/) for AI assisted coding instructions.
 - See [../docs/tech_specs/](../docs/tech_specs/) for technical specifications.
@@ -17,6 +19,7 @@ alwaysApply: true
   - basename
   - cat
   - cd
+  - comm
   - date
   - echo
   - find
@@ -25,6 +28,7 @@ alwaysApply: true
   - git show
   - git status
   - go build
+  - go list
   - go test
   - go tool cover
   - grep
@@ -40,7 +44,7 @@ alwaysApply: true
   - uniq
   - wc
 - Unapproved commands:
-  - sed
+  - sed (**use grep instead where ever possible**)
   - xargs
   - tee
 

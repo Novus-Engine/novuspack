@@ -283,46 +283,46 @@ func uint32Ptr(v uint32) *uint32
 ### 1.2.1 Tag Management
 
 ```go
-func (fe *FileEntry) GetTags(ctx context.Context) []Tag
-func (fe *FileEntry) SetTags(ctx context.Context, tags []Tag)
-func (fe *FileEntry) SetTag(ctx context.Context, key string, valueType TagValueType, value string)
-func (fe *FileEntry) SetStringTag(ctx context.Context, key, value string)
-func (fe *FileEntry) SetIntegerTag(ctx context.Context, key string, value int64)
-func (fe *FileEntry) SetBooleanTag(ctx context.Context, key string, value bool)
-func (fe *FileEntry) SetJSONTag(ctx context.Context, key string, value interface{}) error
-func (fe *FileEntry) SetStringListTag(ctx context.Context, key string, values []string)
-func (fe *FileEntry) GetStringListTag(ctx context.Context, key string) ([]string, bool)
-func (fe *FileEntry) SetYAMLTag(ctx context.Context, key string, value interface{}) error
-func (fe *FileEntry) GetYAMLTag(ctx context.Context, key string, dest interface{}) error
-func (fe *FileEntry) SetFloatTag(ctx context.Context, key string, value float64)
-func (fe *FileEntry) GetFloatTag(ctx context.Context, key string) (float64, bool)
-func (fe *FileEntry) SetTimestampTag(ctx context.Context, key string, value time.Time)
-func (fe *FileEntry) GetTimestampTag(ctx context.Context, key string) (time.Time, bool)
-func (fe *FileEntry) SetUUIDTag(ctx context.Context, key string, value uuid.UUID)
-func (fe *FileEntry) GetUUIDTag(ctx context.Context, key string) (uuid.UUID, bool)
-func (fe *FileEntry) SetURLTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetURLTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) SetEmailTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetEmailTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) SetVersionTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetVersionTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) SetHashTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetHashTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) SetPathTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetPathTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) SetMimeTypeTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetMimeTypeTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) SetLanguageTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetLanguageTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) SetNovusPackMetadataTag(ctx context.Context, key, value string)
-func (fe *FileEntry) GetNovusPackMetadataTag(ctx context.Context, key string) (string, bool)
-func (fe *FileEntry) GetInheritedTag(ctx context.Context, key string) (Tag, bool)
-func (fe *FileEntry) RemoveTag(ctx context.Context, key string)
-func (fe *FileEntry) HasTag(ctx context.Context, key string) bool
-func (fe *FileEntry) GetTag(ctx context.Context, key string) (Tag, bool)
-func (fe *FileEntry) HasTags(ctx context.Context) bool
-func (fe *FileEntry) SyncTags(ctx context.Context)
-func (fe *FileEntry) GetEffectiveTags(ctx context.Context) []Tag
+func (fe *FileEntry) GetTags() []Tag
+func (fe *FileEntry) SetTags(tags []Tag)
+func (fe *FileEntry) SetTag(key string, valueType TagValueType, value string)
+func (fe *FileEntry) SetStringTag(key, value string)
+func (fe *FileEntry) SetIntegerTag(key string, value int64)
+func (fe *FileEntry) SetBooleanTag(key string, value bool)
+func (fe *FileEntry) SetJSONTag(key string, value interface{}) error
+func (fe *FileEntry) SetStringListTag(key string, values []string)
+func (fe *FileEntry) GetStringListTag(key string) ([]string, bool)
+func (fe *FileEntry) SetYAMLTag(key string, value interface{}) error
+func (fe *FileEntry) GetYAMLTag(key string, dest interface{}) error
+func (fe *FileEntry) SetFloatTag(key string, value float64)
+func (fe *FileEntry) GetFloatTag(key string) (float64, bool)
+func (fe *FileEntry) SetTimestampTag(key string, value time.Time)
+func (fe *FileEntry) GetTimestampTag(key string) (time.Time, bool)
+func (fe *FileEntry) SetUUIDTag(key string, value uuid.UUID)
+func (fe *FileEntry) GetUUIDTag(key string) (uuid.UUID, bool)
+func (fe *FileEntry) SetURLTag(key, value string)
+func (fe *FileEntry) GetURLTag(key string) (string, bool)
+func (fe *FileEntry) SetEmailTag(key, value string)
+func (fe *FileEntry) GetEmailTag(key string) (string, bool)
+func (fe *FileEntry) SetVersionTag(key, value string)
+func (fe *FileEntry) GetVersionTag(key string) (string, bool)
+func (fe *FileEntry) SetHashTag(key, value string)
+func (fe *FileEntry) GetHashTag(key string) (string, bool)
+func (fe *FileEntry) SetPathTag(key, value string)
+func (fe *FileEntry) GetPathTag(key string) (string, bool)
+func (fe *FileEntry) SetMimeTypeTag(key, value string)
+func (fe *FileEntry) GetMimeTypeTag(key string) (string, bool)
+func (fe *FileEntry) SetLanguageTag(key, value string)
+func (fe *FileEntry) GetLanguageTag(key string) (string, bool)
+func (fe *FileEntry) SetNovusPackMetadataTag(key, value string)
+func (fe *FileEntry) GetNovusPackMetadataTag(key string) (string, bool)
+func (fe *FileEntry) GetInheritedTag(key string) (Tag, bool)
+func (fe *FileEntry) RemoveTag(key string)
+func (fe *FileEntry) HasTag(key string) bool
+func (fe *FileEntry) GetTag(key string) (Tag, bool)
+func (fe *FileEntry) HasTags() bool
+func (fe *FileEntry) SyncTags()
+func (fe *FileEntry) GetEffectiveTags() []Tag
 ```
 
 #### 1.2.1.1 Generic Tag Types
@@ -348,13 +348,13 @@ Type-safe tag operations for FileEntry objects.
 
 ```go
 // GetTypedTag retrieves a type-safe tag value
-func (fe *FileEntry) GetTypedTag[T any](ctx context.Context, key string) (T, bool)
+func (fe *FileEntry) GetTypedTag[T any](key string) (T, bool)
 
 // SetTypedTag sets a type-safe tag value
-func (fe *FileEntry) SetTypedTag[T any](ctx context.Context, key string, value T, tagType TagValueType) error
+func (fe *FileEntry) SetTypedTag[T any](key string, value T, tagType TagValueType) error
 
 // GetTagAs retrieves a tag and converts it to the specified type
-func (fe *FileEntry) GetTagAs[T any](ctx context.Context, key string, converter func(interface{}) (T, error)) (T, error)
+func (fe *FileEntry) GetTagAs[T any](key string, converter func(interface{}) (T, error)) (T, error)
 ```
 
 ### 1.2.2 Data Management
@@ -362,39 +362,39 @@ func (fe *FileEntry) GetTagAs[T any](ctx context.Context, key string, converter 
 ```go
 func (fe *FileEntry) LoadData(ctx context.Context) error
 func (fe *FileEntry) UnloadData(ctx context.Context)
-func (fe *FileEntry) GetData(ctx context.Context) ([]byte, error)
-func (fe *FileEntry) SetData(ctx context.Context, data []byte)
+func (fe *FileEntry) GetData() ([]byte, error)
+func (fe *FileEntry) SetData(data []byte)
 func (fe *FileEntry) CreateTempFile(ctx context.Context) error
 func (fe *FileEntry) StreamToTempFile(ctx context.Context) error
 func (fe *FileEntry) WriteToTempFile(ctx context.Context, data []byte) error
 func (fe *FileEntry) ReadFromTempFile(ctx context.Context, offset int64, size int64) ([]byte, error)
 func (fe *FileEntry) CleanupTempFile(ctx context.Context) error
-func (fe *FileEntry) GetProcessingState(ctx context.Context) ProcessingState
-func (fe *FileEntry) SetProcessingState(ctx context.Context, state ProcessingState)
-func (fe *FileEntry) SetSourceFile(ctx context.Context, file *os.File, offset, size int64)
-func (fe *FileEntry) GetSourceFile(ctx context.Context) (*os.File, int64, int64)
-func (fe *FileEntry) SetTempPath(ctx context.Context, path string)
-func (fe *FileEntry) GetTempPath(ctx context.Context) string
+func (fe *FileEntry) GetProcessingState() ProcessingState
+func (fe *FileEntry) SetProcessingState(state ProcessingState)
+func (fe *FileEntry) SetSourceFile(file *os.File, offset, size int64)
+func (fe *FileEntry) GetSourceFile() (*os.File, int64, int64)
+func (fe *FileEntry) SetTempPath(path string)
+func (fe *FileEntry) GetTempPath() string
 ```
 
 ### 1.2.3 Path and Directory Management
 
 ```go
-func (fe *FileEntry) HasSymlinks(ctx context.Context) bool
-func (fe *FileEntry) GetSymlinkPaths(ctx context.Context) []PathEntry
-func (fe *FileEntry) GetPrimaryPath(ctx context.Context) string
-func (fe *FileEntry) ResolveAllSymlinks(ctx context.Context) []string
-func (fe *FileEntry) SetParentDirectory(ctx context.Context, parent *DirectoryEntry)
-func (fe *FileEntry) GetParentDirectory(ctx context.Context) *DirectoryEntry
-func (fe *FileEntry) GetParentPath(ctx context.Context) string
-func (fe *FileEntry) GetDirectoryDepth(ctx context.Context) int
-func (fe *FileEntry) IsRootRelative(ctx context.Context) bool
-func (fe *FileEntry) GetAncestorDirectories(ctx context.Context) []*DirectoryEntry
-func (fe *FileEntry) GetParentDirectoryPath(ctx context.Context) string
-func (fe *FileEntry) SetInheritedTags(ctx context.Context, tags []Tag)
-func (fe *FileEntry) GetInheritedTags(ctx context.Context) []Tag
-func (fe *FileEntry) UpdateInheritedTags(ctx context.Context, tags []Tag)
-func (fe *FileEntry) ClearDirectoryAssociations(ctx context.Context)
+func (fe *FileEntry) HasSymlinks() bool
+func (fe *FileEntry) GetSymlinkPaths() []PathEntry
+func (fe *FileEntry) GetPrimaryPath() string
+func (fe *FileEntry) ResolveAllSymlinks() []string
+func (fe *FileEntry) SetParentDirectory(parent *DirectoryEntry)
+func (fe *FileEntry) GetParentDirectory() *DirectoryEntry
+func (fe *FileEntry) GetParentPath() string
+func (fe *FileEntry) GetDirectoryDepth() int
+func (fe *FileEntry) IsRootRelative() bool
+func (fe *FileEntry) GetAncestorDirectories() []*DirectoryEntry
+func (fe *FileEntry) GetParentDirectoryPath() string
+func (fe *FileEntry) SetInheritedTags(tags []Tag)
+func (fe *FileEntry) GetInheritedTags() []Tag
+func (fe *FileEntry) UpdateInheritedTags(tags []Tag)
+func (fe *FileEntry) ClearDirectoryAssociations()
 ```
 
 ### 1.2.4 Serialization
@@ -450,13 +450,13 @@ Adds a file to the package from any data source using a unified interface and re
 
 #### 2.1.5 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrInvalidPath`: Invalid or malformed file path
-- `ErrFileExists`: File already exists at the specified path
-- `ErrContentTooLarge`: File content exceeds size limits
-- `ErrIOError`: I/O error during file operations
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: Invalid or malformed file path
+- `ErrTypeValidation`: File already exists at the specified path
+- `ErrTypeValidation`: File content exceeds size limits
+- `ErrTypeIO`: I/O error during file operations
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 ### 2.2 Add File Pattern
 
@@ -489,10 +489,10 @@ Adds multiple files to the package based on a file system pattern and returns th
 
 #### 2.2.5 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrInvalidPattern`: Invalid or malformed pattern
-- `ErrNoFilesFound`: No files match the pattern
-- `ErrIOError`: I/O error during file operations
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: Invalid or malformed pattern
+- `ErrTypeValidation`: No files match the pattern
+- `ErrTypeIO`: I/O error during file operations
 
 #### 2.2.6 Usage Notes
 
@@ -708,12 +708,12 @@ Removes a file from the package using either a FileEntry reference or a virtual 
 
 #### 3.1.4 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrFileNotFound`: File does not exist at the specified path
-- `ErrInvalidPath`: Invalid or malformed file path
-- `ErrPackageReadOnly`: Package is in read-only mode
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: File does not exist at the specified path
+- `ErrTypeValidation`: Invalid or malformed file path
+- `ErrTypeValidation`: Package is in read-only mode
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 #### 3.1.5 Usage Notes
 
@@ -750,12 +750,12 @@ Removes multiple files from the package based on a file system pattern and retur
 
 #### 3.2.5 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrInvalidPattern`: Invalid or malformed pattern
-- `ErrNoFilesFound`: No files match the pattern
-- `ErrPackageReadOnly`: Package is in read-only mode
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: Invalid or malformed pattern
+- `ErrTypeValidation`: No files match the pattern
+- `ErrTypeValidation`: Package is in read-only mode
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 #### 3.2.6 Usage Notes
 
@@ -793,14 +793,14 @@ File content as byte slice
 
 #### 4.1.5 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrFileNotFound`: File does not exist at the specified path
-- `ErrInvalidPath`: Invalid or malformed file path
-- `ErrDecryptionFailed`: Failed to decrypt encrypted file
-- `ErrDecompressionFailed`: Failed to decompress file content
-- `ErrIOError`: I/O error during file extraction
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: File does not exist at the specified path
+- `ErrTypeValidation`: Invalid or malformed file path
+- `ErrTypeIO`: I/O error during file extraction
+- `ErrTypeEncryption`: Failed to decrypt encrypted file
+- `ErrTypeCompression`: Failed to decompress file content
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 #### 4.1.6 Usage Notes
 
@@ -844,14 +844,14 @@ Updates an existing file's content and metadata in the package, returning the up
 
 #### 5.1.5 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrFileNotFound`: File entry does not exist or is invalid
-- `ErrContentTooLarge`: File content exceeds size limits
-- `ErrUnsupportedEncryption`: Unsupported encryption type
-- `ErrEncryptionFailed`: Failed to encrypt file content
-- `ErrIOError`: I/O error during file update
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: File entry does not exist or is invalid
+- `ErrTypeValidation`: File content exceeds size limits
+- `ErrTypeIO`: I/O error during file update
+- `ErrTypeEncryption`: Unsupported encryption type
+- `ErrTypeEncryption`: Failed to encrypt file content
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 #### 5.1.6 Usage Notes
 
@@ -892,12 +892,12 @@ Updates multiple files in the package based on a file system pattern and returns
 
 #### 5.2.5 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrInvalidPattern`: Invalid or malformed pattern
-- `ErrNoFilesFound`: No files match the pattern
-- `ErrIOError`: I/O error during file operations
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: Invalid or malformed pattern
+- `ErrTypeValidation`: No files match the pattern
+- `ErrTypeIO`: I/O error during file operations
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 #### 5.2.6 Usage Notes
 
@@ -975,12 +975,12 @@ type FileMetadataUpdate struct {
 
 #### 5.3.6 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrFileNotFound`: File entry does not exist or is invalid
-- `ErrUnsupportedCompression`: Unsupported compression type
-- `ErrUnsupportedEncryption`: Unsupported encryption type
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: File entry does not exist or is invalid
+- `ErrTypeCompression`: Unsupported compression type
+- `ErrTypeEncryption`: Unsupported encryption type
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 #### 5.3.7 Usage Notes
 
@@ -1103,15 +1103,15 @@ Manages file-level compression operations on existing files in the package.
 
 #### 6.1.5 Error Conditions
 
-- `ErrPackageNotOpen`: Package is not currently open
-- `ErrFileNotFound`: File does not exist at the specified path
-- `ErrInvalidPath`: Invalid or malformed file path
-- `ErrFileAlreadyCompressed`: File is already compressed
-- `ErrFileNotCompressed`: File is not compressed
-- `ErrCompressionFailed`: Failed to compress file content
-- `ErrDecompressionFailed`: Failed to decompress file content
-- `ErrContextCancelled`: Context was cancelled
-- `ErrContextTimeout`: Context timeout exceeded
+- `ErrTypeValidation`: Package is not currently open
+- `ErrTypeValidation`: File does not exist at the specified path
+- `ErrTypeValidation`: Invalid or malformed file path
+- `ErrTypeValidation`: File is already compressed
+- `ErrTypeValidation`: File is not compressed
+- `ErrTypeCompression`: Failed to compress file content
+- `ErrTypeCompression`: Failed to decompress file content
+- `ErrTypeContext`: Context was cancelled
+- `ErrTypeContext`: Context timeout exceeded
 
 #### 6.1.6 Usage Notes
 
@@ -1172,44 +1172,44 @@ Deduplication functions support both simple CRC32-based lookup and multi-layer v
 
 ```go
 // FileExists checks if a file with the given path exists in the package
-func (p *Package) FileExists(ctx context.Context, path string) (bool, error)
+func (p *Package) FileExists(path string) (bool, error)
 
 // ListFiles returns all file entries in the package
-func (p *Package) ListFiles(ctx context.Context) ([]*FileEntry, error)
+func (p *Package) ListFiles() ([]*FileEntry, error)
 
 
 // GetFileByPath gets a file entry by path
-func (p *Package) GetFileByPath(ctx context.Context, path string) (*FileEntry, bool)
+func (p *Package) GetFileByPath(path string) (*FileEntry, bool)
 
 // GetFileByOffset gets a file entry by offset
-func (p *Package) GetFileByOffset(ctx context.Context, offset int64) (*FileEntry, bool)
+func (p *Package) GetFileByOffset(offset int64) (*FileEntry, bool)
 
 // GetFileByFileID gets a file entry by its unique FileID
-func (p *Package) GetFileByFileID(ctx context.Context, fileID uint64) (*FileEntry, bool)
+func (p *Package) GetFileByFileID(fileID uint64) (*FileEntry, bool)
 
 // GetFileByHash gets a file entry by content hash
-func (p *Package) GetFileByHash(ctx context.Context, hashType HashType, hashData []byte) (*FileEntry, bool)
+func (p *Package) GetFileByHash(hashType HashType, hashData []byte) (*FileEntry, bool)
 
 // GetFileByChecksum gets a file entry by CRC32 checksum
-func (p *Package) GetFileByChecksum(ctx context.Context, checksum uint32) (*FileEntry, bool)
+func (p *Package) GetFileByChecksum(checksum uint32) (*FileEntry, bool)
 
 // FindEntriesByTag finds all file entries with a specific tag
-func (p *Package) FindEntriesByTag(ctx context.Context, tag string) ([]*FileEntry, error)
+func (p *Package) FindEntriesByTag(tag string) ([]*FileEntry, error)
 
 // FindEntriesByType finds all file entries of a specific type
-func (p *Package) FindEntriesByType(ctx context.Context, fileType uint16) ([]*FileEntry, error)
+func (p *Package) FindEntriesByType(fileType uint16) ([]*FileEntry, error)
 
 // GetFileCount returns the total number of files in the package
-func (p *Package) GetFileCount(ctx context.Context) (int, error)
+func (p *Package) GetFileCount() (int, error)
 
 // GetPatterns gets files matching patterns from the package
-func (p *Package) FindEntriesByPathPatterns(ctx context.Context, patterns []string) ([]*FileEntry, error)
+func (p *Package) FindEntriesByPathPatterns(patterns []string) ([]*FileEntry, error)
 
 // ListCompressedFiles returns all compressed file entries
-func (p *Package) ListCompressedFiles(ctx context.Context) ([]*FileEntry, error)
+func (p *Package) ListCompressedFiles() ([]*FileEntry, error)
 
 // ListEncryptedFiles returns all encrypted file entries
-func (p *Package) ListEncryptedFiles(ctx context.Context) ([]*FileEntry, error)
+func (p *Package) ListEncryptedFiles() ([]*FileEntry, error)
 ```
 
 #### 10.1.1 Purpose
@@ -1230,7 +1230,7 @@ File query functions provide comprehensive FileEntry objects. GetFileByPath repl
 
 ```go
 // GetFileByFileID gets a file entry by its unique FileID
-func (p *Package) GetFileByFileID(ctx context.Context, fileID uint64) (*FileEntry, bool)
+func (p *Package) GetFileByFileID(fileID uint64) (*FileEntry, bool)
 ```
 
 #### 9.2.1 Purpose
@@ -1239,7 +1239,6 @@ Finds a file entry by its unique 64-bit FileID.
 
 #### 9.2.1.1 Parameters
 
-- `ctx`: Context for cancellation and timeout handling
 - `fileID`: Unique 64-bit file identifier
 
 #### 9.2.1.2 Returns
@@ -1257,7 +1256,7 @@ Finds a file entry by its unique 64-bit FileID.
 
 ```go
 // GetFileByHash gets a file entry by content hash
-func (p *Package) GetFileByHash(ctx context.Context, hashType HashType, hashData []byte) (*FileEntry, bool)
+func (p *Package) GetFileByHash(hashType HashType, hashData []byte) (*FileEntry, bool)
 ```
 
 #### 9.2.2.1 Purpose
@@ -1266,7 +1265,6 @@ Finds a file entry by its content hash (SHA-256, SHA-512, BLAKE3, or XXH3).
 
 #### 9.2.2.2 Parameters
 
-- `ctx`: Context for cancellation and timeout handling
 - `hashType`: Type of hash algorithm used
 - `hashData`: Hash data to search for
 
@@ -1285,7 +1283,7 @@ Finds a file entry by its content hash (SHA-256, SHA-512, BLAKE3, or XXH3).
 
 ```go
 // GetFileByChecksum gets a file entry by CRC32 checksum
-func (p *Package) GetFileByChecksum(ctx context.Context, checksum uint32) (*FileEntry, bool)
+func (p *Package) GetFileByChecksum(checksum uint32) (*FileEntry, bool)
 ```
 
 #### 9.2.3.1 Purpose
@@ -1294,7 +1292,6 @@ Finds a file entry by its CRC32 checksum (fast lookup).
 
 #### 9.2.3.2 Parameters
 
-- `ctx`: Context for cancellation and timeout handling
 - `checksum`: CRC32 checksum value to search for
 
 #### 9.2.3.3 Returns
@@ -1312,7 +1309,7 @@ Finds a file entry by its CRC32 checksum (fast lookup).
 
 ```go
 // FindEntriesByTag finds all file entries with a specific tag
-func (p *Package) FindEntriesByTag(ctx context.Context, tag string) ([]*FileEntry, error)
+func (p *Package) FindEntriesByTag(tag string) ([]*FileEntry, error)
 ```
 
 #### 9.2.4.1 Purpose
@@ -1321,7 +1318,6 @@ Finds all file entries that have a specific tag.
 
 #### 9.2.4.2 Parameters
 
-- `ctx`: Context for cancellation and timeout handling
 - `tag`: Tag string to search for
 
 #### 9.2.4.3 Returns
@@ -1339,7 +1335,7 @@ Finds all file entries that have a specific tag.
 
 ```go
 // FindEntriesByType finds all file entries of a specific type
-func (p *Package) FindEntriesByType(ctx context.Context, fileType uint16) ([]*FileEntry, error)
+func (p *Package) FindEntriesByType(fileType uint16) ([]*FileEntry, error)
 ```
 
 #### 9.2.5.1 Purpose
@@ -1348,7 +1344,6 @@ Finds all file entries of a specific file type.
 
 #### 9.2.5.2 Parameters
 
-- `ctx`: Context for cancellation and timeout handling
 - `fileType`: File type identifier (0-65535)
 
 #### 9.2.5.3 Returns
@@ -1467,9 +1462,9 @@ Manages encryption for individual file entries.
 
 #### 11.2.4 Error Conditions
 
-- `ErrInvalidKey`: Invalid encryption key
-- `ErrEncryptionFailed`: Encryption operation failed
-- `ErrDecryptionFailed`: Decryption operation failed
+- `ErrTypeEncryption`: Invalid encryption key
+- `ErrTypeEncryption`: Encryption operation failed
+- `ErrTypeEncryption`: Decryption operation failed
 
 #### 11.2.5 Usage Notes
 
@@ -1503,9 +1498,9 @@ Manages file data loading and processing.
 
 #### 11.3.4 Error Conditions
 
-- `ErrIOError`: I/O error during data operations
-- `ErrDecryptionFailed`: Failed to decrypt data
-- `ErrDecompressionFailed`: Failed to decompress data
+- `ErrTypeIO`: I/O error during data operations
+- `ErrTypeEncryption`: Failed to decrypt data
+- `ErrTypeCompression`: Failed to decompress data
 
 #### 11.3.5 Usage Notes
 
@@ -1519,72 +1514,37 @@ The NovusPack file management API uses a comprehensive structured error system t
 
 ### 12.2 Common Error Types
 
-#### 12.2.1 Sentinel Errors (Legacy Support)
+#### 12.2.1 Error Type Categories
 
-```go
-var (
-    ErrFileNotFound        = errors.New("file not found")
-    ErrFileExists          = errors.New("file already exists")
-    ErrInvalidPath         = errors.New("invalid file path")
-    ErrInvalidPattern      = errors.New("invalid file pattern")
-    ErrContentTooLarge     = errors.New("file content too large")
-    ErrNoFilesFound        = errors.New("no files found matching pattern")
-    ErrUnsupportedEncryption = errors.New("unsupported encryption type")
-    ErrEncryptionFailed    = errors.New("encryption failed")
-    ErrDecryptionFailed    = errors.New("decryption failed")
-    ErrDecompressionFailed = errors.New("decompression failed")
-    ErrInvalidSecurityLevel = errors.New("invalid security level")
-    ErrKeyGenerationFailed = errors.New("key generation failed")
-    ErrInvalidKey          = errors.New("invalid key")
-    ErrPackageNotOpen      = errors.New("package is not open")
-    ErrPackageReadOnly     = errors.New("package is read-only")
-    ErrIOError            = errors.New("I/O error")
-    ErrContextCancelled   = errors.New("context cancelled")
-    ErrContextTimeout     = errors.New("context timeout")
-)
-```
+The file management API uses structured errors with the following error type categories:
 
-#### 12.2.2 Error Type Mapping
-
-| Sentinel Error           | ErrorType          | Description                     |
-| ------------------------ | ------------------ | ------------------------------- |
-| ErrFileNotFound          | ErrTypeValidation  | File not found in package       |
-| ErrFileExists            | ErrTypeValidation  | File already exists             |
-| ErrInvalidPath           | ErrTypeValidation  | Invalid file path               |
-| ErrInvalidPattern        | ErrTypeValidation  | Invalid file pattern            |
-| ErrContentTooLarge       | ErrTypeValidation  | File content too large          |
-| ErrNoFilesFound          | ErrTypeValidation  | No files found matching pattern |
-| ErrUnsupportedEncryption | ErrTypeEncryption  | Unsupported encryption type     |
-| ErrEncryptionFailed      | ErrTypeEncryption  | Encryption operation failed     |
-| ErrDecryptionFailed      | ErrTypeEncryption  | Decryption operation failed     |
-| ErrDecompressionFailed   | ErrTypeCompression | Decompression operation failed  |
-| ErrInvalidSecurityLevel  | ErrTypeSecurity    | Invalid security level          |
-| ErrKeyGenerationFailed   | ErrTypeEncryption  | Key generation failed           |
-| ErrInvalidKey            | ErrTypeEncryption  | Invalid encryption key          |
-| ErrPackageNotOpen        | ErrTypeValidation  | Package is not open             |
-| ErrPackageReadOnly       | ErrTypeValidation  | Package is read-only            |
-| ErrIOError               | ErrTypeIO          | I/O error                       |
-| ErrContextCancelled      | ErrTypeContext     | Context cancelled               |
-| ErrContextTimeout        | ErrTypeContext     | Context timeout                 |
+| ErrorType          | Common Scenarios                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| ErrTypeValidation  | File not found, file already exists, invalid path, invalid pattern, content too large, no files found, package not open, package read-only |
+| ErrTypeIO          | I/O errors during file operations                                                                                                          |
+| ErrTypeEncryption  | Unsupported encryption type, encryption/decryption failures, key generation failures, invalid key                                          |
+| ErrTypeCompression | Decompression operation failures                                                                                                           |
+| ErrTypeSecurity    | Invalid security level                                                                                                                     |
+| ErrTypeContext     | Context cancelled, context timeout                                                                                                         |
 
 ### 12.3 Structured Error Examples
 
-#### 12.2.3 Creating File Management Errors
+#### 12.3.1 Creating File Management Errors
 
 ```go
 // File not found with context
-err := NewPackageError(ErrTypeValidation, "file not found", ErrFileNotFound).
+err := NewPackageError(ErrTypeValidation, "file not found", nil).
     WithContext("path", "/path/to/file").
     WithContext("operation", "ExtractFile")
 
 // Encryption failure with context
-err := NewPackageError(ErrTypeEncryption, "encryption failed", ErrEncryptionFailed).
+err := NewPackageError(ErrTypeEncryption, "encryption failed", nil).
     WithContext("algorithm", "AES-256-GCM").
     WithContext("keySize", 256).
     WithContext("file", "/path/to/file")
 
 // Pattern matching error with context
-err := NewPackageError(ErrTypeValidation, "no files found", ErrNoFilesFound).
+err := NewPackageError(ErrTypeValidation, "no files found", nil).
     WithContext("pattern", "*.txt").
     WithContext("directory", "/src").
     WithContext("operation", "AddFilePattern")

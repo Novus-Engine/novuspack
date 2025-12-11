@@ -3,11 +3,9 @@
     "default": true,
     "extends": ".markdownlint.yml"
   },
-  "globs": [
-    "**/*.md"
-  ],
   "ignores": [
     "**/node_modules/**",
+    "tmp/**"
   ],
   "customRules": [
     ".markdownlint-rules/no-heading-like-lines.js"

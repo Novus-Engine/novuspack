@@ -117,3 +117,52 @@ Feature: Signature structure and parsing
     When signature is validated
     Then validation fails
     And structured corruption error is returned
+
+  @happy
+  Scenario: NewSignature creates signature with zero values
+    Given NewSignature is called
+    Then a Signature is returned
+    And Signature is in initialized state
+    And signature all fields are zero or empty
+
+  @happy
+  Scenario: WriteTo serializes signature to binary format
+    Given a Signature with values
+    When signature WriteTo is called with writer
+    Then signature is written to writer
+    And header is written first (18 bytes)
+    And comment follows header if present
+    And signature data follows comment
+    And written data matches signature content
+
+  @happy
+  Scenario: ReadFrom deserializes signature from binary format
+    Given a reader with valid signature data
+    When signature ReadFrom is called with reader
+    Then signature is read from reader
+    And signature fields match reader data
+    And signature is valid
+
+  @happy
+  Scenario: Signature round-trip serialization preserves all fields
+    Given a Signature with all fields set
+    When signature WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then all signature fields are preserved
+    And signature is valid
+
+  @happy
+  Scenario: Signature without comment serializes correctly
+    Given a Signature without comment
+    When signature WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then signature is read correctly
+    And CommentLength equals 0
+    And signature is valid
+
+  @error
+  Scenario: ReadFrom fails with incomplete header
+    Given a reader with less than 18 bytes of signature data
+    When signature ReadFrom is called with reader
+    Then structured IO error is returned
+    And error indicates read failure

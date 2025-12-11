@@ -36,3 +36,42 @@ Feature: File index section complete specification
     Then validation fails
     And structured corruption error is returned
     And error indicates index structure issue
+
+  @happy
+  Scenario: NewFileIndex creates index with zero values
+    Given NewFileIndex is called
+    Then a FileIndex is returned
+    And FileIndex is in initialized state
+    And file index all fields are zero or empty
+
+  @happy
+  Scenario: WriteTo serializes file index to binary format
+    Given a FileIndex with values
+    When file index WriteTo is called with writer
+    Then file index is written to writer
+    And header is written first (16 bytes)
+    And entries follow header
+    And written data matches file index content
+
+  @happy
+  Scenario: ReadFrom deserializes file index from binary format
+    Given a reader with valid file index data
+    When file index ReadFrom is called with reader
+    Then file index is read from reader
+    And file index fields match reader data
+    And file index is valid
+
+  @happy
+  Scenario: File index round-trip serialization preserves all fields
+    Given a FileIndex with all fields set
+    When file index WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then all file index fields are preserved
+    And file index is valid
+
+  @error
+  Scenario: ReadFrom fails with incomplete header
+    Given a reader with less than 16 bytes of file index data
+    When file index ReadFrom is called with reader
+    Then structured IO error is returned
+    And error indicates read failure

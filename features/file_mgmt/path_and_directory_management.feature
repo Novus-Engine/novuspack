@@ -48,14 +48,6 @@ Feature: Path and Directory Management
     And GetInheritedTags returns inherited tags
     And UpdateInheritedTags updates inherited tags
 
-  @REQ-FILEMGMT-046 @happy
-  Scenario: Path management methods respect context
-    Given a file entry
-    And a valid context
-    When path management methods are called
-    Then context supports cancellation
-    And context supports timeout handling
-
   @REQ-FILEMGMT-046 @error
   Scenario: Path management methods handle invalid directory associations
     Given a file entry

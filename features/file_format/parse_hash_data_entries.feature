@@ -76,3 +76,33 @@ Feature: Parse Hash Data Entries
     Then a structured invalid hash data error is returned
     And error indicates invalid offset
     And error follows structured error format
+
+  @happy
+  Scenario: WriteTo serializes hash entry to binary format
+    Given a HashEntry with values
+    When hash entry WriteTo is called with writer
+    Then hash entry is written to writer
+    And written data matches hash entry content
+
+  @happy
+  Scenario: ReadFrom deserializes hash entry from binary format
+    Given a reader with valid hash entry data
+    When hash entry ReadFrom is called with reader
+    Then hash entry is read from reader
+    And hash entry fields match reader data
+    And hash entry is valid
+
+  @happy
+  Scenario: Hash entry round-trip serialization preserves all fields
+    Given a HashEntry with all fields set
+    When hash entry WriteTo is called with writer
+    And ReadFrom is called with written data
+    Then all hash entry fields are preserved
+    And hash entry is valid
+
+  @error
+  Scenario: ReadFrom fails with incomplete data
+    Given a reader with incomplete hash entry data
+    When hash entry ReadFrom is called with reader
+    Then structured IO error is returned
+    And error indicates read failure
