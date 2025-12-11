@@ -1,0 +1,47 @@
+name: Go BDD Tests
+
+# NOTE: This workflow uses the 'bdd-ci' target from api/go/v1/Makefile.
+#       When modifying BDD test execution, update the Makefile target accordingly.
+
+on:
+  pull_request:
+    paths:
+      - 'api/go/**/*.go'
+      - 'features/**/*.feature'
+      - 'api/go/**/_bdd/**/*.go'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bdd-go-v1:
+    name: BDD Tests api/go/v1
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api/go/v1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: api/go/v1/go.sum
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run BDD tests
+        run: make bdd-ci
+        continue-on-error: false
+
+      - name: Upload BDD test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bdd-test-output
+          path: tmp/bdd_test_output_*.txt
+          retention-days: 7
