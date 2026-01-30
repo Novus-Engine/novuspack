@@ -1,0 +1,8 @@
+# Test artifacts
+*.test
+*.out
+
+# Coverage reports
+coverage.out
+coverage.html
+cov.out
