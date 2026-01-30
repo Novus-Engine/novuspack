@@ -2,7 +2,7 @@
 
 - [0. Overview](#0-overview)
   - [0.1 Cross-References](#01-cross-references)
-- [1 `.npk` File Format Overview](#1-npk-file-format-overview)
+- [1 `.nvpk` File Format Overview](#1-nvpk-file-format-overview)
   - [1.1 File Layout Order](#11-file-layout-order)
 - [2 Package Header](#2-package-header)
   - [2.1 Header Structure](#21-header-structure)
@@ -18,56 +18,62 @@
   - [3.1 Compression Scope](#31-compression-scope)
   - [3.2 Compression Behavior](#32-compression-behavior)
 - [4 File Entries and Data Section](#4-file-entries-and-data-section)
-  - [4.1 File Entry Binary Format Specification](#41-file-entry-binary-format-specification)
+  - [4.1 FileEntry Binary Format Specification](#41-fileentry-binary-format-specification)
   - [4.2 FileEntry Field Specifications](#42-fileentry-field-specifications)
-- [5 File Index Section](#5-file-index-section)
-- [6 Package Comment Section (Optional)](#6-package-comment-section-optional)
-  - [6.1 Package Comment Format Specification](#61-package-comment-format-specification)
-- [7 Digital Signatures Section (Optional)](#7-digital-signatures-section-optional)
-  - [7.1 Signature Structure](#71-signature-structure)
-  - [7.2 Signature Types](#72-signature-types)
-  - [7.3 Signature Data Sizes](#73-signature-data-sizes)
-  - [7.4 Cross-References](#74-cross-references)
+- [5 Metadata Index Section](#5-metadata-index-section)
+  - [5.1 Metadata Index Structure](#51-metadata-index-structure)
+  - [5.2 Compressed Package Metadata Index Detection](#52-compressed-package-metadata-index-detection)
+- [6 File Index Section](#6-file-index-section)
+  - [6.1 File Index Structure](#61-file-index-structure)
+  - [6.2 File Index Compression](#62-file-index-compression)
+- [7 Package Comment Section (Optional)](#7-package-comment-section-optional)
+  - [7.1 Package Comment Format Specification](#71-package-comment-format-specification)
+- [8 Digital Signatures Section (Optional)](#8-digital-signatures-section-optional)
+  - [8.1 Signature Structure](#81-signature-structure)
+  - [8.2 Signature Types](#82-signature-types)
+  - [8.3 Signature Data Sizes](#83-signature-data-sizes)
+  - [8.4 Signature Cross-References](#84-signature-cross-references)
 
 ---
 
 ## 0. Overview
 
-This document defines the complete .npk package file format structure, including the package header, file entry binary format, and package comment specifications for the NovusPack system.
+This document defines the complete .nvpk package file format structure, including the package header, FileEntry binary format, and package comment specifications for the NovusPack system.
 
 ### 0.1 Cross-References
 
 - [Main Index](_main.md) - Central navigation for all NovusPack specifications
 - [Testing Requirements](testing.md) - Comprehensive testing requirements and validation
-- [API Signatures Index](api_func_signatures_index.md) - Index of complete function references
+- [Go API Definitions Index](api_go_defs_index.md) - Complete index of all Go API functions, types, and structures
 - [Package Compression API](api_package_compression.md) - Package compression and decompression operations
 - [File Types System](file_type_system.md) - Comprehensive file type system
 - [Metadata System](metadata.md) - Package metadata and tags system
 
 ---
 
-## 1 `.npk` File Format Overview
+## 1. .Nvpk File Format Overview
 
-The .npk file format is a structured archive format designed for efficient storage, compression, encryption, and digital signing of files and directories.
+The .nvpk file format is a structured archive format designed for efficient storage, compression, encryption, and digital signing of files and directories.
 It provides a modern alternative to traditional archive formats like ZIP, TAR, and 7Z with enhanced security and performance features.
 The format consists of several sections arranged in a specific order to optimize both reading and writing operations.
 
 ### 1.1 File Layout Order
 
-The .npk file structure follows this ordered layout:
+The .nvpk file structure follows this ordered layout:
 
 1. **Package Header** (see [Package Header](#2-package-header)) - Fixed-size header with metadata and navigation information (immutable after first signature)
-2. **File Entries and Data** (variable length) - Interleaved file entries and their data:
-   - File Entry 1 (64-byte binary format + extended data)
-   - File Data 1 (compressed/encrypted content)
-   - File Entry 2 (64-byte binary format + extended data)
-   - File Data 2 (compressed/encrypted content)
+2. **Metadata Index** (variable length, present when compression enabled) - Index for fast access to compressed metadata and data blocks (see [Metadata Index Section](#5-metadata-index-section))
+3. **File Entries and Data** (variable length) - Interleaved file entries and their data:
+   - FileEntry 1 (64-byte binary format + extended data)
+   - File Data 1 (optionally compressed and/or encrypted content)
+   - FileEntry 2 (64-byte binary format + extended data)
+   - File Data 2 (optionally compressed and/or encrypted content)
    - ... (repeat for each file)
-3. **File Index** (variable length) - Index of all files with metadata and offsets
-4. **Package Comment** (variable length, optional) - Human-readable package description
-5. **Digital Signatures** (variable length, optional) - Multiple digital signatures for package integrity (appended incrementally)
+4. **File Index** (variable length, compressed when package compression enabled) - Index of all files with metadata and offsets (see [File Index Section](#6-file-index-section))
+5. **Package Comment** (variable length, optional) - Human-readable package description
+6. **Digital Signatures** (variable length, optional) - Multiple digital signatures for package integrity (appended incrementally)
 
-## 2 Package Header
+## 2. Package Header
 
 The package header provides comprehensive metadata and navigation information for the entire package.
 
@@ -94,11 +100,13 @@ The package header provides comprehensive metadata and navigation information fo
 | IndexSize          | 8 bytes | Size of file index in bytes                                                   |
 | ArchiveChainID     | 8 bytes | Archive chain identifier                                                      |
 | ArchivePartInfo    | 4 bytes | Combined part number (2 bytes) + total parts (2 bytes)                        |
-| CommentSize        | 4 bytes | Size of package comment in bytes (0 if no comment)                            |
+| CommentSize        | 4 bytes | Size of serialized package comment section in bytes (0 if no comment)         |
 | CommentStart       | 8 bytes | Offset to package comment from start of file                                  |
 | SignatureOffset    | 8 bytes | Offset to signatures block from start of file                                 |
 
 ### 2.2 Package Version Fields Specification
+
+This section describes package version field specifications.
 
 #### 2.2.1 PackageDataVersion Field
 
@@ -137,7 +145,7 @@ The PackageCRC is calculated over the following data in order:
 2. **File Index**: Complete file index section
 3. **Package Comment**: Package comment section (if present)
 
-##### 2.2.4.1 Excluded from calculation
+##### 2.2.4.1. Excluded from Calculation
 
 The following are excluded from the package-level CRC32 calculation
 
@@ -210,6 +218,8 @@ Examples using common software distribution methods.
 
 ### 2.5 Package Features Flags
 
+This section describes package feature flags and their encoding.
+
 #### 2.5.1 Flags Field Encoding
 
 - **Bit 31-24**: Reserved for future use (must be 0)
@@ -229,13 +239,15 @@ Examples using common software distribution methods.
 
 - **Bit 7**: Metadata-only package
 
-  - **Purpose**: Indicates that the package contains only special metadata files and no regular content
-  - **Usage**: Set to 1 if package contains only special metadata files (see [File Types System - Special File Types](file_type_system.md#special-file-types-65000-65535))
+  - **Purpose**: Indicates that the package contains no regular content files (FileCount = 0)
+  - **Usage**: Set to 1 if package has FileCount = 0, regardless of whether special metadata files are present
+  - **Write Operations**: All write operations MUST set this flag when FileCount = 0
+  - **Valid Cases**: Empty packages, placeholder packages, or packages with only special metadata files (see [File Types System - Special File Types](file_type_system.md#339-special-file-types-65000-65535))
 
 - **Bit 6**: Has special metadata files
 
   - **Purpose**: Indicates the presence of special metadata files in the package
-  - **Usage**: Set to 1 if package contains special metadata files (see [File Types System - Special File Types](file_type_system.md#special-file-types-65000-65535))
+  - **Usage**: Set to 1 if package contains special metadata files (see [File Types System - Special File Types](file_type_system.md#339-special-file-types-65000-65535))
   - **Related**: Corresponds to special metadata file detection
 
 - **Bit 5**: Has per-file tags
@@ -306,13 +318,15 @@ Examples using common software distribution methods.
 
 ### 2.8 Header Initialization
 
+This section describes header initialization for package creation.
+
 #### 2.8.1 Initial Package Creation
 
 - **Magic**: Always set to 0x4E56504B
 - **FormatVersion**: Set to 1 for current format
 - **Flags**: Set based on package configuration (encryption, signing, compression)
-- **PackageDataVersion**: Set to 1 for new packages, increments on data changes
-- **MetadataVersion**: Set to 1 for new packages, increments on metadata changes
+- **PackageDataVersion**: Set to 0 for new packages, increments on data changes
+- **MetadataVersion**: Set to 0 for new packages, increments on metadata changes
 - **PackageCRC**: Set to 0 if skipped, or CRC32 of package content (calculated at write time)
 - **CreatedTime**: Set to current timestamp when package is created (immutable)
 - **ModifiedTime**: Set to current timestamp when package is created or modified
@@ -325,9 +339,32 @@ Examples using common software distribution methods.
 - **IndexSize**: Set to size of file index in bytes
 - **ArchiveChainID**: Set to unique identifier for archive chain (0 for single archive)
 - **ArchivePartInfo**: Set to 0x00010001 for single archive, or part number + total parts for split archives
-- **CommentSize**: Set to 0 if no comment, or size of comment including null terminator
+- **CommentSize**: Set to 0 if no comment, or size of the serialized comment section in bytes
 - **CommentStart**: Set to 0 if no comment, or offset to comment from start of file
 - **SignatureOffset**: Set to 0 if no signatures, or offset to signature index from start of file
+
+#### 2.8.2 NewPackageHeader Function
+
+Creates a new PackageHeader with proper initialization.
+
+```go
+// NewPackageHeader creates and returns a new PackageHeader with default values
+func NewPackageHeader() *PackageHeader
+```
+
+Returns a new PackageHeader instance initialized according to Section 2.8.1:
+
+- `Magic` set to NVPKMagic (0x4E56504B)
+- `FormatVersion` set to 1
+- `PackageDataVersion` set to 0
+- `MetadataVersion` set to 0
+- `Reserved` set to 0
+- `ArchivePartInfo` set to 0x00010001 (part 1 of 1)
+- All other fields set to 0
+
+This is the primary way to create a new PackageHeader instance for package creation.
+
+**Note**: For unmarshaling PackageHeader instances from binary data, see [PackageHeader Methods](#2-package-header) in the PackageHeader Methods section.
 
 ### 2.9 Signed Package File Immutability and Incremental Signatures
 
@@ -349,50 +386,72 @@ The entire file becomes immutable after the first signature is added to prevent 
 - This includes header, file entries, file data, file index, and package comment
 - This prevents accidental invalidation of existing signatures
 
-## 3 Package Compression
+## 3. Package Compression
 
-Package compression is a file format feature that compresses the package content while preserving the header, package comment, and signatures in an uncompressed state for direct access.
+Package compression is a file format feature that compresses package content using separate compression for metadata and data blocks, while preserving the header, metadata index, package comment, and signatures in an uncompressed state for direct access.
+Note that signed packages cannot be compressed, as that would violate the signature integrity.
 
 ### 3.1 Compression Scope
 
+This section describes the scope of compression in the package format.
+
 #### 3.1.1 Compressed Content
 
-- File entries (directory structure)
-- File data (actual file contents)
-- Package index
+When package compression is enabled (header flags bits 15-8 != 0), the following content is compressed:
+
+- **FileEntry metadata**: Each FileEntry (64 bytes + variable data) is compressed individually or in small groups using LZ4 compression
+- **File data**: Each file's data is compressed individually using the package compression type (Zstd, LZ4, or LZMA)
+- **File index**: The regular file index is compressed as a single block using LZ4 compression
+
+Special metadata files (types 65000-65535) are handled as regular FileEntry objects:
+
+- FileEntry metadata compressed with LZ4 (same as all entries)
+- File data (YAML content) stored as uncompressed or LZ4-compressed data with automatic decompression on read (see [Package Metadata API - Path Metadata System](api_metadata.md#8-pathmetadata-system))
 
 #### 3.1.2 Uncompressed Content
 
+The following content remains uncompressed for direct access:
+
 - Package header (see [Package Header](#2-package-header))
+- Metadata index (see [Metadata Index Section](#5-metadata-index-section)) - enables fast access to compressed blocks
 - Package comment
 - Digital signatures
 
 ### 3.2 Compression Behavior
 
-Package compression behavior is defined by the compression type specified in the header flags (bits 15-8). The compression process and constraints are detailed in the [Package Compression API](api_package_compression.md).
+Package compression behavior is defined by the compression type specified in the header flags (bits 15-8).
+The compression process uses separate compression for metadata and data blocks, enabling selective decompression.
+The compression process and constraints are detailed in the [Package Compression API](api_package_compression.md).
 
 #### 3.2.1 Key Constraints
 
 - Compressed packages can be signed, but signed packages cannot be compressed
 - Package compression is applied after per-file compression/encryption operations
 - Package decompression must occur before per-file decompression
+- Metadata index is located at fixed offset 112 bytes (immediately after header) when compression is enabled
+
+#### 3.2.2 Metadata Index Detection
+
+The metadata index is present when package compression is enabled (header flags bits 15-8 != 0).
+No header modifications are required - the existing compression flags indicate the presence of the metadata index.
+The metadata index is always located at offset 112 bytes (PackageHeaderSize) immediately after the package header.
 
 For detailed compression methods, types, and implementation details, see the [Package Compression API](api_package_compression.md).
 
-## 4 File Entries and Data Section
+## 4. File Entries and Data Section
 
-This section contains interleaved file entries and their data. Each file entry immediately precedes its related data, allowing for efficient streaming and processing.
+This section contains interleaved FileEntry objects and their data. Each FileEntry immediately precedes its related data, allowing for efficient streaming and processing.
 
-- **File Entry Structure**: 64-byte binary format + extended data (paths, hashes, optional data)
+- **FileEntry Structure**: 64-byte binary format + extended data (paths, hashes, optional data)
 - **File Data**: Compressed and/or encrypted file content immediately following each entry
 - **Interleaved Layout**: Entry 1 => Data 1 => Entry 2 => Data 2 => ... => Entry N => Data N
 - **Variable Length**: Based on content and processing applied
 
-### 4.1 File Entry Binary Format Specification
+### 4.1 FileEntry Binary Format Specification
 
-The file entry binary format consists of a fixed-size header followed by optional extended data. The format version is determined by the package header, not individual file entries.
+The FileEntry binary format consists of a fixed-size header followed by optional extended data. The format version is determined by the package header, not individual FileEntry objects.
 
-#### 4.1.1 File Entry Static Section Field Encoding
+#### 4.1.1 FileEntry Static Section Field Encoding
 
 | Field              | Size    | Description                                                      |
 | ------------------ | ------- | ---------------------------------------------------------------- |
@@ -418,10 +477,10 @@ The file entry binary format consists of a fixed-size header followed by optiona
 ##### 4.1.1.1 FileID Field Specification
 
 - **FileID**: 8 bytes (64-bit unsigned integer) - Unique file identifier
-- **Purpose**: Provides a stable, unique identifier for each file entry within the package
+- **Purpose**: Provides a stable, unique identifier for each FileEntry within the package
 - **Uniqueness**: Must be unique across all file entries in the package
 - **Generation**: Assigned sequentially during file addition (1, 2, 3, ...)
-- **Persistence**: FileID remains constant for the lifetime of the file entry
+- **Persistence**: FileID remains constant for the lifetime of the FileEntry
 - **Future-Proofing**: 64-bit range supports up to 18,446,744,073,709,551,615 files
 - **Usage**: Enables efficient file tracking, referencing, and API operations
 - **Zero Value**: FileID 0 is reserved and must not be used for actual files
@@ -457,22 +516,131 @@ The file entry binary format consists of a fixed-size header followed by optiona
 
   - 0x00: No encryption
   - 0x01: AES-256-GCM encryption
-  - 0x02: Quantum-safe encryption (ML-KEM + ML-DSA)
-  - 0x03-0xFF: Reserved for future algorithms
+  - 0x02: Quantum-safe encryption (ML-KEM hybrid encryption)
+  - 0x03: ChaCha20-Poly1305 encryption
+  - 0x04-0xFF: Reserved for future algorithms
 
 - **Type**: 2 bytes - File type identifier (see [File Types System](file_type_system.md) for detailed file type system)
 
-#### 4.1.2 File Entry Structure Requirements
+##### 4.1.1.4 Encrypted File Data Framing
 
-The file entry structure supports unique file identification, version tracking, multiple paths pointing to the same content, hash-based content identification, and comprehensive security metadata.
+This section defines how encrypted file data is stored on disk.
+This applies to the file data bytes that immediately follow a `FileEntry`.
+
+If `EncryptionType == 0x00`, file data is stored as plain bytes (optionally compressed).
+
+If `EncryptionType != 0x00`, file data is stored as an encryption framing header followed by ciphertext.
+`StoredSize` includes both the framing header and ciphertext.
+`StoredChecksum` is computed over the stored bytes (framing header plus ciphertext).
+
+##### 4.1.1.5 Common Conventions
+
+- Nonces MUST be generated with a cryptographically secure random source.
+- Associated data (AAD) is empty in v1.
+- Authentication tags are stored as part of the ciphertext as produced by the AEAD algorithm.
+
+##### 4.1.1.6. AES-256-GCM File Data (EncryptionType 0X01)
+
+File data is encoded as:
+
+- `Nonce` (12 bytes)
+- `CiphertextWithTag` (remaining bytes)
+
+The authentication tag length is 16 bytes and is included at the end of `CiphertextWithTag`.
+
+##### 4.1.1.7. ChaCha20-Poly1305 File Data (EncryptionType 0X03)
+
+File data is encoded as:
+
+- `Nonce` (12 bytes)
+- `CiphertextWithTag` (remaining bytes)
+
+The authentication tag length is 16 bytes and is included at the end of `CiphertextWithTag`.
+
+##### 4.1.1.8. Quantum-Safe Hybrid File Data (EncryptionType 0X02)
+
+Quantum-safe encryption uses a hybrid scheme.
+ML-KEM is used to encapsulate a shared secret.
+AES-256-GCM is used to encrypt the file bytes using a key derived from the shared secret.
+
+File data is encoded as:
+
+- `KEMCiphertextLen` (2 bytes, unsigned little endian)
+- `KEMCiphertext` (`KEMCiphertextLen` bytes)
+- `Nonce` (12 bytes)
+- `CiphertextWithTag` (remaining bytes)
+
+The derived AES-256-GCM key is computed as HKDF-SHA256 over the ML-KEM shared secret.
+The HKDF salt is empty in v1.
+The HKDF info string is `novuspack-file-encryption-v1`.
+
+##### 4.1.1.9 Locating File Data and Encryption Framing Bytes
+
+This section defines how a reader finds the file data bytes (including encryption framing) for a `FileEntry`.
+
+The package stores file entries and file data in an interleaved layout:
+
+- `FileEntry` (fixed 64 bytes)
+- `FileEntryVariableData` (variable length)
+- `FileData` (`StoredSize` bytes)
+- `FileEntry` (next entry)
+
+The file data for a FileEntry begins immediately after the end of the FileEntry variable-length data.
+The encrypted file data framing begins at the first byte of `FileData` when `EncryptionType != 0x00`.
+
+##### 4.1.1.10 Computing FileEntryVariableData Length
+
+Let `EntryStart` be the byte offset of the start of the 64-byte `FileEntry` fixed structure.
+
+Let `VarStart = EntryStart + 64`.
+
+The variable-length data region contains paths, hash data, and optional data.
+The overall variable-length region length is the maximum end position among its parts.
+
+To compute it:
+
+- Parse `PathCount` path entries sequentially starting at `VarStart`.
+  - Each path entry is a `PathEntry`.
+  - `PathEntry` is encoded as `PathLength (uint16 little endian)` followed by `Path` bytes.
+  - Each path entry size is `2 + PathLength` bytes.
+- Let `PathsEnd` be the byte offset at the end of the last parsed path entry.
+- Let `HashEnd = VarStart + HashDataOffset + HashDataLen`.
+- Let `OptionalEnd = VarStart + OptionalDataOffset + OptionalDataLen`.
+- Let `VarEnd = max(PathsEnd, HashEnd, OptionalEnd)`.
+
+Then:
+
+- `FileEntryVariableDataLen = VarEnd - VarStart`.
+
+##### 4.1.1.11 Computing FileData Start and End
+
+Using the values above:
+
+- `FileDataStart = VarEnd`.
+- `FileDataEnd = FileDataStart + StoredSize`.
+
+`FileDataStart` points to the first byte of the file data.
+If `EncryptionType != 0x00`, `FileDataStart` is also the first byte of the encrypted file data framing.
+
+##### 4.1.1.12 Locating the Next FileEntry During Sequential Scans
+
+During a sequential scan, the next FileEntry begins at:
+
+- `NextEntryStart = FileDataEnd`.
+
+This scanning method does not require the file index.
+
+#### 4.1.2 FileEntry Structure Requirements
+
+The FileEntry structure supports unique file identification, version tracking, multiple paths pointing to the same content, hash-based content identification, and comprehensive security metadata.
 
 ##### 4.1.2.1 Unique File Identification
 
-Each file entry includes a unique 64-bit FileID that provides stable identification across package operations. The FileID enables efficient file tracking, API operations, and future extensibility without relying on path-based identification.
+Each FileEntry includes a unique 64-bit FileID that provides stable identification across package operations. The FileID enables efficient file tracking, API operations, and future extensibility without relying on path-based identification.
 
 ##### 4.1.2.2 File Version Tracking
 
-Each file entry includes two version fields that track changes independently:
+Each FileEntry includes two version fields that track changes independently:
 
 - **FileVersion**: Tracks changes to file content/data
 - **MetadataVersion**: Tracks changes to file metadata (paths, tags, compression, encryption, etc.)
@@ -482,7 +650,7 @@ Note that package-level metadata (including the package comment) is tracked by t
 
 ##### 4.1.2.3 Multiple Path Support with Per-Path Metadata
 
-Each file entry can have multiple paths pointing to the same content, with each path having its own metadata (permissions, timestamps, etc.). This enables efficient storage of hard links and symbolic links while maintaining individual path attributes.
+Each FileEntry can have multiple paths pointing to the same content, with each path having its own metadata (permissions, timestamps, etc.). This enables efficient storage of hard links and symbolic links while maintaining individual path attributes.
 
 ##### 4.1.2.4 Hash-based Content Identification
 
@@ -494,9 +662,9 @@ File entries include multiple hash types for different purposes:
 
 ##### 4.1.2.5 Security Metadata
 
-Each file entry includes encryption and compression metadata, allowing per-file security and optimization settings.
+Each FileEntry includes encryption and compression metadata, allowing per-file security and optimization settings.
 
-#### 4.1.3 Fixed Structure (64 bytes, optimized for 8-byte alignment)
+#### 4.1.3. Fixed Structure (64 Bytes, Optimized for 8-Byte Alignment)
 
 The fixed structure is optimized for 8-byte alignment to minimize padding and improve performance on modern systems.
 
@@ -509,13 +677,13 @@ Fields are ordered by size (largest to smallest) to minimize padding:
 3. 2-byte fields (PathCount, Type, HashDataLen, OptionalDataLen)
 4. 1-byte fields (CompressionType, CompressionLevel, EncryptionType, HashCount)
 
-#### 4.1.4 Variable-Length Data (follows fixed structure)
+#### 4.1.4. Variable-Length Data (Follows Fixed Structure)
 
-- **Primary path:** The main path for the file entry (stored in the Name field)
+- **Primary path:** The main path for the FileEntry (stored in the Name field)
 - **Additional paths:** Secondary paths that point to the same content (stored in Paths metadata)
-- **Path metadata:** Array of additional paths stored as part of the file entry metadata
+- **Path metadata:** Array of additional paths stored as part of the FileEntry metadata
 - **Per-path metadata:** Each path can have its own mode, UID, GID, and timestamps
-- **Path validation:** All paths must be normalized and valid according to path validation rules
+- **Path validation:** All paths must be normalized and valid according to [Package Path Semantics](api_core.md#2-package-path-semantics)
 - **Content consistency:** All paths must resolve to identical content when extracted
 - **Metadata flexibility:** Different paths can have different permissions and ownership while sharing content
 
@@ -529,21 +697,15 @@ The variable-length data section follows this order:
 
 ##### 4.1.4.2 Path Entries
 
-All paths: PathCount × path entries with metadata
+All paths: PathCount × path entries
 
-Each path entry: `[PathLength: 2 bytes][Path: UTF-8][Mode: 4 bytes][UserID: 4 bytes][GroupID: 4 bytes][ModTime: 8 bytes][CreateTime: 8 bytes][AccessTime: 8 bytes]`
+**Note**: PathEntry is defined in the generics package. See [Generic Types and Patterns - PathEntry](api_generics.md#13-pathentry-type) for complete binary format specification.
 
-- **PathLength**: 2 bytes - Length of path in bytes (UTF-8 encoded)
-- **Path**: UTF-8 string - File path (not null-terminated)
-- **Mode**: 4 bytes - File permissions and type (Unix-style)
-- **UserID**: 4 bytes - User ID (Unix-style)
-- **GroupID**: 4 bytes - Group ID (Unix-style)
-- **ModTime**: 8 bytes - Modification time (Unix nanoseconds)
-- **CreateTime**: 8 bytes - Creation time (Unix nanoseconds)
-- **AccessTime**: 8 bytes - Access time (Unix nanoseconds)
+Path entries contain only the path string (minimal format: PathLength + Path). Path metadata (permissions, timestamps, ownership, tags) is stored separately in path metadata files. See [Package Metadata API - Path Metadata System](api_metadata.md#8-pathmetadata-system) for details.
 
 - **Primary path**: First path entry (index 0) is the primary path
-- **Additional paths**: Secondary paths pointing to the same content with their own metadata
+- **Additional paths**: Secondary paths pointing to the same content
+- **Path metadata**: Stored separately in special metadata files, allowing different permissions/timestamps per path
 
 ##### 4.1.4.3 Hash Data
 
@@ -608,6 +770,8 @@ Each optional data entry: `[DataType: 1 byte][DataLength: 2 bytes][Data: variabl
 
 ### 4.2 FileEntry Field Specifications
 
+This section describes FileEntry field specifications in detail.
+
 #### 4.2.1 HashCount Field
 
 - **Size**: 1 byte (8-bit unsigned integer)
@@ -645,29 +809,130 @@ Each optional data entry: `[DataType: 1 byte][DataLength: 2 bytes][Data: variabl
 
 ---
 
-## 5 File Index Section
+## 5. Metadata Index Section
+
+The metadata index provides fast access to compressed metadata and data blocks, enabling selective decompression without requiring full package decompression.
+
+### 5.1 Metadata Index Structure
+
+The metadata index is located at a fixed offset of 112 bytes (immediately after the package header) when package compression is enabled (header flags bits 15-8 != 0).
+
+#### 5.1.1 Metadata Index Binary Format
+
+The metadata index consists of:
+
+- **EntryCount** (4 bytes): Number of metadata index entries
+- **Reserved** (4 bytes): Reserved for future use (must be 0)
+- **Entries** (variable length): Array of metadata index entries, each 24 bytes
+
+#### 5.1.2 Metadata Index Entry Format
+
+Each metadata index entry (24 bytes) contains:
+
+- **FileID** (8 bytes): Unique file identifier
+- **MetadataBlockOffset** (8 bytes): Offset to compressed metadata block (FileEntry)
+- **MetadataBlockSize** (4 bytes): Size of compressed metadata block in bytes
+- **DataBlockOffset** (8 bytes): Offset to compressed data block (file data)
+- **DataBlockSize** (4 bytes): Size of compressed data block in bytes
+
+#### 5.1.3 Metadata Index Purpose
+
+The metadata index enables:
+
+- Fast file listing without decompressing file data
+- Selective decompression of individual file metadata or data
+- Efficient access to special metadata files (types 65000-65535)
+- Directory structure access without decompressing regular files
+
+### 5.2 Compressed Package Metadata Index Detection
+
+The metadata index is detected by checking the package header compression flags (bits 15-8):
+
+- **0** = No compression (no metadata index)
+- **1-3** = Compression enabled (metadata index present at offset 112 bytes)
+
+No header modifications are required - the existing compression flags indicate the presence of the metadata index.
+
+## 6. File Index Section
+
+The file index provides backward compatibility and contains metadata and offsets for all files in the package.
+
+### 6.1 File Index Structure
 
 - FileIndexBinary: 16 bytes + entry references
 - Entry references: 16 bytes per entry
 - Contains metadata and offsets for all files in the package
 
-## 6 Package Comment Section (Optional)
+#### 6.1.1 IndexEntry Struct
 
-- UTF-8 string + null terminator
+Canonical Go type definition:
+
+```go
+// IndexEntry represents a single file index entry. Size: 16 bytes (8 + 8).
+type IndexEntry struct {
+    FileID  uint64 // Unique file identifier
+    Offset  uint64 // File entry offset from start of file
+}
+```
+
+#### 6.1.2 FileIndex Struct
+
+Canonical Go type definition:
+
+```go
+// FileIndex represents the file index section of a package.
+// Size: 16 bytes + (16 * entry_count) bytes.
+type FileIndex struct {
+    EntryCount       uint32       // Number of file entries
+    Reserved         uint32       // Reserved for future use (must be 0)
+    FirstEntryOffset uint64       // Offset to the first file entry
+    Entries          []IndexEntry // All index entries
+}
+```
+
+#### 6.1.3 NewFileIndex Function
+
+Creates a new FileIndex with proper initialization.
+
+```go
+// NewFileIndex creates and returns a new FileIndex with zero values
+func NewFileIndex() *FileIndex
+```
+
+Returns a new FileIndex instance with all fields initialized to their zero values:
+
+- `EntryCount` set to 0
+- `Reserved` set to 0
+- `FirstEntryOffset` set to 0
+- `Entries` initialized to empty slice
+
+This is the primary way to create a new FileIndex instance.
+
+**Note**: For unmarshaling FileIndex instances from binary data, see [FileIndex Methods](#6-file-index-section) in the FileIndex Methods section.
+
+### 6.2 File Index Compression
+
+When package compression is enabled, the file index is compressed with LZ4 compression as a single block.
+Since the metadata index provides all necessary access information, the file index can be compressed to save space.
+The file index can be decompressed independently when needed for backward compatibility.
+
+## 7. Package Comment Section (Optional)
+
+- Structured PackageComment data (length, UTF-8 comment, and reserved bytes)
 - Human-readable description of package contents
 - Variable length, only present if CommentSize > 0
 
-### 6.1 Package Comment Format Specification
+### 7.1 Package Comment Format Specification
 
 The package comment is an optional, variable-length field that provides human-readable metadata about the package contents, purpose, or other descriptive information.
 
-#### 6.1.1 Package Comment Structure
+#### 7.1.1 Package Comment Structure
 
 - **CommentLength (4 bytes)**: Length of comment in bytes including null terminator (0 if no comment)
 - **Comment (variable)**: UTF-8 encoded string + null terminator
 - **Reserved (3 bytes)**: Reserved for future use (must be 0)
 
-##### 6.1.1.1 Field Specifications
+##### 7.1.1.1 Field Specifications
 
 - **CommentLength**: 4 bytes, little-endian unsigned integer
 
@@ -688,7 +953,7 @@ The package comment is an optional, variable-length field that provides human-re
   - Must be initialized to 0 when writing
   - Should be ignored when reading
 
-##### 6.1.1.2 Implementation Requirements
+##### 7.1.1.2 Implementation Requirements
 
 - **Write behavior**: If no comment is provided, write CommentLength as 0 and skip Comment field
 - **Read behavior**: If CommentLength is 0, skip reading Comment field
@@ -696,7 +961,7 @@ The package comment is an optional, variable-length field that provides human-re
 - **Error handling**: Return error for invalid UTF-8 encoding, length mismatches, or missing null terminator
 - **Null termination**: Always append null byte (0x00) when writing comments
 
-## 7 Digital Signatures Section (Optional)
+## 8. Digital Signatures Section (Optional)
 
 Digital signatures provide package integrity and authenticity verification.
 With incremental signing, signatures are appended sequentially without requiring a separate index.
@@ -704,7 +969,7 @@ With incremental signing, signatures are appended sequentially without requiring
 **Note:** This section defines the binary format for signatures.
 For signature implementation details, see [Digital Signature API](api_signatures.md).
 
-### 7.1 Signature Structure
+### 8.1 Signature Structure
 
 Each signature consists of a metadata header, optional comment, and signature data.
 The signature validates all content up to its creation point, including its own metadata and comment.
@@ -719,9 +984,11 @@ The signature validates all content up to its creation point, including its own 
 | SignatureComment   | Variable | Human-readable comment about this signature (UTF-8, null-terminated) |
 | SignatureData      | Variable | Raw signature data                                                   |
 
-### 7.2 Signature Types
+### 8.2 Signature Types
 
-#### 7.2.1 SignatureType Field
+This section describes signature types used in the package format.
+
+#### 8.2.1 SignatureType Field
 
 - **Size**: 4 bytes (32-bit unsigned integer)
 - **Purpose**: Identify the signature algorithm used
@@ -732,7 +999,7 @@ The signature validates all content up to its creation point, including its own 
   - 0x04: X.509 (X.509 Certificate-based signature)
   - 0x05-0xFFFFFFFF: Reserved for future signature types
 
-#### 7.2.2 SignatureFlags Field
+#### 8.2.2 SignatureFlags Field
 
 - **Size**: 4 bytes (32-bit unsigned integer)
 - **Purpose**: Signature-specific metadata and options
@@ -741,14 +1008,14 @@ The signature validates all content up to its creation point, including its own 
   - Bit 15-8: Signature features (bit 7=has timestamp, bit 6=has metadata, bit 5=has chain validation, bit 4=has revocation, bit 3=has expiration, bit 2-0=reserved)
   - Bit 7-0: Signature status (bit 7=valid, bit 6=verified, bit 5=trusted, bit 4-0=reserved)
 
-#### 7.2.3 SignatureTimestamp Field
+#### 8.2.3 SignatureTimestamp Field
 
 - **Size**: 4 bytes (32-bit unsigned integer)
 - **Purpose**: Timestamp when the signature was created
 - **Format**: Unix timestamp in nanoseconds
 - **Range**: 0-4294967295 (Unix nanoseconds)
 
-#### 7.2.4 CommentLength Field
+#### 8.2.4 CommentLength Field
 
 - **Size**: 2 bytes (16-bit unsigned integer)
 - **Purpose**: Length of the signature comment in bytes
@@ -756,14 +1023,14 @@ The signature validates all content up to its creation point, including its own 
 - **Default Value**: 0 (no comment)
 - **Security Note**: Comments are included in signature validation along with all signature metadata, so they cannot be modified without invalidating the signature
 
-### 7.3 Signature Data Sizes
+### 8.3 Signature Data Sizes
 
 - **ML-DSA**: ~2,420-4,595 bytes (depending on security level)
 - **SLH-DSA**: ~7,856-17,088 bytes (depending on security level)
 - **PGP**: Variable size (typically 256-512 bytes)
 - **X.509**: Variable size (typically 256-4096 bytes)
 
-### 7.4 Cross-References
+### 8.4 Signature Cross-References
 
 For signature implementation details, see:
 

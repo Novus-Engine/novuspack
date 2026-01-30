@@ -1,5 +1,44 @@
 # NovusPack Technical Specifications - File Types System
 
+- [0. Overview](#0-overview)
+  - [0.1 Cross-References](#01-cross-references)
+- [1. FileType System Specification](#1-filetype-system-specification)
+  - [1.1 FileType Range Architecture](#11-filetype-range-architecture)
+  - [1.2 Special File Naming Strategy](#12-special-file-naming-strategy)
+    - [1.2.1 Unique Extensions](#121-unique-extensions)
+- [2. Range-Based Category Queries](#2-range-based-category-queries)
+  - [2.1 Category Checking Functions](#21-category-checking-functions)
+    - [2.1.1 IsBinaryFile Function](#211-isbinaryfile-function)
+    - [2.1.2 IsTextFile Function](#212-istextfile-function)
+    - [2.1.3 IsScriptFile Function](#213-isscriptfile-function)
+    - [2.1.4 IsConfigFile Function](#214-isconfigfile-function)
+    - [2.1.5 IsImageFile Function](#215-isimagefile-function)
+    - [2.1.6 IsAudioFile Function](#216-isaudiofile-function)
+    - [2.1.7 IsVideoFile Function](#217-isvideofile-function)
+    - [2.1.8 IsSystemFile Function](#218-issystemfile-function)
+    - [2.1.9 IsSpecialFile Function](#219-isspecialfile-function)
+  - [2.2 Compression Integration](#22-compression-integration)
+    - [2.2.1 SelectCompressionType Function](#221-selectcompressiontype-function)
+- [3. FileType API](#3-filetype-api)
+  - [3.1 FileType Type](#31-filetype-type)
+  - [3.2 FileType Constants Ranges](#32-filetype-constants-ranges)
+  - [3.3 Specific FileType Constants](#33-specific-filetype-constants)
+    - [3.3.1 Binary File Types (0-999)](#331-binary-file-types-0-999)
+    - [3.3.2 Text File Types (1000-1999)](#332-text-file-types-1000-1999)
+    - [3.3.3 Script File Types (2000-3999)](#333-script-file-types-2000-3999)
+    - [3.3.4 Config File Types (4000-4999)](#334-config-file-types-4000-4999)
+    - [3.3.5 Image File Types (5000-6999)](#335-image-file-types-5000-6999)
+    - [3.3.6 Audio File Types (7000-7999)](#336-audio-file-types-7000-7999)
+    - [3.3.7 Video File Types (8000-9999)](#337-video-file-types-8000-9999)
+    - [3.3.8 System File Types (10000-10999)](#338-system-file-types-10000-10999)
+    - [3.3.9 Special File Types (65000-65535)](#339-special-file-types-65000-65535)
+  - [3.4 FileType Detection Functions](#34-filetype-detection-functions)
+    - [3.4.1 DetermineFileType Function](#341-determinefiletype-function)
+    - [3.4.2 SelectCompressionType Function (FileType Detection)](#342-selectcompressiontype-function-filetype-detection)
+- [4. FileType Detection Algorithm](#4-filetype-detection-algorithm)
+  - [4.1 Detection Process](#41-detection-process)
+    - [4.1.1 DetermineFileType Function (Detection Process)](#411-determinefiletype-function-detection-process)
+
 ---
 
 ## 0. Overview
@@ -10,17 +49,17 @@ This document defines the comprehensive file type system, detection algorithms, 
 
 - [Main Index](_main.md) - Central navigation for all NovusPack specifications
 - [Testing Requirements](testing.md) - Comprehensive testing requirements and validation
-- [API Signatures Index](api_func_signatures_index.md) - Complete index of all functions, types, and structures
-- [Package File Format](package_file_format.md) - .npk format and file entry structure
+- [Go API Definitions Index](api_go_defs_index.md) - Complete index of all Go API functions, types, and structures
+- [Package File Format](package_file_format.md) - .nvpk format and FileEntry structure
 - [Metadata System](metadata.md) - Package metadata and tags system
 
 ---
 
-## 1. File Type System Specification
+## 1. FileType System Specification
 
 The NovusPack file type system provides comprehensive semantic categorization of files within packages using a range-based architecture. This enables specialized handling, validation, and processing based on file content and purpose.
 
-### 1.1 File Type Range Architecture
+### 1.1 FileType Range Architecture
 
 | Range           | Category          | Type IDs      | Description                             | Special Handling                        |
 | --------------- | ----------------- | ------------- | --------------------------------------- | --------------------------------------- |
@@ -41,85 +80,125 @@ The NovusPack file type system provides comprehensive semantic categorization of
 
 Special package files use a systematic naming convention to ensure uniqueness:
 
-- **Prefix**: `__NPK_` - Clearly identifies NovusPack special files
+- **Prefix**: `__NVPK_` - Clearly identifies NovusPack special files
 - **Type Code**: `META`, `MAN`, `IDX`, `SIG` - Abbreviated type identifier
 - **Type ID**: `240`, `241`, `242`, `243` - Numeric type identifier
 - **Suffix**: `__` - Delimiter for consistency
-- **Extension**: `.npk*` - Unique extension for each type
+- **Extension**: `.nvpk*` - Unique extension for each type
 
-#### 1.3.1 Unique Extensions
+#### 1.2.1 Unique Extensions
 
-- **`.npkmeta`**: Package metadata files (YAML content)
-- **`.npkman`**: Package manifest files (YAML content)
-- **`.npkidx`**: Package index files (YAML content)
-- **`.npksig`**: Digital signature files (binary content)
+- **`.nvpkmeta`**: Package metadata files (YAML content)
+- **`.nvpkman`**: Package manifest files (YAML content)
+- **`.nvpkidx`**: Package index files (YAML content)
+- **`.nvpksig`**: Digital signature files (binary content)
 
 ## 2. Range-Based Category Queries
 
+This section describes range-based category queries for file types.
+
 ### 2.1 Category Checking Functions
+
+This section describes category checking functions for file types.
+
+#### 2.1.1 IsBinaryFile Function
 
 ```go
 // IsBinaryFile returns true if file type is within binary file range (0-999)
 func IsBinaryFile(fileType FileType) bool
+```
 
+#### 2.1.2 IsTextFile Function
+
+```go
 // IsTextFile returns true if file type is within text file range (1000-1999)
 func IsTextFile(fileType FileType) bool
+```
 
+#### 2.1.3 IsScriptFile Function
+
+```go
 // IsScriptFile returns true if file type is within script file range (2000-3999)
 func IsScriptFile(fileType FileType) bool
+```
 
+#### 2.1.4 IsConfigFile Function
+
+```go
 // IsConfigFile returns true if file type is within config file range (4000-4999)
 func IsConfigFile(fileType FileType) bool
+```
 
+#### 2.1.5 IsImageFile Function
+
+```go
 // IsImageFile returns true if file type is within image file range (5000-6999)
 func IsImageFile(fileType FileType) bool
+```
 
+#### 2.1.6 IsAudioFile Function
+
+```go
 // IsAudioFile returns true if file type is within audio file range (7000-7999)
 func IsAudioFile(fileType FileType) bool
+```
 
+#### 2.1.7 IsVideoFile Function
+
+```go
 // IsVideoFile returns true if file type is within video file range (8000-9999)
 func IsVideoFile(fileType FileType) bool
+```
 
+#### 2.1.8 IsSystemFile Function
+
+```go
 // IsSystemFile returns true if file type is within system file range (10000-10999)
 func IsSystemFile(fileType FileType) bool
+```
 
+#### 2.1.9 IsSpecialFile Function
+
+```go
 // IsSpecialFile returns true if file type is within special file range (65000-65535)
 func IsSpecialFile(fileType FileType) bool
 ```
 
 ### 2.2 Compression Integration
 
-#### 2.2.1 SelectCompressionType
+This section describes compression integration with file type detection.
+
+#### 2.2.1 SelectCompressionType Function
 
 ```go
-    //  SelectCompressionType selects the appropriate compression algorithm based on file type
-    //  Skip compression for already compressed formats: Returns CompressionNone for JPEG, PNG, GIF, MP3, MP4, OGG, FLAC files
-    //  Special file handling: Uses IsSpecialFile() to check for special file types
-    //    - FileTypeSignature: Never compress signature files (returns CompressionNone)
-    //    - FileTypeMetadata, FileTypeManifest, FileTypeIndex: Always compress YAML special files (returns CompressionZstd)
-    //    - Other special files: Default compression (returns CompressionZstd)
-    //  Text-based files: Returns CompressionZstd for text, script, and config files (good compression for text)
-    //  Binary media files: Returns CompressionLZ4 for image, audio, and video files (fast compression for binary data)
-    //  Default: Returns CompressionZstd as default compression method
+    //  SelectCompressionType selects the appropriate compression algorithm based on file type.
+    //  Skip compression for already compressed formats: Returns CompressionNone for JPEG, PNG, GIF, MP3, MP4, OGG, FLAC files.
+    //  Special file handling: Uses IsSpecialFile() to check for special file types:
+    //    - FileTypeSignature: Never compress signature files (returns CompressionNone).
+    //    - FileTypeMetadata, FileTypeManifest, FileTypeIndex: Always compress YAML special files (returns CompressionZstd).
+    //    - Other special files: Default compression (returns CompressionZstd).
+    //  Text-based files: Returns CompressionZstd for text, script, and config files (good compression for text).
+    //  Binary media files: Returns CompressionLZ4 for image, audio, and video files (fast compression for binary data).
+    //  Default: Returns CompressionZstd as default compression method.
 func SelectCompressionType(data []byte, fileType FileType) uint8
 ```
 
-## 3. File Type API
+## 3. FileType API
 
-### 3.1 File Type Management
+This section describes the FileType API for file type management.
 
-#### 3.1.1 FileType Definition
+### 3.1 FileType Type
 
 ```go
-    //  FileType represents a file type identifier
-    //  Note: This is the authoritative definition. All other references should link to this document.
+//  FileType represents a file type identifier
+//  Note: This is the authoritative definition. All other references should link to this document.
 type FileType uint16
 ```
 
-##### 3.1.1.1 File Type Range Constants
+### 3.2 FileType Constants Ranges
 
 ```go
-    //  File type range constants (2-byte: 0-65535)
+//  File type range constants (2-byte: 0-65535)
 const (
     //  Binary Files (0-999)
     FileTypeBinaryStart = 0
@@ -159,9 +238,11 @@ const (
 )
 ```
 
-##### 3.1.1.2 Specific File Type Constants
+### 3.3 Specific FileType Constants
 
-###### 3.1.1.2.1 Binary File Types (0-999)
+This section lists specific FileType constants defined in the API.
+
+#### 3.3.1 Binary File Types (0-999)
 
 ```go
 const (
@@ -172,7 +253,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.2 Text File Types (1000-1999)
+#### 3.3.2 Text File Types (1000-1999)
 
 ```go
 const (
@@ -187,7 +268,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.3 Script File Types (2000-3999)
+#### 3.3.3 Script File Types (2000-3999)
 
 ```go
 const (
@@ -234,7 +315,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.4 Config File Types (4000-4999)
+#### 3.3.4 Config File Types (4000-4999)
 
 ```go
 const (
@@ -250,7 +331,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.5 Image File Types (5000-6999)
+#### 3.3.5 Image File Types (5000-6999)
 
 ```go
 const (
@@ -287,7 +368,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.6 Audio File Types (7000-7999)
+#### 3.3.6 Audio File Types (7000-7999)
 
 ```go
 const (
@@ -314,7 +395,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.7 Video File Types (8000-9999)
+#### 3.3.7 Video File Types (8000-9999)
 
 ```go
 const (
@@ -351,7 +432,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.8 System File Types (10000-10999)
+#### 3.3.8 System File Types (10000-10999)
 
 ```go
 const (
@@ -361,7 +442,7 @@ const (
 )
 ```
 
-###### 3.1.1.2.9 Special File Types (65000-65535)
+#### 3.3.9 Special File Types (65000-65535)
 
 ```go
 const (
@@ -372,17 +453,19 @@ const (
 )
 ```
 
-### 3.2 File Type Detection Functions
+### 3.4 FileType Detection Functions
 
-```go
-    //  DetermineFileType detects file type from name and content
-func DetermineFileType(name string, data []byte) FileType
+This section describes file type detection functions.
 
-    //  SelectCompressionType selects compression based on file type
-func SelectCompressionType(data []byte, fileType FileType) uint8
-```
+#### 3.4.1 DetermineFileType Function
 
-## 4. File Type Detection Algorithm
+See [DetermineFileType Function (Detection Process)](file_type_system.md#411-determinefiletype-function-detection-process) for the complete function definition and detailed detection algorithm documentation.
+
+#### 3.4.2 SelectCompressionType Function (FileType Detection)
+
+See [SelectCompressionType Function](file_type_system.md#221-selectcompressiontype-function) for the complete function definition with detailed behavior documentation.
+
+## 4. FileType Detection Algorithm
 
 The `DetermineFileType` function uses a sophisticated multi-stage detection process:
 
@@ -395,7 +478,9 @@ The `DetermineFileType` function uses a sophisticated multi-stage detection proc
 
 ### 4.1 Detection Process
 
-#### 4.1.1 DetermineFileType
+This section describes the file type detection process.
+
+#### 4.1.1 DetermineFileType Function (Detection Process)
 
 ```go
     //  DetermineFileType uses a sophisticated multi-stage detection process to identify file types

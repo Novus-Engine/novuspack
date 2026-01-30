@@ -8,60 +8,162 @@
   - [0.2 Context Integration](#02-context-integration)
 - [1. Package Compression Overview](#1-package-compression-overview)
   - [1.1 Compression Scope](#11-compression-scope)
+    - [1.1.1 Compressed Content](#111-compressed-content)
+    - [1.1.2 Uncompressed Content](#112-uncompressed-content)
   - [1.2 Compression Types](#12-compression-types)
-  - [1.3 Compression Information Structure](#13-compression-information-structure)
+  - [1.3 Compression Information Structure](#13-packagecompressioninfo-struct)
   - [1.4 Compression Constraints](#14-compression-constraints)
 - [2. Strategy Pattern Interfaces](#2-strategy-pattern-interfaces)
-  - [2.1 Compression Strategy Interface](#21-compression-strategy-interface)
+  - [2.1 CompressionStrategy Interface](#21-compressionstrategy-interface)
+    - [2.1.1 CompressionStrategy Interface Definition](#211-compressionstrategy-interface-definition)
+    - [2.1.2 ByteCompressionStrategy Interface](#212-bytecompressionstrategy-interface)
+    - [2.1.3 AdvancedCompressionStrategy Interface](#213-advancedcompressionstrategy-interface)
+    - [2.1.4 StreamConfig Structure](#214-streamconfig-structure)
+    - [2.1.5 MemoryStrategy Type](#215-memorystrategy-type)
   - [2.2 Built-in Compression Strategies](#22-built-in-compression-strategies)
+    - [2.2.1 ZstandardStrategy Structure](#221-zstandardstrategy-structure)
+    - [2.2.2 LZ4Strategy Structure](#222-lz4strategy-structure)
+    - [2.2.3 LZMAStrategy Structure](#223-lzmastrategy-structure)
+    - [2.2.4 CompressionJob Structure](#224-compressionjob-structure)
 - [3. Interface Granularity and Composition](#3-interface-granularity-and-composition)
-  - [3.1 Compression Information Interface](#31-compression-information-interface)
-  - [3.2 Compression Operations Interface](#32-compression-operations-interface)
-  - [3.3 Compression Streaming Interface](#33-compression-streaming-interface)
-  - [3.4 Compression File Operations Interface](#34-compression-file-operations-interface)
+  - [3.1 Compression Information Interface](#31-compressioninfo-interface)
+  - [3.2 CompressionOperations Interface](#32-compressionoperations-interface)
+  - [3.3 CompressionStreaming Interface](#33-compressionstreaming-interface)
+  - [3.4 CompressionFileOperations Interface](#34-compressionfileoperations-interface)
   - [3.5 Generic Compression Interface](#35-generic-compression-interface)
 - [4. In-Memory Compression Methods](#4-in-memory-compression-methods)
-  - [4.1 CompressPackage](#41-compresspackage)
-  - [4.2 DecompressPackage](#42-decompresspackage)
+  - [4.1 CompressPackage](#41-packagecompresspackage-method)
+    - [4.1.1 CompressPackage Purpose](#411-compresspackage-purpose)
+    - [4.1.2 CompressPackage Parameters](#412-compresspackage-parameters)
+    - [4.1.3 CompressPackage Behavior](#413-compresspackage-behavior)
+    - [4.1.4 CompressPackage Error Conditions](#414-compresspackage-error-conditions)
+  - [4.2 DecompressPackage](#42-packagedecompresspackage-method)
+    - [4.2.1 DecompressPackage Purpose](#421-decompresspackage-purpose)
+    - [4.2.2 DecompressPackage Parameters](#422-decompresspackage-parameters)
+    - [4.2.3 DecompressPackage Behavior](#423-decompresspackage-behavior)
+    - [4.2.4 DecompressPackage Error Conditions](#424-decompresspackage-error-conditions)
 - [5. Streaming Compression Methods](#5-streaming-compression-methods)
-  - [5.1 CompressPackageStream](#51-compresspackagestream)
-  - [5.2 DecompressPackageStream](#52-decompresspackagestream)
+  - [5.1 CompressPackageStream](#51-packagecompresspackagestream-method)
+    - [5.1.1 CompressPackageStream Purpose](#511-compresspackagestream-purpose)
+    - [5.1.2 CompressPackageStream Parameters](#512-compresspackagestream-parameters)
+    - [5.1.3 CompressPackageStream Behavior](#513-compresspackagestream-behavior)
+    - [5.1.4 CompressPackageStream Error Conditions](#514-compresspackagestream-error-conditions)
+    - [5.1.5 Configuration Usage Patterns](#515-configuration-usage-patterns)
+  - [5.2 DecompressPackageStream](#52-packagedecompresspackagestream-method)
+    - [5.2.1 DecompressPackageStream Purpose](#521-decompresspackagestream-purpose)
+    - [5.2.2 DecompressPackageStream Parameters](#522-decompresspackagestream-parameters)
+    - [5.2.3 DecompressPackageStream Behavior](#523-decompresspackagestream-behavior)
+    - [5.2.4 DecompressPackageStream Error Conditions](#524-decompresspackagestream-error-conditions)
 - [6. File-Based Compression Methods](#6-file-based-compression-methods)
-  - [6.1 CompressPackageFile](#61-compresspackagefile)
-  - [6.2 DecompressPackageFile](#62-decompresspackagefile)
+  - [6.1 CompressPackageFile](#61-packagecompresspackagefile-method)
+    - [6.1.1 CompressPackageFile Purpose](#611-compresspackagefile-purpose)
+    - [6.1.2 CompressPackageFile Parameters](#612-compresspackagefile-parameters)
+    - [6.1.3 CompressPackageFile Behavior](#613-compresspackagefile-behavior)
+    - [6.1.4 CompressPackageFile Error Conditions](#614-compresspackagefile-error-conditions)
+  - [6.2 DecompressPackageFile](#62-packagedecompresspackagefile-method)
+    - [6.2.1 DecompressPackageFile Purpose](#621-decompresspackagefile-purpose)
+    - [6.2.2 DecompressPackageFile Parameters](#622-decompresspackagefile-parameters)
+    - [6.2.3 DecompressPackageFile Behavior](#623-decompresspackagefile-behavior)
+    - [6.2.4 DecompressPackageFile Error Conditions](#624-decompresspackagefile-error-conditions)
 - [7. Compression Information and Status](#7-compression-information-and-status)
-  - [7.1 Compression Information Structure](#71-compression-information-structure)
+  - [7.1 Compression Information Structure Reference](#71-compression-information-structure-reference)
   - [7.2 Compression Status Methods](#72-compression-status-methods)
+    - [7.2.1 Package Compression Query Methods](#721-package-compression-query-methods)
+    - [7.2.2 Package GetPackageCompressionInfo Method](#722-packagegetpackagecompressioninfo-method)
+    - [7.2.3 Package IsPackageCompressed Method](#723-packageispackagecompressed-method)
+    - [7.2.4 Package GetPackageCompressionType Method](#724-packagegetpackagecompressiontype-method)
+    - [7.2.5 Package GetPackageCompressionRatio Method](#725-packagegetpackagecompressionratio-method)
+    - [7.2.6 Package GetPackageOriginalSize Method](#726-packagegetpackageoriginalsize-method)
+    - [7.2.7 Package GetPackageCompressedSize Method](#727-packagegetpackagecompressedsize-method)
+    - [7.2.8 Package Compression Control Methods](#728-package-compression-control-methods)
+    - [7.2.9 Metadata Index Methods](#729-metadata-index-methods)
+    - [7.2.10 Generic Compression Methods](#7210-generic-compression-methods)
   - [7.3 Internal Compression Methods](#73-internal-compression-methods)
+    - [7.3.1 Package compressPackageContent Method](#731-packagecompresspackagecontent-method)
+    - [7.3.2 Package decompressPackageContent Method](#732-packagedecompresspackagecontent-method)
 - [8. Concurrency Patterns and Thread Safety](#8-concurrency-patterns-and-thread-safety)
   - [8.1 Thread Safety Guarantees](#81-thread-safety-guarantees)
+    - [8.1.1 Thread Safety None Mode](#811-thread-safety-none-mode)
+    - [8.1.2 Thread Safety Read-Only Mode](#812-thread-safety-read-only-mode)
+    - [8.1.3 Thread Safety Concurrent Mode](#813-thread-safety-concurrent-mode)
+    - [8.1.4 Thread Safety Full Mode](#814-thread-safety-full-mode)
   - [8.2 Worker Pool Management](#82-worker-pool-management)
+    - [8.2.1 CompressionWorkerPool Structure](#821-compressionworkerpool-structure)
+    - [8.2.2 CompressionWorkerPool CompressConcurrently Method](#822-compressionworkerpooltcompressconcurrently-method)
+    - [8.2.3 CompressionWorkerPool DecompressConcurrently Method](#823-compressionworkerpooltdecompressconcurrently-method)
+    - [8.2.4 CompressionWorkerPool GetCompressionStats Method](#824-compressionworkerpooltgetcompressionstats-method)
   - [8.3 Concurrent Compression Methods](#83-concurrent-compression-methods)
+    - [8.3.1 Package CompressPackageConcurrent Method](#831-packagecompresspackageconcurrent-method)
+    - [8.3.2 Package DecompressPackageConcurrent Method](#832-packagedecompresspackageconcurrent-method)
   - [8.4 Resource Management](#84-resource-management)
+    - [8.4.1 CompressionResourcePool Structure](#841-compressionresourcepool-structure)
+    - [8.4.2 CompressionResource Structure](#842-compressionresource-structure)
 - [9. Compression Configuration Patterns](#9-compression-configuration-patterns)
   - [9.1 Compression-Specific Configuration](#91-compression-specific-configuration)
+    - [9.1.1 CompressionConfig Structure](#911-compressionconfig-structure)
+    - [9.1.2 CompressionConfigBuilder Structure](#912-compressionconfigbuilder-structure)
   - [9.2 Compression Validation Patterns](#92-compression-validation-patterns)
+    - [9.2.1 CompressionValidator Structure](#921-compressionvalidator-structure)
+    - [9.2.2 CompressionValidationRule Structure](#922-compressionvalidationrule-structure)
 - [10. Compression and Signing Relationship](#10-compression-and-signing-relationship)
   - [10.1 Signing Compressed Packages](#101-signing-compressed-packages)
+    - [10.1.1 Supported Operation](#1011-supported-operation)
+    - [10.1.2 Signing Compressed Packages Process](#1012-signing-compressed-packages-process)
+    - [10.1.3 Signing Compressed Packages Benefits](#1013-signing-compressed-packages-benefits)
   - [10.2 Compressing Signed Packages](#102-compressing-signed-packages)
-- [11. Compression Strategy Selection](#11-compression-strategy-selection)
+    - [10.2.1 Not Supported](#1021-not-supported)
+    - [10.2.2 Compressing Signed Packages Reasoning](#1022-compressing-signed-packages-reasoning)
+    - [10.2.3 Compressing Signed Packages Workflow](#1023-compressing-signed-packages-workflow)
+- [11. CompressionStrategy Selection](#11-compressionstrategy-selection)
   - [11.1 Compression Type Selection](#111-compression-type-selection)
+    - [11.1.1 Zstandard Compression (Type 1)](#1111-zstandard-compression-type-1)
+    - [11.1.2 LZ4 Compression (Type 2)](#1112-lz4-compression-type-2)
+    - [11.1.3 LZMA Compression (Type 3)](#1113-lzma-compression-type-3)
   - [11.2 Compression Decision Matrix](#112-compression-decision-matrix)
+    - [11.2.1 User Guidance Matrix](#1121-user-guidance-matrix)
+    - [11.2.2 Automatic Compression Type Selection](#1122-automatic-compression-type-selection)
   - [11.3 Compression Workflow Options](#113-compression-workflow-options)
+    - [11.3.1 Option 1: Compress Before Writing](#1131-option-1-compress-before-writing)
+    - [11.3.2 Option 2: Compress and Write in One Step](#1132-option-2-compress-and-write-in-one-step)
+    - [11.3.3 Option 3: Write with Compression](#1133-option-3-write-with-compression)
+    - [11.3.4 Option 4: Stream Compression for Large Packages](#1134-option-4-stream-compression-for-large-packages)
+    - [11.3.5 Option 5: Advanced Streaming Compression](#1135-option-5-advanced-streaming-compression)
+    - [11.3.6 Option 6: Custom Memory Management](#1136-option-6-custom-memory-management)
 - [12. Error Handling](#12-error-handling)
   - [12.1 Common Error Conditions](#121-common-error-conditions)
+    - [12.1.1 Common Error Conditions Compression Errors](#1211-common-error-conditions-compression-errors)
+    - [12.1.2 Common Error Conditions Decompression Errors](#1212-common-error-conditions-decompression-errors)
+    - [12.1.3 Common Error Conditions File Operation Errors](#1213-common-error-conditions-file-operation-errors)
   - [12.2 Error Recovery](#122-error-recovery)
+    - [12.2.1 Error Recovery Compression Failure](#1221-error-recovery-compression-failure)
+    - [12.2.2 Error Recovery Decompression Failure](#1222-error-recovery-decompression-failure)
 - [13. Modern Best Practices](#13-modern-best-practices)
   - [13.1 Industry Standards Alignment](#131-industry-standards-alignment)
+    - [13.1.1 Streaming Compression (Universal Standard)](#1311-streaming-compression-universal-standard)
+    - [13.1.2 Parallel Processing (Performance Critical)](#1312-parallel-processing-performance-critical)
+    - [13.1.3 Chunked Processing (Industry Standard)](#1313-chunked-processing-industry-standard)
+    - [13.1.4 Memory Management (Resource Critical)](#1314-memory-management-resource-critical)
   - [13.2 Intelligent Defaults and Memory Management](#132-intelligent-defaults-and-memory-management)
-  - [13.3 Performance Considerations](#133-performance-considerations)
+    - [13.2.1 MemoryStrategy Defaults](#1321-memorystrategy-defaults)
+    - [13.2.2 Auto-Detection Logic](#1322-auto-detection-logic)
+    - [13.2.3 Adaptive Memory Management](#1323-adaptive-memory-management)
+  - [13.3 Performance Considerations (CompressionOperations)](#133-performance-considerations-compressionoperations)
   - [13.4 Memory Usage](#134-memory-usage)
+    - [13.4.1 Compression Memory Usage](#1341-compression-memory-usage)
+    - [13.4.2 Decompression Memory Usage](#1342-decompression-memory-usage)
   - [13.5 CPU Usage](#135-cpu-usage)
+    - [13.5.1 CPU Usage Compression](#1351-cpu-usage-compression)
+    - [13.5.2 CPU Usage Decompression](#1352-cpu-usage-decompression)
   - [13.6 I/O Considerations](#136-io-considerations)
+    - [13.6.1 I/O Considerations File-Based Operations](#1361-io-considerations-file-based-operations)
+    - [13.6.2 ~~I/O Considerations Network Operations~~ (REMOVED)](#1362-io-considerations-network-operations-removed)
 - [14. Structured Error System](#14-structured-error-system)
-  - [14.1 Structured Error System](#141-structured-error-system)
+  - [14.1 Structured Error System (Compression API)](#141-structured-error-system-compression-api)
   - [14.2 Common Compression Error Types](#142-common-compression-error-types)
+    - [14.2.1 Compression Error Types](#1421-compression-error-types)
   - [14.3 Structured Error Examples](#143-structured-error-examples)
+    - [14.3.1 Creating Compression Errors](#1431-creating-compression-errors)
+    - [14.3.2 Error Handling Patterns](#1432-error-handling-patterns)
 
 ## 0. Overview
 
@@ -71,7 +173,8 @@ This document defines the NovusPack package compression API, providing methods f
 
 - [Core Package Interface API](api_core.md) - Package operations and compression
 - [Package Writing API](api_writing.md) - SafeWrite, FastWrite, and write strategy selection
-- [File Format Specifications](package_file_format.md) - .npk format structure and signature implementation
+- [File Format Specifications](package_file_format.md) - .nvpk format structure and signature implementation
+- [File Compression API](api_file_mgmt_compression.md) - Individual file compression operations (FileEntry.Compress, Package.CompressFile, etc.)
 - [Security and Encryption](security.md) - Comprehensive security architecture and encryption implementation
 - [Generic Types and Patterns](api_generics.md) - Generic concurrency patterns and type-safe configuration
 - [Streaming and Buffer Management](api_streaming.md) - Streaming concurrency patterns and buffer management
@@ -89,19 +192,36 @@ This follows 2025 Go best practices and ensures the API is compatible with moder
 
 ## 1. Package Compression Overview
 
-Package compression in NovusPack compresses the package content while preserving the header, package comment, and signatures in an uncompressed state for direct access.
+Package compression in NovusPack compresses package content using separate compression for metadata and data blocks, while preserving the header, metadata index, package comment, and signatures in an uncompressed state for direct access.
+This enables selective decompression of metadata without requiring full package decompression.
 
 ### 1.1 Compression Scope
 
+This section describes the scope of compression operations.
+
 #### 1.1.1 Compressed Content
 
-- File entries (directory structure)
-- File data (actual file contents)
-- Package index
+When package compression is enabled (header flags bits 15-8 != 0), the following content is compressed:
+
+- **FileEntry metadata**: Each FileEntry (64 bytes + variable data) is compressed individually using LZ4 compression
+- **File data**: Each file's data is compressed individually using the package compression type (Zstd, LZ4, or LZMA)
+- **File index**: The regular file index is compressed as a single block using LZ4 compression
+
+**Note**: Package compression compresses all file data as part of the package structure.
+For compressing individual files within a package (without compressing the entire package), see [File Compression API](api_file_mgmt_compression.md).
+
+Special metadata files (types 65000-65535) are handled as regular FileEntry objects:
+
+- FileEntry metadata compressed with LZ4 (same as all FileEntry metadata)
+- File data (YAML content) compressed with LZ4 for fast access
+  - Note that this is only a requirement for fully-compressed packages; special metadata files can also be stored uncompressed when NOT implementing full package compression
 
 #### 1.1.2 Uncompressed Content
 
+The following content remains uncompressed for direct access:
+
 - Package header (see [Package File Format - Package Header](package_file_format.md#2-package-header))
+- Metadata index (see [Package File Format - Metadata Index Section](package_file_format.md#5-metadata-index-section)) - enables fast access to compressed blocks
 - Package comment
 - Digital signatures
 
@@ -116,7 +236,7 @@ const (
 )
 ```
 
-### 1.3 Compression Information Structure
+### 1.3 PackageCompressionInfo Struct
 
 ```go
 // PackageCompressionInfo contains package compression details
@@ -134,34 +254,55 @@ type PackageCompressionInfo struct {
 - **Signed Package Restriction**: Packages with signatures cannot be compressed
 - **Compression Before Signing**: Packages must be compressed before signing
 - **Header Immutability**: Once compressed, the header becomes immutable
+- **Metadata Index Location**: Metadata index is located at fixed offset 112 bytes (immediately after header) when compression is enabled
 
 ## 2. Strategy Pattern Interfaces
 
 The compression API supports pluggable compression algorithms through the strategy pattern.
 
-### 2.1 Compression Strategy Interface
+### 2.1 CompressionStrategy Interface
+
+This section describes the CompressionStrategy interface.
+
+#### 2.1.1 CompressionStrategy Interface Definition
 
 ```go
-// CompressionStrategy implements Strategy[[]byte, []byte] with generic support
+// CompressionStrategy extends Strategy[T, T] for compression operations
+// Both input and output are the same type T
+// The Strategy.Type() method returns "compression" as the category
 type CompressionStrategy[T any] interface {
+    Strategy[T, T]  // Extends the generic Strategy interface
+
     Compress(ctx context.Context, data T) (T, error)
     Decompress(ctx context.Context, data T) (T, error)
-    Type() CompressionType
+    CompressionType() CompressionType  // Returns the specific compression algorithm type
     Name() string
 }
+```
 
+#### 2.1.2 ByteCompressionStrategy Interface
+
+```go
 // ByteCompressionStrategy is the concrete implementation for []byte data
 type ByteCompressionStrategy interface {
     CompressionStrategy[[]byte]
 }
+```
 
+#### 2.1.3 AdvancedCompressionStrategy Interface
+
+```go
 // AdvancedCompressionStrategy for compression with additional validation and metrics
 type AdvancedCompressionStrategy[T any] interface {
     CompressionStrategy[T]
     ValidateInput(ctx context.Context, data T) error
     GetCompressionRatio(ctx context.Context, original T, compressed T) float64
 }
+```
 
+#### 2.1.4 StreamConfig Structure
+
+```go
 // StreamConfig handles streaming compression for files of any size
 type StreamConfig struct {
     // Basic settings
@@ -189,7 +330,11 @@ type StreamConfig struct {
     ConcurrencyConfig   *ConcurrencyConfig // Thread safety and worker management
     ThreadSafetyMode    ThreadSafetyMode   // Thread safety guarantees
 }
+```
 
+#### 2.1.5 MemoryStrategy Type
+
+```go
 // MemoryStrategy defines memory management approach
 type MemoryStrategy int
 
@@ -203,25 +348,41 @@ const (
 
 ### 2.2 Built-in Compression Strategies
 
+This section describes built-in compression strategy implementations.
+
+#### 2.2.1 ZstandardStrategy Structure
+
 ```go
 // Zstandard compression strategy with generic support
 type ZstandardStrategy[T any] struct {
     level    int
     strategy CompressionStrategy[T]
 }
+```
 
+#### 2.2.2 LZ4Strategy Structure
+
+```go
 // LZ4 compression strategy with generic support
 type LZ4Strategy[T any] struct {
     level    int
     strategy CompressionStrategy[T]
 }
+```
 
+#### 2.2.3 LZMAStrategy Structure
+
+```go
 // LZMA compression strategy with generic support
 type LZMAStrategy[T any] struct {
     level    int
     strategy CompressionStrategy[T]
 }
+```
 
+#### 2.2.4 CompressionJob Structure
+
+```go
 // CompressionJob represents a unit of work for compression (extends Job)
 type CompressionJob[T any] struct {
     *Job[T]
@@ -234,20 +395,20 @@ type CompressionJob[T any] struct {
 
 The compression API uses focused interfaces to provide clear separation of concerns and enable flexible composition.
 
-### 3.1 Compression Information Interface
+### 3.1 CompressionInfo Interface
 
 ```go
 // CompressionInfo provides read-only access to compression information
 type CompressionInfo interface {
     GetCompressionInfo(ctx context.Context) PackageCompressionInfo
     IsCompressed() bool
-    GetCompressionType() (uint8, bool) // Returns (type, isSet)
-    GetCompressionRatio() (float64, bool) // Returns (ratio, isSet)
+    GetCompressionType() (uint8, error) // Returns compression type, or error if not compressed
+    GetCompressionRatio() (float64, error) // Returns compression ratio, or error if not compressed
     CanCompress() bool
 }
 ```
 
-### 3.2 Compression Operations Interface
+### 3.2 CompressionOperations Interface
 
 ```go
 // CompressionOperations provides basic compression/decompression operations
@@ -258,7 +419,7 @@ type CompressionOperations interface {
 }
 ```
 
-### 3.3 Compression Streaming Interface
+### 3.3 CompressionStreaming Interface
 
 ```go
 // CompressionStreaming provides streaming compression for large packages
@@ -268,7 +429,7 @@ type CompressionStreaming interface {
 }
 ```
 
-### 3.4 Compression File Operations Interface
+### 3.4 CompressionFileOperations Interface
 
 ```go
 // CompressionFileOperations provides file-based compression operations
@@ -278,7 +439,14 @@ type CompressionFileOperations interface {
 }
 ```
 
+**Note**: These methods compress or decompress the entire package structure.
+For compressing individual files within a package (without compressing the entire package), see [File Compression API](api_file_mgmt_compression.md).
+
 ### 3.5 Generic Compression Interface
+
+The `CompressionStrategy[T]` interface extends the generic [Core Generic Types](api_generics.md#1-core-generic-types) pattern for compression-specific operations.
+`CompressionStrategy[T]` embeds `Strategy[T, T]` where both input and output are the same type.
+The `Process` method from `Strategy[T, T]` can be used for compression operations, while `Compress` and `Decompress` provide more specific compression/decompression methods.
 
 ```go
 // Compression provides type-safe compression for any data type
@@ -289,49 +457,61 @@ type Compression[T any] interface {
 }
 ```
 
+**Cross-Reference**: For the base strategy pattern, see [Core Generic Types](api_generics.md#1-core-generic-types).
+
 ## 4. In-Memory Compression Methods
 
 These methods operate on packages in memory without writing to disk.
 
 **Note**: For large packages, consider using [Streaming Compression Methods](#5-streaming-compression-methods) to avoid memory limitations.
 
-### 4.1 CompressPackage
+### 4.1 Package.CompressPackage Method
 
 ```go
 // CompressPackage compresses package content in memory
-// Compresses file entries + data + index (NOT header, comment, or signatures)
+// Compresses file entries and data separately using LZ4 for metadata and specified type for data
+// Compresses file index with LZ4
+// Creates metadata index for fast access (NOT header, metadata index, comment, or signatures)
 // Signed packages cannot be compressed
+// Returns *PackageError on failure
 func (p *Package) CompressPackage(ctx context.Context, compressionType uint8) error
 ```
 
 #### 4.1.1 CompressPackage Purpose
 
-Handle compression/decompression of in-memory packages
+Handle compression/decompression of in-memory packages with separate metadata and data compression.
 
 #### 4.1.2 CompressPackage Parameters
 
 - `ctx`: Context for cancellation and timeout handling
-- `compressionType`: Compression algorithm to use (1-3)
+- `compressionType`: Compression algorithm to use for file data (1-3), metadata always uses LZ4
 
 #### 4.1.3 CompressPackage Behavior
 
-- Compresses file entries + data + index (NOT header, comment, or signatures)
+- Compresses FileEntry metadata individually using LZ4
+- Compresses file data individually using specified compression type (Zstd, LZ4, or LZMA)
+- Compresses special metadata files (types 65000-65535) with LZ4 for fast access
+- Compresses file index with LZ4 as a single block
+- Creates metadata index for fast access to compressed blocks
 - Updates package compression state in memory
 - Returns error if package is signed
-- Updates package header compression flags
+- Updates package header compression flags (bits 15-8)
+- Writes metadata index at fixed offset 112 bytes (immediately after header)
 
 #### 4.1.4 CompressPackage Error Conditions
 
-- Package is already signed
-- Invalid compression type
+- Package is already signed (cannot compress signed packages)
+- Invalid compression type (must be 1-3)
 - Package is already compressed with different type
 - Context cancellation
+- Metadata index creation failure
 
-### 4.2 DecompressPackage
+### 4.2 Package.DecompressPackage Method
 
 ```go
 // DecompressPackage decompresses the package in memory
 // Decompresses all compressed content
+// Returns *PackageError on failure
 func (p *Package) DecompressPackage(ctx context.Context) error
 ```
 
@@ -345,9 +525,10 @@ Decompress package content in memory
 
 #### 4.2.3 DecompressPackage Behavior
 
-- Decompresses all compressed content
+- Decompresses all compressed content (metadata blocks, data blocks, and file index)
 - Updates package compression state in memory
-- Clears package header compression flags
+- Clears package header compression flags (bits 15-8)
+- Removes metadata index (no longer needed when uncompressed)
 - Preserves all other package data
 
 #### 4.2.4 DecompressPackage Error Conditions
@@ -362,16 +543,17 @@ These methods handle compression/decompression of large packages using streaming
 
 **For Large Files**: These methods use temporary files and chunked processing to handle files that exceed available RAM, with adaptive strategies based on configuration.
 
-### 5.1 CompressPackageStream
+### 5.1 Package.CompressPackageStream Method
 
 ```go
 // CompressPackageStream compresses large package content using streaming
 // Uses temporary files and chunked processing to handle files of any size
 // Configuration determines the level of optimization and memory management
+// Returns *PackageError on failure
 func (p *Package) CompressPackageStream(ctx context.Context, compressionType uint8, config *StreamConfig) error
 ```
 
-#### 5.1.1 Purpose
+#### 5.1.1 CompressPackageStream Purpose
 
 Handle compression of large packages using streaming, temporary files, and configurable optimization strategies for files of any size
 
@@ -405,6 +587,8 @@ Handle compression of large packages using streaming, temporary files, and confi
 
 The unified `StreamConfig` supports different usage patterns based on requirements:
 
+##### 5.1.5.1 Simple Usage
+
 **Simple Usage** (basic settings only):
 
 ```go
@@ -414,6 +598,8 @@ config := &StreamConfig{
     TempDir: "",         // System temp
 }
 ```
+
+##### 5.1.5.2 Advanced Usage
 
 **Advanced Usage** (full configuration):
 
@@ -430,15 +616,16 @@ config := &StreamConfig{
 }
 ```
 
-### 5.2 DecompressPackageStream
+### 5.2 Package.DecompressPackageStream Method
 
 ```go
 // DecompressPackageStream decompresses large package content using streaming
 // Uses streaming to manage memory efficiently for large packages
+// Returns *PackageError on failure
 func (p *Package) DecompressPackageStream(ctx context.Context, config *StreamConfig) error
 ```
 
-#### 5.2.1 Purpose
+#### 5.2.1 DecompressPackageStream Purpose
 
 Decompress large package content using streaming
 
@@ -466,16 +653,20 @@ Decompress large package content using streaming
 
 These methods handle both compression/decompression and writing to a file.
 
-### 6.1 CompressPackageFile
+**Note**: These methods compress or decompress the entire package structure.
+For compressing individual files within a package (FileEntry.Compress, Package.CompressFile), see [File Compression API](api_file_mgmt_compression.md).
+
+### 6.1 Package.CompressPackageFile Method
 
 ```go
 // CompressPackageFile compresses package content and writes to specified path
 // Compresses file entries + data + index (NOT header, comment, or signatures)
 // Signed packages cannot be compressed
+// Returns *PackageError on failure
 func (p *Package) CompressPackageFile(ctx context.Context, path string, compressionType uint8, overwrite bool) error
 ```
 
-#### 6.1.1 Purpose
+#### 6.1.1 CompressPackageFile Purpose
 
 Handle compression AND write to file
 
@@ -502,15 +693,16 @@ Handle compression AND write to file
 - I/O errors
 - Context cancellation
 
-### 6.2 DecompressPackageFile
+### 6.2 Package.DecompressPackageFile Method
 
 ```go
 // DecompressPackageFile decompresses the package and writes to specified path
 // Decompresses all compressed content and writes uncompressed package
+// Returns *PackageError on failure
 func (p *Package) DecompressPackageFile(ctx context.Context, path string, overwrite bool) error
 ```
 
-#### 6.2.1 Purpose
+#### 6.2.1 DecompressPackageFile Purpose
 
 Decompress package and write to file
 
@@ -536,48 +728,158 @@ Decompress package and write to file
 
 ## 7. Compression Information and Status
 
-### 7.1 Compression Information Structure
+This section describes compression information and status operations.
 
-See [Compression Information Structure](#71-compression-information-structure) for the complete structure definition.
+### 7.1 Compression Information Structure Reference
+
+See [1.3 PackageCompressionInfo Struct](#13-packagecompressioninfo-struct) for the complete structure definition.
 
 ### 7.2 Compression Status Methods
 
+This section describes compression status methods.
+
+#### 7.2.1 Package Compression Query Methods
+
+This section describes package compression query methods.
+
+#### 7.2.2 Package.GetPackageCompressionInfo Method
+
 ```go
 // GetPackageCompressionInfo returns package compression information
-func (p *Package) GetPackageCompressionInfo(ctx context.Context) PackageCompressionInfo
+func (p *Package) GetPackageCompressionInfo() PackageCompressionInfo
+```
 
+#### 7.2.3 Package.IsPackageCompressed Method
+
+```go
 // IsPackageCompressed checks if the package is compressed
+// Checks header flags bits 15-8 for compression type
 func (p *Package) IsPackageCompressed() bool
+```
 
-// GetPackageCompressionType returns the package compression type with optional pattern
-func (p *Package) GetPackageCompressionType() (uint8, bool)
+#### 7.2.4 Package.GetPackageCompressionType Method
 
-// GetPackageCompressionRatio returns the compression ratio with optional pattern
-func (p *Package) GetPackageCompressionRatio() (float64, bool)
+```go
+// GetPackageCompressionType returns the package compression type
+// Returns compression type from header flags bits 15-8
+// Returns *PackageError if package is not compressed
+func (p *Package) GetPackageCompressionType() (uint8, error)
+```
 
-// GetPackageOriginalSize returns the original size before compression with optional pattern
-func (p *Package) GetPackageOriginalSize() (int64, bool)
+#### 7.2.5 Package.GetPackageCompressionRatio Method
 
-// GetPackageCompressedSize returns the compressed size with optional pattern
-func (p *Package) GetPackageCompressedSize() (int64, bool)
+```go
+// GetPackageCompressionRatio returns the compression ratio
+// Returns *PackageError if package is not compressed
+func (p *Package) GetPackageCompressionRatio() (float64, error)
+```
 
+#### 7.2.6 Package.GetPackageOriginalSize Method
+
+```go
+// GetPackageOriginalSize returns the original size before compression
+// Returns *PackageError if package is not compressed
+func (p *Package) GetPackageOriginalSize() (int64, error)
+```
+
+#### 7.2.7 Package.GetPackageCompressedSize Method
+
+```go
+// GetPackageCompressedSize returns the compressed size
+// Returns *PackageError if package is not compressed
+func (p *Package) GetPackageCompressedSize() (int64, error)
+```
+
+#### 7.2.8 Package Compression Control Methods
+
+This section describes package compression control methods.
+
+##### 7.2.8.1 Package.SetPackageCompressionType Method
+
+```go
 // SetPackageCompressionType sets the package compression type (without compressing)
-func (p *Package) SetPackageCompressionType(ctx context.Context, compressionType uint8) error
+// Returns *PackageError on failure
+func (p *Package) SetPackageCompressionType(compressionType uint8) error
+```
 
+##### 7.2.8.2 Package.CanCompressPackage Method
+
+```go
 // CanCompressPackage checks if package can be compressed (not signed)
 func (p *Package) CanCompressPackage() bool
+```
 
+#### 7.2.9 Metadata Index Methods
+
+This section describes metadata index methods.
+
+##### 7.2.9.1 Package.HasMetadataIndex Method
+
+```go
+// HasMetadataIndex checks if package has metadata index (compression enabled)
+// Returns true if header flags bits 15-8 != 0
+func (p *Package) HasMetadataIndex() bool
+```
+
+##### 7.2.9.2 Package.GetMetadataIndexOffset Method
+
+```go
+// GetMetadataIndexOffset returns the offset to metadata index
+// Returns fixed offset 112 bytes (PackageHeaderSize) when compression enabled
+// Returns *PackageError if package is not compressed (no metadata index)
+func (p *Package) GetMetadataIndexOffset() (int64, error)
+```
+
+#### 7.2.10 Generic Compression Methods
+
+This section describes generic compression methods.
+
+##### 7.2.10.1 Package.CompressGeneric Method
+
+```go
 // Generic compression methods for type-safe operations
+// CompressionStrategy[T] embeds Strategy[T, T] from the generics package
+// See [Core Generic Types](api_generics.md#1-core-generic-types) for base strategy pattern
 func (p *Package) CompressGeneric[T any](ctx context.Context, data T, strategy CompressionStrategy[T]) (T, error)
+```
+
+##### 7.2.10.2 Package.DecompressGeneric Method
+
+```go
+// DecompressGeneric decompresses data using a generic compression strategy.
 func (p *Package) DecompressGeneric[T any](ctx context.Context, data T, strategy CompressionStrategy[T]) (T, error)
+```
+
+##### 7.2.10.3 Package.ValidateCompressionData Method
+
+```go
+// Returns *PackageError on failure
 func (p *Package) ValidateCompressionData[T any](ctx context.Context, data T) error
 ```
 
+**Type Constraints**: The type parameter `T` in `CompressGeneric` and `DecompressGeneric` is typically `[]byte` for compression operations, but can be any type that the `CompressionStrategy[T]` supports.
+For most use cases, `T` should be `[]byte` to work with data directly.
+The constraint `any` is used because compression strategies may work with different data types (e.g., `[]byte`, custom serializable types).
+
+**Error Handling**: All compression operations return errors using `NewPackageError` or `WrapErrorWithContext` with typed error context for type-safe error handling.
+See [Error Handling](#12-error-handling) for details.
+
 ### 7.3 Internal Compression Methods
+
+This section describes internal compression methods.
+
+#### 7.3.1 Package.compressPackageContent Method
 
 ```go
 // Internal compression methods (used by CompressPackage and Write)
+// Returns *PackageError on failure
 func (p *Package) compressPackageContent(ctx context.Context, compressionType uint8) error
+```
+
+#### 7.3.2 Package.decompressPackageContent Method
+
+```go
+// Returns *PackageError on failure
 func (p *Package) decompressPackageContent(ctx context.Context) error
 ```
 
@@ -589,29 +891,31 @@ The compression API provides explicit concurrency patterns and thread safety gua
 
 The compression API provides different levels of thread safety based on the `ThreadSafetyMode` configuration:
 
-#### 8.1.1 ThreadSafetyNone
+#### 8.1.1 Thread Safety None Mode
 
 No thread safety guarantees.
 Operations should not be called concurrently.
 
-#### 8.1.2 ThreadSafetyReadOnly
+#### 8.1.2 Thread Safety Read-Only Mode
 
 Read-only operations are safe for concurrent access.
 Multiple goroutines can safely call read methods simultaneously.
 
-#### 8.1.3 ThreadSafetyConcurrent
+#### 8.1.3 Thread Safety Concurrent Mode
 
 Concurrent read/write operations are supported.
 Uses read-write mutex for optimal read performance.
 
-#### 8.1.4 ThreadSafetyFull
+#### 8.1.4 Thread Safety Full Mode
 
 Full thread safety with complete synchronization.
 All operations are protected by appropriate locking mechanisms.
 
 ### 8.2 Worker Pool Management
 
-The compression API uses the generic worker pool patterns defined in [api_generics.md](api_generics.md#26-generic-concurrency-patterns) with compression-specific extensions.
+The compression API uses the generic worker pool patterns defined in [api_generics.md](api_generics.md#2-generic-function-patterns) with compression-specific extensions.
+
+#### 8.2.1 CompressionWorkerPool Structure
 
 ```go
 // CompressionWorkerPool extends WorkerPool for compression operations
@@ -619,29 +923,58 @@ type CompressionWorkerPool[T any] struct {
     *WorkerPool[T]
     compressionStrategy CompressionStrategy[T]
 }
+```
 
+#### 8.2.2 CompressionWorkerPool[T].CompressConcurrently Method
+
+```go
 // Compression-specific methods
 func (p *CompressionWorkerPool[T]) CompressConcurrently(ctx context.Context, data []T, strategy CompressionStrategy[T]) ([]T, error)
+```
+
+#### 8.2.3 CompressionWorkerPool[T].DecompressConcurrently Method
+
+```go
+// DecompressConcurrently decompresses multiple data items concurrently using a worker pool.
 func (p *CompressionWorkerPool[T]) DecompressConcurrently(ctx context.Context, data []T, strategy CompressionStrategy[T]) ([]T, error)
+```
+
+#### 8.2.4 CompressionWorkerPool[T].GetCompressionStats Method
+
+```go
+// GetCompressionStats returns statistics about compression operations performed by the worker pool.
 func (p *CompressionWorkerPool[T]) GetCompressionStats() CompressionStats
 ```
 
 ### 8.3 Concurrent Compression Methods
 
+This section describes concurrent compression methods.
+
+#### 8.3.1 Package.CompressPackageConcurrent Method
+
 ```go
 // CompressPackageConcurrent compresses package content using worker pool
+// Returns *PackageError on failure
 func (p *Package) CompressPackageConcurrent(ctx context.Context, compressionType uint8, config *StreamConfig) error
+```
 
+#### 8.3.2 Package.DecompressPackageConcurrent Method
+
+```go
 // DecompressPackageConcurrent decompresses package content using worker pool
+// Returns *PackageError on failure
 func (p *Package) DecompressPackageConcurrent(ctx context.Context, config *StreamConfig) error
-
-// CompressMultiplePackages compresses multiple packages concurrently
-func CompressMultiplePackages[T any](ctx context.Context, packages []*Package, compressionType uint8, config *StreamConfig) []error
 ```
 
 ### 8.4 Resource Management
 
-The compression API uses the generic resource management patterns defined in [api_generics.md](api_generics.md#26-generic-concurrency-patterns) with compression-specific resource types.
+The compression API uses the generic resource management patterns defined in [api_generics.md](api_generics.md#2-generic-function-patterns) with compression-specific resource types.
+
+#### 8.4.1 CompressionResourcePool Structure
+
+This section describes the CompressionResourcePool structure.
+
+##### 8.4.1.1 CompressionResourcePool Struct
 
 ```go
 // CompressionResourcePool manages compression-specific resources
@@ -649,7 +982,32 @@ type CompressionResourcePool struct {
     *ResourcePool[CompressionResource]
     compressionConfig *CompressionConfig
 }
+```
 
+##### 8.4.1.2 CompressionResourcePool.AcquireCompressionResource Method
+
+```go
+// Compression-specific resource management methods
+func (p *CompressionResourcePool) AcquireCompressionResource(ctx context.Context, strategyType uint8) (*CompressionResource, error)
+```
+
+##### 8.4.1.3 CompressionResourcePool.ReleaseCompressionResource Method
+
+```go
+// Returns *PackageError on failure
+func (p *CompressionResourcePool) ReleaseCompressionResource(resource *CompressionResource) error
+```
+
+##### 8.4.1.4 CompressionResourcePool.GetCompressionResourceStats Method
+
+```go
+// GetCompressionResourceStats returns statistics about compression resource usage.
+func (p *CompressionResourcePool) GetCompressionResourceStats() CompressionResourceStats
+```
+
+#### 8.4.2 CompressionResource Structure
+
+```go
 // CompressionResource represents a compression-specific resource
 type CompressionResource struct {
     ID           string
@@ -658,18 +1016,17 @@ type CompressionResource struct {
     LastUsed     time.Time
     AccessCount  int64
 }
-
-// Compression-specific resource management methods
-func (p *CompressionResourcePool) AcquireCompressionResource(ctx context.Context, strategyType uint8) (*CompressionResource, error)
-func (p *CompressionResourcePool) ReleaseCompressionResource(resource *CompressionResource) error
-func (p *CompressionResourcePool) GetCompressionResourceStats() CompressionResourceStats
 ```
 
 ## 9. Compression Configuration Patterns
 
-The compression API provides compression-specific configuration patterns that extend the generic configuration patterns defined in [api_generics.md](api_generics.md#28-generic-configuration-patterns).
+The compression API provides compression-specific configuration patterns that extend the generic configuration patterns defined in [api_generics.md](api_generics.md#110-generic-configuration-patterns).
 
 ### 9.1 Compression-Specific Configuration
+
+This section describes compression-specific configuration options.
+
+#### 9.1.1 CompressionConfig Structure
 
 ```go
 // CompressionConfig extends Config for compression-specific settings
@@ -683,21 +1040,72 @@ type CompressionConfig struct {
     ResumeFromOffset    Option[int64]           // Resume from specific offset
     MemoryStrategy      Option[MemoryStrategy]  // Memory management strategy
 }
+```
 
+#### 9.1.2 CompressionConfigBuilder Structure
+
+This section describes the CompressionConfigBuilder structure.
+
+##### 9.1.2.1 CompressionConfigBuilder Struct
+
+```go
 // CompressionConfigBuilder provides fluent configuration building for compression
 type CompressionConfigBuilder struct {
     config *CompressionConfig
 }
+```
 
+##### 9.1.2.2 NewCompressionConfigBuilder Function
+
+```go
+// NewCompressionConfigBuilder creates a new compression configuration builder.
 func NewCompressionConfigBuilder() *CompressionConfigBuilder
+```
+
+##### 9.1.2.3 CompressionConfigBuilder.WithCompressionType Method
+
+```go
+// WithCompressionType sets the compression type for the configuration.
 func (b *CompressionConfigBuilder) WithCompressionType(compType uint8) *CompressionConfigBuilder
+```
+
+##### 9.1.2.4 CompressionConfigBuilder.WithCompressionLevel Method
+
+```go
+// WithCompressionLevel sets the compression level for the configuration.
 func (b *CompressionConfigBuilder) WithCompressionLevel(level int) *CompressionConfigBuilder
+```
+
+##### 9.1.2.5 CompressionConfigBuilder.WithSolidCompression Method
+
+```go
+// WithSolidCompression enables or disables solid compression for the configuration.
 func (b *CompressionConfigBuilder) WithSolidCompression(useSolid bool) *CompressionConfigBuilder
+```
+
+##### 9.1.2.6 CompressionConfigBuilder.WithMemoryStrategy Method
+
+```go
+// WithMemoryStrategy sets the memory strategy for the configuration.
 func (b *CompressionConfigBuilder) WithMemoryStrategy(strategy MemoryStrategy) *CompressionConfigBuilder
+```
+
+##### 9.1.2.7 CompressionConfigBuilder.Build Method
+
+```go
+// Build constructs and returns the final compression configuration.
 func (b *CompressionConfigBuilder) Build() *CompressionConfig
 ```
 
 ### 9.2 Compression Validation Patterns
+
+This section describes compression validation patterns.
+
+#### 9.2.1 CompressionValidator Structure
+
+This section describes the CompressionValidator structure.
+
+##### 9.2.1.1 CompressionValidator Struct
 
 ```go
 // CompressionValidator provides compression-specific validation
@@ -705,22 +1113,47 @@ type CompressionValidator struct {
     *Validator[[]byte]
     compressionRules []CompressionValidationRule
 }
+```
 
+##### 9.2.1.2 CompressionValidator.AddCompressionRule Method
+
+```go
+// AddCompressionRule adds a compression validation rule to the validator.
+func (v *CompressionValidator) AddCompressionRule(rule CompressionValidationRule)
+```
+
+##### 9.2.1.3 CompressionValidator.ValidateCompressionData Method
+
+```go
+// Returns *PackageError on failure
+func (v *CompressionValidator) ValidateCompressionData(ctx context.Context, data []byte) error
+```
+
+##### 9.2.1.4 CompressionValidator.ValidateDecompressionData Method
+
+```go
+// Returns *PackageError on failure
+func (v *CompressionValidator) ValidateDecompressionData(ctx context.Context, data []byte) error
+```
+
+#### 9.2.2 CompressionValidationRule Structure
+
+```go
 // CompressionValidationRule represents a compression-specific validation rule
 type CompressionValidationRule struct {
     Name      string
     Predicate func([]byte) bool
     Message   string
 }
-
-func (v *CompressionValidator) AddCompressionRule(rule CompressionValidationRule)
-func (v *CompressionValidator) ValidateCompressionData(ctx context.Context, data []byte) error
-func (v *CompressionValidator) ValidateDecompressionData(ctx context.Context, data []byte) error
 ```
 
 ## 10. Compression and Signing Relationship
 
+This section describes the relationship between compression and signing operations.
+
 ### 10.1 Signing Compressed Packages
+
+This section describes signing compressed packages.
 
 #### 10.1.1 Supported Operation
 
@@ -739,6 +1172,8 @@ Compressed packages can be signed
 
 ### 10.2 Compressing Signed Packages
 
+This section describes compressing signed packages.
+
 #### 10.2.1 Not Supported
 
 Signed packages cannot be compressed
@@ -756,29 +1191,35 @@ Signed packages cannot be compressed
 3. Recompress if desired
 4. Re-sign the package
 
-## 11. Compression Strategy Selection
+## 11. CompressionStrategy Selection
+
+This section describes how to select compression strategies.
 
 ### 11.1 Compression Type Selection
 
-#### 11.1.1 Zstandard Compression (1)
+This section describes compression type selection criteria.
+
+#### 11.1.1 Zstandard Compression (Type 1)
 
 - Best compression ratio
 - Moderate CPU usage
 - Good for archival storage
 
-#### 11.1.2 LZ4 Compression (2)
+#### 11.1.2 LZ4 Compression (Type 2)
 
 - Fastest compression/decompression
 - Lower compression ratio
 - Good for real-time applications
 
-#### 11.1.3 LZMA Compression (3)
+#### 11.1.3 LZMA Compression (Type 3)
 
 - Highest compression ratio
 - Highest CPU usage
 - Best for long-term storage
 
 ### 11.2 Compression Decision Matrix
+
+This section provides a decision matrix for selecting compression strategies.
 
 #### 11.2.1 User Guidance Matrix
 
@@ -871,21 +1312,23 @@ Automatic selection has minimal overhead:
 
 ### 11.3 Compression Workflow Options
 
+This section describes different compression workflow options.
+
 #### 11.3.1 Option 1: Compress Before Writing
 
 Compress the package content in memory first, then write the compressed package to disk.
 
-#### 11.3.1.1 Process
+##### 11.3.1.1 Process (Option 1)
 
 Call `CompressPackage` with the desired compression type to compress the package content in memory.
 
 Call `Write` with `CompressionNone` to write the already-compressed package to the output file without additional compression.
 
-#### 11.3.2 Option 2: Compress and Write in One Step
+#### 11.3.2 Option 2: Compress and Write In One Step
 
 Compress the package content and write it to disk in a single operation.
 
-#### 11.3.2.1 Process
+##### 11.3.2.1 Option 2 Process
 
 Call `CompressPackageFile` with the target file path, compression type, and overwrite flag to compress and write the package in one step.
 
@@ -893,7 +1336,7 @@ Call `CompressPackageFile` with the target file path, compression type, and over
 
 Write the package to disk with compression applied during the write operation.
 
-#### 11.3.3.1 Process
+##### 11.3.3.1 Process (Option 3)
 
 Call `Write` with the target file path, compression type, and overwrite flag to write the package with compression applied during the write process.
 
@@ -901,7 +1344,7 @@ Call `Write` with the target file path, compression type, and overwrite flag to 
 
 Use streaming compression for large packages that may exceed available memory.
 
-#### 11.3.4.1 Configuration
+##### 11.3.4.1 Stream Configuration
 
 Create a `StreamConfig` with appropriate chunk size settings.
 
@@ -909,7 +1352,7 @@ Set `ChunkSize` to a reasonable size such as 1MB for processing chunks.
 
 Enable `UseTempFiles` to use temporary files for large packages that exceed memory limits.
 
-#### 11.3.4.2 Process
+##### 11.3.4.2 Option 4 Process
 
 Call `CompressPackageStream` with the compression type and stream configuration to compress the package using streaming.
 
@@ -919,7 +1362,7 @@ Call `Write` with `CompressionNone` to write the compressed package to the outpu
 
 For extremely large packages or when maximum performance is required, use advanced streaming compression with full configuration options that align with modern best practices from 7zip, zstd, and tar.
 
-#### 11.3.5.1 Configuration Setup
+##### 11.3.5.1 Configuration Setup
 
 Create a `StreamConfig` with intelligent defaults that allow the system to auto-detect optimal values.
 
@@ -933,7 +1376,7 @@ Select `MemoryStrategyBalanced` to use 50% of available RAM for optimal performa
 
 Enable `AdaptiveChunking` to allow the system to adjust chunk size based on memory pressure.
 
-#### 11.3.5.2 Performance Configuration
+##### 11.3.5.2 Performance Configuration
 
 Enable `UseDiskBuffering` for intermediate buffering when memory limits are reached.
 
@@ -945,7 +1388,7 @@ Set `MaxWorkers` to 0 for automatic CPU core detection.
 
 Set `CompressionLevel` to 0 for automatic selection of the optimal compression level.
 
-#### 11.3.5.3 Advanced Features
+##### 11.3.5.3 Advanced Features
 
 Enable `UseSolidCompression` for better compression ratios by treating multiple files as a single stream.
 
@@ -957,7 +1400,7 @@ Set `MaxTempFileSize` to 0 for no limit on temporary file size.
 
 Configure a `ProgressCallback` function to receive real-time progress updates during compression.
 
-#### 11.3.5.4 Execution
+##### 11.3.5.4 Execution (Option 5)
 
 Call `CompressPackageStream` with the ZSTD compression type and the configured settings.
 
@@ -967,7 +1410,7 @@ Write the compressed package to the output file using `Write` with no additional
 
 For specific memory constraints or performance requirements, configure custom memory management settings.
 
-#### 11.3.6.1 Custom Configuration
+##### 11.3.6.1 Custom Configuration
 
 Set `ChunkSize` to a specific value such as 512MB for controlled chunk processing.
 
@@ -983,7 +1426,7 @@ Set `BufferPoolSize` to a specific number of buffers for predictable memory usag
 
 Configure `MaxTempFileSize` to limit individual temporary file sizes.
 
-#### 11.3.6.2 Performance Settings
+##### 11.3.6.2 Performance Settings
 
 Enable `UseParallelProcessing` for multi-core utilization.
 
@@ -991,13 +1434,27 @@ Set `MaxWorkers` to a specific number to limit concurrent workers.
 
 Specify a particular `CompressionLevel` for consistent compression behavior.
 
-#### 11.3.6.3 Execution
+##### 11.3.6.3 Option 6 Execution
 
 Call `CompressPackageStream` with the ZSTD compression type and the custom configuration.
 
 ## 12. Error Handling
 
+The compression API uses the comprehensive structured error system defined in [api_core.md](api_core.md#10-structured-error-system).
+
+**Generic Error Context**: All compression error-returning functions use `WrapErrorWithContext` or `NewPackageError` with typed error context structures for type-safe error handling.
+
+Functions like `CompressPackage`, `DecompressPackage`, `CompressGeneric`, and other compression operations return errors that use the generic error context helpers:
+
+- `WrapErrorWithContext[T]`: Wraps errors with typed context structures
+- `NewPackageError[T]`: Creates structured errors with typed context
+- `GetErrorContext[T]`: Retrieves type-safe context from errors
+
+See [Generic Error Context Helpers](api_core.md#105-error-helper-functions) for complete documentation.
+
 ### 12.1 Common Error Conditions
+
+This section describes common error conditions in compression operations.
 
 #### 12.1.1 Common Error Conditions Compression Errors
 
@@ -1019,6 +1476,8 @@ Call `CompressPackageStream` with the ZSTD compression type and the custom confi
 
 ### 12.2 Error Recovery
 
+This section describes error recovery strategies for compression operations.
+
 #### 12.2.1 Error Recovery Compression Failure
 
 - Package remains in original state
@@ -1032,6 +1491,8 @@ Call `CompressPackageStream` with the ZSTD compression type and the custom confi
 - Can attempt recovery or use backup
 
 ## 13. Modern Best Practices
+
+This section describes modern best practices for compression operations.
 
 ### 13.1 Industry Standards Alignment
 
@@ -1070,29 +1531,31 @@ Our compression API aligns with modern best practices used by leading compressio
 
 ### 13.2 Intelligent Defaults and Memory Management
 
-#### 13.2.1 Memory Strategy Defaults
+This section describes intelligent defaults and memory management for compression.
+
+#### 13.2.1 MemoryStrategy Defaults
 
 The system provides intelligent defaults based on system capabilities:
 
-#### 13.2.1.1 Conservative Strategy (25% RAM)
+##### 13.2.1.1 Conservative Strategy (25% RAM)
 
 - Use when system has limited RAM or other processes need memory
 - Default for systems with <4GB RAM
 - Ensures system stability during compression
 
-#### 13.2.1.2 Balanced Strategy (50% RAM) - DEFAULT
+##### 13.2.1.2 Balanced Strategy (50% RAM) - DEFAULT
 
 - Optimal balance between performance and system stability
 - Default for systems with 4-16GB RAM
 - Provides good compression speed while leaving system responsive
 
-#### 13.2.1.3 Aggressive Strategy (75% RAM)
+##### 13.2.1.3 Aggressive Strategy (75% RAM)
 
 - Maximum performance for dedicated compression systems
 - Default for systems with >16GB RAM
 - Use when system is dedicated to compression tasks
 
-#### 13.2.1.4 Custom Strategy
+##### 13.2.1.4 Custom Strategy
 
 - Use explicit `MaxMemoryUsage` value
 - Override automatic detection
@@ -1102,7 +1565,7 @@ The system provides intelligent defaults based on system capabilities:
 
 The system automatically detects optimal memory settings based on available system resources.
 
-#### 13.2.2.1 Memory Detection Process
+##### 13.2.2.1 Memory Detection Process
 
 The system queries available system RAM and calculates appropriate memory limits based on the selected strategy.
 
@@ -1112,13 +1575,13 @@ Systems with 4-16GB RAM use the Balanced strategy by default, utilizing 50% of a
 
 Systems with more than 16GB RAM automatically select the Aggressive strategy, using 75% of available RAM for maximum compression performance.
 
-#### 13.2.2.2 Chunk Size Calculation
+##### 13.2.2.2 Chunk Size Calculation
 
 When chunk size is not explicitly specified, the system calculates an optimal chunk size as 25% of the allocated memory limit.
 
 This ensures that each processing chunk fits comfortably within the memory constraints while allowing for multiple concurrent operations.
 
-#### 13.2.2.3 Worker Count Detection
+##### 13.2.2.3 Worker Count Detection
 
 The system automatically detects the number of available CPU cores and sets the worker count accordingly.
 
@@ -1132,11 +1595,15 @@ This enables optimal parallel processing without overloading the system with exc
 - **Buffer Pooling**: Reuses buffers to minimize allocation overhead
 - **Temp File Rotation**: Rotates temp files when they exceed `MaxTempFileSize`
 
-### 13.3 Performance Considerations
+### 13.3 Performance Considerations (CompressionOperations)
+
+This section describes performance considerations for compression operations.
 
 ### 13.4 Memory Usage
 
-#### 13.4.1 Compression
+This section describes memory usage considerations for compression.
+
+#### 13.4.1 Compression Memory Usage
 
 - Requires additional memory for compression buffers
 - Memory usage scales with package size
@@ -1144,7 +1611,7 @@ This enables optimal parallel processing without overloading the system with exc
 - **Large Files**: Use `CompressPackageStream` with appropriate memory limits and advanced configuration
 - **Memory Management**: Automatic fallback to disk buffering when memory limits exceeded
 
-#### 13.4.2 Decompression
+#### 13.4.2 Decompression Memory Usage
 
 - Requires memory for decompressed content
 - May need temporary storage for large packages
@@ -1153,6 +1620,8 @@ This enables optimal parallel processing without overloading the system with exc
 - **Memory Limits**: Enforces `MaxMemoryUsage` to prevent system OOM
 
 ### 13.5 CPU Usage
+
+This section describes CPU usage considerations for compression.
 
 #### 13.5.1 CPU Usage Compression
 
@@ -1168,6 +1637,8 @@ This enables optimal parallel processing without overloading the system with exc
 - LZMA: Slowest decompression
 
 ### 13.6 I/O Considerations
+
+This section describes I/O considerations for compression operations.
 
 #### 13.6.1 I/O Considerations File-Based Operations
 
@@ -1185,12 +1656,16 @@ UPDATE: Removed: Out of scope.
 
 ## 14. Structured Error System
 
-### 14.1 Structured Error System
+This section describes the structured error system for compression operations.
+
+### 14.1 Structured Error System (Compression API)
 
 The NovusPack package compression API uses a comprehensive structured error system that provides better error categorization, context, and debugging capabilities.
-For complete error system documentation, see [Structured Error System](api_core.md#11-structured-error-system).
+For complete error system documentation, see [Structured Error System](api_core.md#10-structured-error-system).
 
 ### 14.2 Common Compression Error Types
+
+This section describes common compression error types.
 
 #### 14.2.1 Compression Error Types
 
@@ -1205,28 +1680,76 @@ The NovusPack compression API uses the structured error system with the followin
 
 ### 14.3 Structured Error Examples
 
+This section provides examples of structured errors in compression operations.
+
 #### 14.3.1 Creating Compression Errors
 
+This section describes how to create compression errors.
+
+##### 14.3.1.1 Error Context Type Definitions
+
+This section defines error context type definitions used in compression errors.
+
+##### 14.3.1.2 CompressionErrorContext Structure
+
 ```go
-// Compression failure with context
-err := NewPackageError(ErrTypeCompression, "compression failed", nil).
-    WithContext("algorithm", "Zstd").
-    WithContext("level", 6).
-    WithContext("inputSize", 1024*1024).
-    WithContext("operation", "CompressPackage")
+// Define error context types
+type CompressionErrorContext struct {
+    Algorithm string
+    Level     int
+    InputSize int64
+    Operation string
+}
+```
 
-// Unsupported compression type with context
-err := NewPackageError(ErrTypeUnsupported, "unsupported compression type", nil).
-    WithContext("compressionType", 99).
-    WithContext("supportedTypes", []uint8{0, 1, 2, 3}).
-    WithContext("operation", "SetCompressionType")
+##### 14.3.1.3 UnsupportedCompressionErrorContext Structure
 
-// Memory error with context
-err := NewPackageError(ErrTypeIO, "insufficient memory", nil).
-    WithContext("requiredMemory", "512MB").
-    WithContext("availableMemory", "256MB").
-    WithContext("algorithm", "LZMA").
-    WithContext("operation", "CompressPackage")
+```go
+// UnsupportedCompressionErrorContext provides error context for unsupported compression type errors.
+type UnsupportedCompressionErrorContext struct {
+    CompressionType uint8
+    SupportedTypes  []uint8
+    Operation       string
+}
+```
+
+##### 14.3.1.4 MemoryErrorContext Structure
+
+```go
+// MemoryErrorContext provides error context for memory-related compression errors.
+type MemoryErrorContext struct {
+    RequiredMemory  string
+    AvailableMemory string
+    Algorithm       string
+    Operation       string
+}
+```
+
+##### 14.3.1.5 Creating Errors with Context
+
+```go
+// Compression failure with typed context
+err := NewPackageError(ErrTypeCompression, "compression failed", nil, CompressionErrorContext{
+    Algorithm: "Zstd",
+    Level:     6,
+    InputSize: 1024 * 1024,
+    Operation: "CompressPackage",
+})
+
+// Unsupported compression type with typed context
+err := NewPackageError(ErrTypeUnsupported, "unsupported compression type", nil, UnsupportedCompressionErrorContext{
+    CompressionType: 99,
+    SupportedTypes:  []uint8{0, 1, 2, 3},
+    Operation:       "SetCompressionType",
+})
+
+// Memory error with typed context
+err := NewPackageError(ErrTypeIO, "insufficient memory", nil, MemoryErrorContext{
+    RequiredMemory:  "512MB",
+    AvailableMemory: "256MB",
+    Algorithm:       "LZMA",
+    Operation:       "CompressPackage",
+})
 ```
 
 #### 14.3.2 Error Handling Patterns

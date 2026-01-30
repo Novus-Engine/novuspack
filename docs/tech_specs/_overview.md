@@ -2,10 +2,10 @@
 
 - [0. Overview](#0-overview)
   - [0.1 Cross-References](#01-cross-references)
-- [1 Core Components](#1-core-components)
-- [2 File Formats](#2-file-formats)
-- [3 Multiple Signatures Support](#3-multiple-signatures-support)
-- [4 Use Cases and Applications](#4-use-cases-and-applications)
+- [1. Core Components](#1-core-components)
+- [2. File Formats](#2-file-formats)
+- [3. Multiple Signatures Support](#3-multiple-signatures-support)
+- [4. Use Cases and Applications](#4-use-cases-and-applications)
 
 ---
 
@@ -22,25 +22,25 @@ The library is implemented in multiple languages (Go, Rust, Zig, and future lang
 
 See the consolidated navigation in [_main.md](_main.md).
 
-## 1 Core Components
+## 1. Core Components
 
-- **Package Management:** Creation, reading, writing, and manipulation of unified .npk files (supports both encrypted and unencrypted files within the same package)
-- **File Entry System:** Individual file metadata and content management with per-file encryption selection
+- **Package Management:** Creation, reading, writing, and manipulation of unified .nvpk files (supports both encrypted and unencrypted files within the same package)
+- **FileEntry System:** Individual file metadata and content management with per-file encryption selection
 - **Compression Engine:** Multiple compression algorithms (Zstd, LZ4, LZMA) for optimal file size reduction
 - **Quantum-Safe Encryption System:** ML-KEM (CRYSTALS-Kyber) for key exchange and file encryption
 - **Digital Signature System:** Multiple signature support with ML-DSA (CRYSTALS-Dilithium), SLH-DSA (SPHINCS+), PGP, and X.509 for package integrity verification
 - **Streaming Interface:** Memory-efficient file streaming for large files with encryption support
 - **Buffer Management:** Intelligent buffer pooling and memory management optimized for encrypted content
 
-## 2 File Formats
+## 2. File Formats
 
-- **.npk:** Unified Novus Package format (supports both encrypted and unencrypted files within the same package)
+- **.nvpk:** Unified Novus Package format (supports both encrypted and unencrypted files within the same package)
   - **Encryption:** Quantum-safe ML-KEM (CRYSTALS-Kyber) with AES-256-GCM for compatibility
   - **Signatures:** Multiple signature support (ML-DSA, SLH-DSA, PGP, X.509) for package integrity verification
   - **Compression:** Multiple algorithms (Zstd, LZ4, LZMA) with per-file selection
   - **Key Sizes:** ML-KEM keys range from 800-1,568 bytes depending on security level
 
-## 3 Multiple Signatures Support
+## 3. Multiple Signatures Support
 
 NovusPack supports multiple digital signatures per package, bringing it in line with industry standards while maintaining unique quantum-safe signature advantages:
 
@@ -53,10 +53,10 @@ NovusPack supports multiple digital signatures per package, bringing it in line 
 For detailed implementation information, see:
 
 - [File Format](package_file_format.md) - Header structure and signature index specification
-- [API Signatures Index](api_func_signatures_index.md) - Complete index of all functions, types, and structures
+- [Go API Definitions Index](api_go_defs_index.md) - Complete index of all Go API functions, types, and structures
 - [Digital Signature API](api_signatures.md) - Signature management, types, and validation
 
-## 4 Use Cases and Applications
+## 4. Use Cases and Applications
 
 NovusPack is designed as a general-purpose archive format suitable for a wide range of applications:
 

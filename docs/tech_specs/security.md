@@ -1,26 +1,31 @@
 # NovusPack Technical Specifications - Security and Encryption
 
-This document provides a comprehensive overview of NovusPack's security architecture, including package signing, encryption implementation, validation, and integrity verification systems.
+This document provides a comprehensive overview of NovusPack's security architecture, including encryption implementation, validation, and integrity verification systems.
+
+Package signing and signature validation are deferred to v2.
+V1 only enforces signed package immutability based on signature presence and does not validate signature contents.
 
 ---
 
 ## 0. Overview
 
 NovusPack implements a multi-layered security architecture designed to provide comprehensive protection for modern package archives.
-The security system combines quantum-safe cryptography, multiple signature support, and robust validation mechanisms to ensure package integrity, authenticity, and confidentiality across all use cases.
+The security system combines quantum-safe cryptography, robust validation mechanisms, and future signature support to ensure package integrity, authenticity, and confidentiality across all use cases.
 
 ### 0.1 Cross-References
 
 - [Main Index](_main.md) - Central navigation for all NovusPack specifications
 - [System Overview](_overview.md) - High-level system architecture
-- [Package File Format](package_file_format.md) - .npk format structure and incremental signatures
-- [API Signatures Index](api_func_signatures_index.md) - Complete index of all functions, types, and structures
-- [Digital Signature API](api_signatures.md) - Signature management, types, and validation
+- [Package File Format](package_file_format.md) - .nvpk format structure and optional signature binary format
+- [Go API Definitions Index](api_go_defs_index.md) - Complete index of all Go API functions, types, and structures
+- [Digital Signature API](api_signatures.md) - Signature management, types, and validation (deferred to v2)
 - [File Validation](file_validation.md) - File validation and transparency requirements
 
 ---
 
 ## 1. Security Architecture Overview
+
+This section provides an overview of the security architecture for the NovusPack system.
 
 ### 1.1 Security Layers
 
@@ -44,6 +49,10 @@ NovusPack implements a comprehensive security architecture with multiple layers 
 
 ## 2. Package Signing System
 
+Status: Deferred to v2.
+This section describes future work for package signing and signature validation.
+V1 only enforces signed package immutability based on signature presence.
+
 **Cross-Reference**: For complete signature management, validation, and implementation details, see [Digital Signature API](api_signatures.md).
 
 ### 2.1 Security Overview
@@ -57,9 +66,11 @@ NovusPack supports multiple digital signatures per package, bringing it in line 
 - **Immutability Protection**: Signed packages are protected from unauthorized modifications
 - **Multiple Algorithm Support**: Traditional (PGP, X.509) and quantum-safe (ML-DSA, SLH-DSA) algorithms
 
-### 2.3 Signature Types and Algorithms
+### 2.2 Signature Types and Algorithms
 
-#### 2.3.1 ML-DSA (CRYSTALS-Dilithium)
+This section describes the signature types and algorithms supported by the system.
+
+#### 2.2.1 ML-DSA CRYSTALS-Dilithium
 
 - **Algorithm**: NIST PQC Standard ML-DSA
 - **Security Levels**: Support for all three security levels
@@ -69,7 +80,7 @@ NovusPack supports multiple digital signatures per package, bringing it in line 
 - **Performance**: Optimized for archive signing
 - **Key Management**: Secure key generation and storage
 
-#### 2.3.2 SLH-DSA (SPHINCS+)
+#### 2.2.2 SLH-DSA (SPHINCS+)
 
 - **Algorithm**: NIST PQC Standard SLH-DSA
 - **Security Levels**: Support for all three security levels
@@ -79,14 +90,14 @@ NovusPack supports multiple digital signatures per package, bringing it in line 
 - **Performance**: Stateless hash-based signatures
 - **Key Management**: Single-use key generation
 
-#### 2.3.3 PGP (OpenPGP)
+#### 2.2.3 PGP OpenPGP
 
 - **Algorithm**: Traditional PGP signatures
 - **Compatibility**: Full OpenPGP standard compliance
 - **Key Management**: PGP keyring integration
 - **Use Cases**: Developer signatures, community verification
 
-#### 2.3.4 X.509/PKCS#7
+#### 2.2.4 X.509 and PKCS#7 Signatures
 
 - **Algorithm**: Certificate-based signatures
 - **Compatibility**: Enterprise PKI integration
@@ -96,6 +107,8 @@ NovusPack supports multiple digital signatures per package, bringing it in line 
 ---
 
 ## 3. Encryption System
+
+This section describes the encryption system used in NovusPack.
 
 ### 3.1 Quantum-Safe Encryption
 
@@ -107,6 +120,8 @@ NovusPack implements a dual encryption strategy combining quantum-safe and tradi
 
 ### 3.2 Encryption Algorithms
 
+This section describes the encryption algorithms supported by the system.
+
 #### 3.2.1 ML-KEM (CRYSTALS-Kyber)
 
 - **Algorithm**: NIST PQC Standard ML-KEM
@@ -117,7 +132,7 @@ NovusPack implements a dual encryption strategy combining quantum-safe and tradi
 - **Performance**: Optimized for file encryption
 - **Key Management**: Secure key generation, storage, and distribution
 
-#### 3.2.2 AES-256-GCM
+#### 3.2.2 AES-256-GCM Encryption
 
 - **Algorithm**: Advanced Encryption Standard with Galois/Counter Mode
 - **Key Size**: 256-bit keys
@@ -135,6 +150,8 @@ Selective file encryption allows users to choose which files to encrypt:
 
 ### 3.4 Encryption Implementation Details
 
+This section describes implementation details for encryption functionality.
+
 #### 3.4.1 ML-KEM Key Management
 
 The ML-KEM implementation provides quantum-safe key generation and management:
@@ -144,7 +161,7 @@ The ML-KEM implementation provides quantum-safe key generation and management:
 - **Key Access**: Retrieve public keys and security level information
 - **Key Structure**: Secure storage of public and private key data
 
-For complete function signatures and implementation details, see [File Management API](api_file_management.md) and [API Signatures Index](api_func_signatures_index.md).
+For complete function signatures and implementation details, see [File Management API](api_file_mgmt_index.md) and [Go API Definitions Index](api_go_defs_index.md).
 
 #### 3.4.2 Per-File Encryption Operations
 
@@ -155,9 +172,9 @@ The per-file encryption system provides granular control over file protection:
 - **GetFileEncryptionType**: Retrieve encryption type for specific files
 - **GetEncryptedFiles**: List all encrypted files in the package
 
-For complete function signatures and implementation details, see [File Management API](api_file_management.md) and [API Signatures Index](api_func_signatures_index.md).
+For complete function signatures and implementation details, see [File Management API](api_file_mgmt_index.md) and [Go API Definitions Index](api_go_defs_index.md).
 
-#### 3.4.3 Dual Encryption Strategy
+#### 3.4.3 Dual EncryptionStrategy
 
 - **Default Encryption**: ML-KEM is the default encryption method for new packages
 - **ML-KEM Benefits**: Full quantum resistance with optimized performance for file archives
@@ -178,7 +195,11 @@ For complete function signatures and implementation details, see [File Managemen
 
 ## 4. Security Validation and Integrity
 
+This section describes security validation and integrity checking mechanisms.
+
 ### 4.1 Package Validation
+
+This section describes package-level validation processes.
 
 #### 4.1.1 Comprehensive Validation
 
@@ -189,9 +210,9 @@ The package validation system provides comprehensive security validation:
 - **ValidateIntegrity**: Validate package integrity using checksums
 - **GetSecurityStatus**: Get comprehensive security status information
 
-For complete function signatures and implementation details, see [Security Validation API](api_security.md) and [API Signatures Index](api_func_signatures_index.md).
+For complete function signatures and implementation details, see [Security Validation API](api_security.md) and [Go API Definitions Index](api_go_defs_index.md).
 
-#### 4.1.2 Security Status Information
+#### 4.1.2 SecurityStatus Information
 
 The security validation system provides comprehensive status information:
 
@@ -201,16 +222,18 @@ The security validation system provides comprehensive status information:
 - **Security Level**: Overall security assessment of the package
 - **Error Reporting**: Detailed validation errors and issues
 
-For complete structure definitions and implementation details, see [Security Validation API](api_security.md) and [API Signatures Index](api_func_signatures_index.md).
+For complete structure definitions and implementation details, see [Security Validation API](api_security.md) and [Go API Definitions Index](api_go_defs_index.md).
 
 ### 4.2 File Validation
+
+This section describes file-level validation processes.
 
 #### 4.2.1 Content Validation
 
 - **Empty Files**: Supported and valid
 - **Nil Data**: Prohibited and rejected
 - **Content Integrity**: Validated before package addition
-- **Path Validation**: Normalized and validated file paths
+- **Path Validation**: Paths are normalized and validated according to [Package Path Semantics](api_core.md#2-package-path-semantics)
 
 #### 4.2.2 Transparency Requirements
 
@@ -223,7 +246,11 @@ For complete structure definitions and implementation details, see [Security Val
 
 ## 5. Security Metadata and Access Control
 
+This section describes security metadata and access control mechanisms.
+
 ### 5.1 Per-File Security Metadata
+
+This section describes per-file security metadata features.
 
 #### 5.1.1 Security Classification
 
@@ -240,6 +267,8 @@ For complete structure definitions and implementation details, see [Security Val
 - **Metadata Protection**: Secure storage of sensitive metadata
 
 ### 5.2 Package-Level Security
+
+This section describes package-level security features.
 
 #### 5.2.1 Security Flags
 
@@ -266,6 +295,8 @@ Package-level security flags provide comprehensive security configuration:
 
 ## 6. Industry Standard Compliance
 
+This section describes compliance with industry security standards.
+
 ### 6.1 Comparison with Industry Standards
 
 | Feature                 | NovusPack | PGP Files | X.509/PKCS#7 | Windows Authenticode | macOS Code Signing |
@@ -287,9 +318,13 @@ Package-level security flags provide comprehensive security configuration:
 
 ---
 
-## 7. Implementation Considerations
+## 7. Security Implementation Considerations
+
+This section describes important considerations for implementing security features.
 
 ### 7.1 Security Best Practices
+
+This section describes security best practices for implementation.
 
 #### 7.1.1 Key Management
 
@@ -297,6 +332,10 @@ Package-level security flags provide comprehensive security configuration:
 - **Key Storage**: Implement secure key storage mechanisms
 - **Key Rotation**: Support for key rotation and renewal
 - **Access Control**: Implement proper access controls for private keys
+- **Memory Protection**: Use Go's `runtime/secret` package (experimental in Go 1.26+) to protect sensitive key material in memory
+  - Wrap all operations involving private keys within `runtime/secret.Do` to ensure sensitive data is promptly erased from registers and stack
+  - Apply secret execution context to key generation, loading, signing, and encryption operations that access private key material
+  - Ensure that heap allocations containing sensitive data are cleared as soon as they become unreachable
 
 #### 7.1.2 Signature Validation
 
@@ -306,6 +345,8 @@ Package-level security flags provide comprehensive security configuration:
 - **Revocation Checking**: Check for revoked certificates and keys
 
 ### 7.2 Performance Considerations
+
+This section describes performance considerations for security features.
 
 #### 7.2.1 Signature Performance
 
@@ -325,11 +366,13 @@ Package-level security flags provide comprehensive security configuration:
 
 ## 8. Comment Security and Injection Prevention
 
+This section describes security measures for comment handling and injection prevention.
+
 ### 8.1 Comment Security Architecture
 
 NovusPack implements comprehensive security measures to prevent code execution and malicious injection attacks through comment sections, including package comments and signature comments.
 
-#### 8.1.1 Security Principles
+#### 8.1.1 Comment Security Principles
 
 - **No Code Execution**: Comments are treated as pure text data with no executable content
 - **Input Sanitization**: All comment data is sanitized and validated before storage
@@ -337,7 +380,7 @@ NovusPack implements comprehensive security measures to prevent code execution a
 - **Length Limits**: Enforced maximum lengths prevent buffer overflow attacks
 - **Character Filtering**: Dangerous characters and sequences are filtered or escaped
 
-#### 8.1.2 Package Comment Security
+#### 8.1.2 PackageComment Security
 
 Package comments are subject to strict security validation:
 
@@ -360,6 +403,8 @@ Signature comments have additional security requirements:
 - **Audit Trail**: All signature comments are logged for security auditing
 
 ### 8.2 Input Validation and Sanitization
+
+This section describes input validation and sanitization processes for comment data.
 
 #### 8.2.1 Comment Validation Process
 
@@ -395,6 +440,8 @@ Different sanitization methods are applied based on content:
 
 ### 8.3 Security Implementation
 
+This section describes security implementation details for comment handling.
+
 #### 8.3.1 Comment Storage Security
 
 - **Immutable Storage**: Comments are stored in immutable sections after signing
@@ -410,6 +457,8 @@ Different sanitization methods are applied based on content:
 - **Buffer Overflow Prevention**: Strict bounds checking prevents buffer overflows
 
 ### 8.4 Security Testing Requirements
+
+This section defines security testing requirements for comment functionality.
 
 #### 8.4.1 Comment Security Testing
 
@@ -430,7 +479,11 @@ Different sanitization methods are applied based on content:
 
 ## 9. Security Testing and Validation
 
+This section defines security testing and validation requirements.
+
 ### 9.1 Testing Requirements
+
+This section defines specific testing requirements for security features.
 
 #### 9.1.1 Signature Testing
 
@@ -447,6 +500,8 @@ Different sanitization methods are applied based on content:
 - **Compatibility Testing**: Test compatibility with existing encrypted packages
 
 ### 9.2 Security Validation
+
+This section describes security validation processes and requirements.
 
 #### 9.2.1 Penetration Testing
 
