@@ -1,79 +1,97 @@
 # Development Documentation Directory
 
-This directory contains ALL development documentation for the NovusPack project.
+## Purpose
 
-## Technical Specifications Entry
+This directory serves as a **temporary working space** for documenting development activities, decisions, and analysis during active feature development.
 
-For the full technical specifications, start here:
+**IMPORTANT:** All files in this directory (except this README) **MUST be cleaned up before merging to the main branch**.
+This is not a permanent documentation location.
 
-- `docs/tech_specs/_main.md`
+### Key Characteristics
 
-## **CRITICAL REQUIREMENTS**
+- All files here (except this README) are **temporary** and should be cleaned up before merging
+- This is **not** for permanent project documentation
+- Files here document the "how and why" of development work in progress
 
-### **Directory Location**
+## Pre-Merge Cleanup Requirement
 
-- **ALL documentation MUST be created ONLY in this `dev_docs/` directory**
-- **NO documents should be created outside this directory**
-- **NO exceptions are allowed**
+Before merging any branch to main, complete these steps:
 
-### File Naming Convention
+1. Review all files in `dev_docs/`
+2. Decide the fate of each document:
+    - Move valuable content to appropriate permanent location in `docs/` or otherwise
+    - Delete temporary working documents
+    - Extract and preserve important decisions or rationale
+3. Ensure only `README.md` remains in this directory
 
-ALL documents MUST follow this exact format:
+Branches with unreviewed files in `dev_docs/` will be rejected during merge review.
+
+## File Naming Convention
+
+To maintain clarity and organization, use descriptive filenames with dates:
+
+### Recommended Format
 
 ```text
 YYYY-MM-DD_document_type_description.md
 ```
 
-#### Required Elements
+### Components
 
-- **Date:** ISO format (YYYY-MM-DD)
-- **Document Type:** Clear type identifier (plan, analysis, test, review, implementation, etc.)
-- **Description:** Specific, descriptive content summary
-- **Extension:** Must be `.md` (Markdown format)
+- **Date:** ISO format (YYYY-MM-DD) for when the document was created
+- **Document Type:** Clear type identifier (see examples below)
+- **Description:** Specific, descriptive summary of content
+- **Extension:** `.md` (Markdown format)
 
-#### Valid Examples
+### Example Filenames
 
-- `2024-01-15_development_plan_mlkem_implementation.md`
-- `2024-01-15_test_analysis_path_normalization.md`
-- `2024-01-15_code_review_quantum_safe_encryption.md`
-- `2024-01-15_implementation_notes_file_validation.md`
+Good examples:
 
-#### Invalid Examples (DO NOT USE)
+- `2024-01-15_analysis_mlkem_implementation_gaps.md`
+- `2024-01-15_plan_path_normalization_refactor.md`
+- `2024-01-15_notes_quantum_encryption_decisions.md`
+- `2024-01-15_review_file_validation_changes.md`
 
-- `plan.md` (missing date and description)
-- `test_results.md` (missing date and specific description)
-- `2024-1-15_notes.md` (incorrect date format)
-- `notes.txt` (wrong extension and missing required elements)
+Less helpful examples:
 
-### **Document Types**
+- `plan.md` - Missing date and context
+- `notes.md` - Too generic, difficult to find later
+- `temp.md` - Unclear purpose
 
-- **Planning:** Development plans, architecture decisions, design notes
-- **Analysis:** Code analysis, gap analysis, dependency mapping
-- **Test:** Test plans, test results, test coverage reports
-- **Implementation:** Development progress, technical decisions, implementation details
-- **Review:** Code reviews, check-in reports, validation results
-- **Troubleshooting:** Bug reports, issue tracking, resolution notes
+### Common Document Types
 
-### **Verification Process**
+- `analysis` - Code analysis, gap analysis, dependency mapping
+- `plan` - Development plans, architecture decisions, design notes
+- `notes` - Implementation notes, technical decisions, progress tracking
+- `review` - Code reviews, check-in reports, validation results
+- `findings` - Test results, coverage reports, BDD findings
+- `issues` - Bug reports, troubleshooting notes, resolution tracking
 
-1. **Before creating ANY document:** Verify the filename follows the convention
-2. **Before committing:** Verify all filenames are compliant
-3. **If non-compliant:** Rename files before committing
-4. **No exceptions:** Non-compliant files will be rejected
+### Naming for AI Assistants
 
-### **Directory Structure**
+If you're an AI coding assistant creating development documentation, follow the naming convention above to ensure your documentation is easily traceable and reviewable.
+Human developers can review these documents to understand the reasoning behind changes.
 
-```text
-dev_docs/
-├── README.md (this file)
-├── YYYY-MM-DD_document_type_description.md
-├── YYYY-MM-DD_document_type_description.md
-└── ...
-```
+## Using This Directory Effectively
 
-## **Compliance is Mandatory**
+### For AI Coding Assistants
 
-- **Product Owner Authority:** These requirements are non-negotiable
-- **No Deviations:** All documents must follow these rules exactly
-- **Quality First:** Proper documentation is required for project acceptance
-- **Version Control:** All documentation must be committed with proper naming
+When making commits, document your work in this directory:
+
+- Create a dated document explaining your analysis and decisions
+- Include what you changed and why
+- Note any tradeoffs or alternatives considered
+- Reference relevant specifications from `docs/tech_specs/`
+
+See [`ai_files/ai_coding_instructions.md`](../ai_files/ai_coding_instructions.md) for detailed guidelines.
+
+### For Human Developers
+
+This directory is available for your temporary development notes:
+
+- Working documents during feature development
+- Analysis notes and research
+- Design explorations and prototypes
+- Meeting notes related to development work
+
+Remember: move valuable content to permanent locations before merging.

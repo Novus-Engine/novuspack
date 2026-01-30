@@ -8,7 +8,7 @@ Provide shared definitions for terms used across NovusPack specifications.
 
 ## Terms
 
-- Package: A `.npk` archive produced by NovusPack.
+- Package: A `.nvpk` archive produced by NovusPack.
 - Source Of Truth (SoT): The single canonical document for a domain.
 - Domain: A cohesive specification area such as Signatures or Compression.
 - Canonical Entry: The primary index for technical specifications.
