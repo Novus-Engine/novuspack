@@ -29,7 +29,7 @@ Define the scope, audience, governance, and entry points for the NovusPack docum
 
 ## Standards
 
-- Follow `.github/copilot_instructions.md` for markdown standards and document structure.
+- Follow `.github/copilot-instructions.md` for markdown standards and document structure.
 - Headings must be unique and properly numbered.
 - Keep code in specs minimal: function signatures, constants, type parameters, and small usage examples.
 

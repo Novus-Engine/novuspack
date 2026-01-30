@@ -12,8 +12,8 @@
   - [2.3 Naming and Formatting](#23-naming-and-formatting)
   - [2.4 Integration with Existing Patterns](#24-integration-with-existing-patterns)
 - [3. Common Patterns](#3-common-patterns)
-  - [3.1 Duplicate Detection](#31-duplicate-detection)
-  - [3.2 Aggregation Operations](#32-aggregation-operations)
+  - [3.1 Duplicate Detection (Patterns)](#31-duplicate-detection-patterns)
+  - [3.2 Aggregation Operations (Patterns)](#32-aggregation-operations-patterns)
   - [3.3 Validation Patterns](#33-validation-patterns)
   - [3.4 Search and Filter Operations](#34-search-and-filter-operations)
   - [3.5 Map Operations](#35-map-operations)
@@ -40,7 +40,7 @@ It provides practical guidance on when and how to leverage `samber/lo` functions
 - [Generic Types and Patterns](../../tech_specs/api_generics.md) - Generic types and patterns used in NovusPack
 - [samber/lo Documentation](https://lo.samber.dev) - Official library documentation
 
-## 1. When to Use samber/lo
+## 1. When to Use Samber/lo
 
 Use `samber/lo` selectively for operations that benefit from declarative, functional-style code.
 
@@ -48,13 +48,15 @@ The library should enhance readability, not obscure simple operations.
 
 ### 1.1 High-Value Use Cases
 
-#### 1.1.1 Duplicate Detection
+This section describes high-value use cases for samber/lo in the codebase.
+
+#### 1.1.1 Duplicate Detection (Use Cases)
 
 Use `lo.UniqBy()` or `lo.FindDuplicates()` when checking for duplicate values in collections.
 
 This replaces manual map-based tracking and improves code clarity.
 
-#### 1.1.2 Aggregation Operations
+#### 1.1.2 Aggregation Operations (Use Cases)
 
 Use `lo.SumBy()`, `lo.Reduce()`, or `lo.CountBy()` for accumulating values from collections.
 
@@ -78,7 +80,9 @@ Use `lo.Map()`, `lo.Keys()`, `lo.Values()`, or `lo.Entries()` for map operations
 
 This simplifies common map manipulation patterns.
 
-### 1.2 When NOT to Use samber/lo
+### 1.2. When NOT to Use Samber/lo
+
+This section describes cases where samber/lo should not be used.
 
 #### 1.2.1 Simple Iteration with Side Effects
 
@@ -96,7 +100,7 @@ Use explicit loops when error messages require detailed context including index,
 
 Keep existing binary I/O patterns as they are already well-handled and optimized.
 
-#### 1.2.5 Operations Clearer as Loops
+#### 1.2.5. Operations Clearer As Loops
 
 When a simple loop is more readable than a library function, prefer the loop.
 
@@ -191,9 +195,11 @@ func ValidateUniqueEntries(entries []IndexEntry) Result[[]IndexEntry] {
 
 These patterns demonstrate how to use `samber/lo` for common operations in the NovusPack codebase.
 
-### 3.1 Duplicate Detection
+### 3.1 Duplicate Detection (Patterns)
 
-#### 3.1.1 Pattern: Check for duplicate FileIDs
+This section describes patterns for duplicate detection using samber/lo.
+
+#### 3.1.1. Pattern: Check for Duplicate FileIDs
 
 ```go
 func (f *FileIndex) Validate() error {
@@ -205,7 +211,7 @@ func (f *FileIndex) Validate() error {
 }
 ```
 
-#### 3.1.2 Pattern: Find duplicate values
+#### 3.1.2. Pattern: Find Duplicate Values
 
 ```go
 duplicates := lo.FindDuplicates(entries, func(e IndexEntry) uint64 { return e.FileID })
@@ -214,9 +220,11 @@ if len(duplicates) > 0 {
 }
 ```
 
-### 3.2 Aggregation Operations
+### 3.2 Aggregation Operations (Patterns)
 
-#### 3.2.1 Pattern: Sum sizes from multiple collections
+This section describes patterns for aggregation operations using samber/lo.
+
+#### 3.2.1. Pattern: Sum Sizes from Multiple Collections
 
 ```go
 func (f *FileEntry) VariableSize() int {
@@ -227,7 +235,7 @@ func (f *FileEntry) VariableSize() int {
 }
 ```
 
-#### 3.2.2 Pattern: Count elements matching a condition
+#### 3.2.2. Pattern: Count Elements Matching a Condition
 
 ```go
 compressedCount := lo.CountBy(entries, func(e FileEntry) bool {
@@ -237,7 +245,9 @@ compressedCount := lo.CountBy(entries, func(e FileEntry) bool {
 
 ### 3.3 Validation Patterns
 
-#### 3.3.1 Pattern: Validate all elements with early exit
+This section describes patterns for validation operations using samber/lo.
+
+#### 3.3.1. Pattern: Validate All Elements with Early Exit
 
 ```go
 func ValidateAllPaths(paths []PathEntry) error {
@@ -251,7 +261,7 @@ func ValidateAllPaths(paths []PathEntry) error {
 }
 ```
 
-#### 3.3.2 Pattern: Check if all elements satisfy condition
+#### 3.3.2. Pattern: Check If All Elements Satisfy Condition
 
 ```go
 allValid := lo.EveryBy(entries, func(e IndexEntry) bool {
@@ -264,7 +274,9 @@ if !allValid {
 
 ### 3.4 Search and Filter Operations
 
-#### 3.4.1 Pattern: Find element by criteria
+This section describes patterns for search and filter operations using samber/lo.
+
+#### 3.4.1. Pattern: Find Element by Criteria
 
 ```go
 entry, found := lo.Find(entries, func(e IndexEntry) bool {
@@ -275,7 +287,7 @@ if !found {
 }
 ```
 
-#### 3.4.2 Pattern: Filter collection by predicate
+#### 3.4.2. Pattern: Filter Collection by Predicate
 
 ```go
 validEntries := lo.Filter(entries, func(e IndexEntry, _ int) bool {
@@ -283,7 +295,7 @@ validEntries := lo.Filter(entries, func(e IndexEntry, _ int) bool {
 })
 ```
 
-#### 3.4.3 Pattern: Check if collection contains value
+#### 3.4.3. Pattern: Check If Collection Contains Value
 
 ```go
 hasEntry := lo.Contains(entries, targetEntry)
@@ -291,19 +303,21 @@ hasEntry := lo.Contains(entries, targetEntry)
 
 ### 3.5 Map Operations
 
-#### 3.5.1 Pattern: Extract keys from map
+This section describes patterns for map operations using samber/lo.
+
+#### 3.5.1. Pattern: Extract Keys from Map
 
 ```go
 keys := lo.Keys(fileMap)
 ```
 
-#### 3.5.2 Pattern: Extract values from map
+#### 3.5.2. Pattern: Extract Values from Map
 
 ```go
 values := lo.Values(fileMap)
 ```
 
-#### 3.5.3 Pattern: Transform map entries
+#### 3.5.3. Pattern: Transform Map Entries
 
 ```go
 transformed := lo.MapEntries(fileMap, func(k string, v FileEntry) (uint64, string) {
@@ -317,7 +331,9 @@ These examples show how to refactor existing code to use `samber/lo`.
 
 ### 4.1 Duplicate Detection Example
 
-#### 4.1.1 Before: Manual map tracking
+This section provides an example of refactoring duplicate detection code to use samber/lo.
+
+#### 4.1.1. Before: Manual Map Tracking
 
 ```go
 seen := make(map[uint64]bool)
@@ -332,7 +348,7 @@ for i, entry := range f.Entries {
 }
 ```
 
-#### 4.1.2 After: Using lo.UniqBy
+#### 4.1.2. After: Using Lo.UniqBy
 
 ```go
 // Check for zero FileIDs first (still needs index)
@@ -353,7 +369,9 @@ Note: The zero check still uses an explicit loop because it needs the index for 
 
 ### 4.2 Aggregation Example
 
-#### 4.2.1 Before: Manual accumulation
+This section provides an example of refactoring aggregation code to use samber/lo.
+
+#### 4.2.1. Before: Manual Accumulation
 
 ```go
 size := 0
@@ -368,7 +386,7 @@ for _, opt := range f.OptionalData {
 }
 ```
 
-#### 4.2.2 After: Using lo.SumBy
+#### 4.2.2. After: Using Lo.SumBy
 
 ```go
 size := lo.SumBy(f.Paths, func(p PathEntry) int { return p.Size() })
@@ -378,7 +396,9 @@ size += lo.SumBy(f.OptionalData, func(o OptionalDataEntry) int { return o.Size()
 
 ### 4.3 Validation Example
 
-#### 4.3.1 Before: Full validation loop
+This section provides an example of refactoring validation code to use samber/lo.
+
+#### 4.3.1. Before: Full Validation Loop
 
 ```go
 for i, path := range f.Paths {
@@ -388,7 +408,7 @@ for i, path := range f.Paths {
 }
 ```
 
-#### 4.3.2 After: Using lo.Find with early exit
+#### 4.3.2. After: Using Lo.Find with Early Exit
 
 ```go
 invalid, found := lo.Find(f.Paths, func(p PathEntry) bool {
@@ -425,7 +445,7 @@ If index or position information is needed for debugging, prefer explicit loops.
 
 Combine `lo` functions with explicit loops when both declarative operations and detailed error context are needed.
 
-#### 5.2.1 Example: Hybrid approach
+#### 5.2.1. Example: Hybrid Approach
 
 ```go
 // Use lo for duplicate detection
@@ -444,7 +464,9 @@ if len(unique) != len(f.Entries) {
 
 ### 5.3 Testing Considerations
 
-#### 5.3.1 Testing Code That Uses samber/lo
+This section describes testing considerations when using samber/lo.
+
+#### 5.3.1. Testing Code That Uses Samber/lo
 
 Test code using `samber/lo` the same way explicit loops are tested.
 
@@ -456,7 +478,7 @@ Ensure test coverage includes edge cases such as empty collections, single eleme
 
 When refactoring existing code to use `lo`, verify that behavior remains identical, especially for error messages and edge cases.
 
-#### 5.3.2 Using samber/lo in Test Code
+#### 5.3.2. Using Samber/lo in Test Code
 
 Use `samber/lo` in test code for operations that benefit from declarative patterns, but keep table-driven test iteration as explicit loops.
 
@@ -479,7 +501,7 @@ BDD step definitions can benefit from `samber/lo` for verification and aggregati
 
 Follow the same guidelines as production code: use `lo` when it improves readability, but keep explicit loops when index information is needed for error messages.
 
-##### 5.3.3.1 Example: Aggregating sizes in BDD steps
+##### 5.3.3.1. Example: Aggregating Sizes in BDD Steps
 
 ```go
 // Before: Manual aggregation
@@ -497,7 +519,7 @@ pathsSize := lo.SumBy(entry.Paths, func(p PathEntry) int { return p.Size() })
 hashSize := lo.SumBy(entry.Hashes, func(h HashEntry) int { return h.Size() })
 ```
 
-##### 5.3.3.2 Example: Verifying all elements in BDD steps
+##### 5.3.3.2. Example: Verifying All Elements in BDD Steps
 
 ```go
 // Verify all paths are valid
@@ -509,7 +531,7 @@ if found {
 }
 ```
 
-##### 5.3.3.3 When NOT to use samber/lo in BDD steps
+##### 5.3.3.3. When NOT to Use Samber/lo in BDD Steps
 
 Keep explicit loops in BDD steps when:
 
