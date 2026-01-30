@@ -1,8 +1,10 @@
 name: Go CI
 
-# NOTE: This workflow must be kept in sync with the 'ci' target in api/go/v1/Makefile.
+# NOTE: This workflow must be kept in sync with the 'ci' target in api/go/Makefile.
 #       The Makefile target performs the same checks locally. When adding or modifying
-#       CI checks, update both this workflow and api/go/v1/Makefile to ensure consistency.
+#       CI checks, update both this workflow and api/go/Makefile to ensure consistency.
+#       This workflow runs checks in separate jobs: test, lint, build, and signature validation.
+#       The 'ci' target in api/go/Makefile runs all checks including signature validation as the final step.
 
 on:
   push:
@@ -16,11 +18,11 @@ concurrency:
 
 jobs:
   test-go-v1:
-    name: Test api/go/v1
+    name: Test api/go
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: api/go/v1
+        working-directory: api/go
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,20 +31,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache-dependency-path: api/go/v1/go.sum
+          cache-dependency-path: api/go/go.sum
 
       - name: Verify dependencies
         run: go mod verify
 
       - name: Run unit tests
-        run: make test
+        run: go test -v ./...
 
   lint-go-v1:
-    name: Lint api/go/v1
+    name: Lint api/go
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: api/go/v1
+        working-directory: api/go
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,7 +53,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache-dependency-path: api/go/v1/go.sum
+          cache-dependency-path: api/go/go.sum
 
       - name: Check formatting
         run: |
@@ -68,21 +70,21 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.7.0
-          working-directory: api/go/v1
+          working-directory: api/go
 
       - name: Run golangci-lint (BDD)
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.7.0
-          working-directory: api/go/v1
+          working-directory: api/go
           args: --build-tags=bdd
 
   build-go-v1:
-    name: Build api/go/v1
+    name: Build api/go
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: api/go/v1
+        working-directory: api/go
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -91,7 +93,33 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache-dependency-path: api/go/v1/go.sum
+          cache-dependency-path: api/go/go.sum
 
       - name: Build
         run: go build ./...
+
+  validate-signatures-go-v1:
+    name: Validate Go Signatures api/go
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api/go
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Validate Go signatures
+        run: python3 ../../scripts/validate_go_signature_sync.py --impl-dir api/go --specs-dir docs/tech_specs --output go_signature_validation_report.txt --verbose
+
+      - name: Upload Go signature validation report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-signature-validation-report
+          path: go_signature_validation_report.txt
+          if-no-files-found: ignore
