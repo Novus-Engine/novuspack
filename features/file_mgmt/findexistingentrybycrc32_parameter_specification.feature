@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-197 @spec(api_file_management.md#912-findexistingentrybycrc32-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-197 @spec(api_deduplication.md#312-findexistingentrybycrc32-parameters)
 Feature: FindExistingEntryByCRC32 Parameter Specification
 
   @REQ-FILEMGMT-197 @happy

@@ -1,15 +1,14 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-071 @spec(api_file_management.md#26-usage-notes)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-071 @spec(api_file_mgmt_addition.md#24-usage-notes)
 Feature: AddFilePattern Usage Notes
 
   @REQ-FILEMGMT-071 @happy
-  Scenario: AddFile supports various FileSource implementations
+  Scenario: AddFile reads file data from filesystem paths
     Given an open NovusPack package
     And a valid context
-    When AddFile is used with different FileSource types
-    Then FilePathSource works with AddFile
-    And MemorySource works with AddFile
-    And custom FileSource implementations work with AddFile
-    And unified interface provides flexibility
+    And a filesystem file path
+    When AddFile is called
+    Then file content is read from filesystem path
+    And file is added to package
 
   @REQ-FILEMGMT-071 @happy
   Scenario: AddFileOptions configures compression, encryption, and metadata
@@ -28,4 +27,4 @@ Feature: AddFilePattern Usage Notes
     When AddFile is used
     Then best practices are documented
     And configuration options are explained
-    And FileSource implementations are documented
+    And stored path determination rules are documented

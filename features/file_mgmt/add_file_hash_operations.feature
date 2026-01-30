@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-017 @spec(api_file_management.md#66-add-file-hash)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-017 @spec(api_file_mgmt_addition.md#66-add-file-hash) @spec(api_file_mgmt_updates.md#66-add-file-hash)
 Feature: Add file hash operations
 
   @happy

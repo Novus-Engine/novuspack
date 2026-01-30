@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-037 @spec(api_core.md#5243-error-handling)
+@domain:core @m2 @REQ-CORE-037 @spec(api_core.md#5243-error-handling) @spec(api_writing.md#57-error-handling)
 Feature: Signing and Compression Error Handling
 
   @REQ-CORE-037 @error

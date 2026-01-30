@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-027 @spec(api_core.md#1145-error-logging-and-debugging)
+@domain:core @m2 @REQ-CORE-027 @spec(api_core.md#1045-error-logging-and-debugging)
 Feature: Error Logging and Debugging
 
   @REQ-CORE-027 @happy

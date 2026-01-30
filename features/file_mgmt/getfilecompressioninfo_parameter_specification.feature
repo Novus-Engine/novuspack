@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-191 @spec(api_file_management.md#613-getfilecompressioninfo-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-191 @spec(api_file_mgmt_compression.md#33-getfilecompressioninfo-parameters) @spec(api_file_mgmt_file_entry.md#714-getfilecompressioninfo-parameters)
 Feature: GetFileCompressionInfo Parameter Specification
 
   @REQ-FILEMGMT-191 @happy

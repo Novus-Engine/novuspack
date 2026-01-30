@@ -23,16 +23,6 @@ Feature: Security Status Information
     And checksum validation status is provided
 
   @REQ-SEC-032 @happy
-  Scenario: Security status information provides security level
-    Given an open NovusPack package
-    And a valid context
-    And package with security validation
-    When GetSecurityStatus is called
-    Then SecurityLevel indicates overall package security
-    And security level reflects validation state
-    And security level provides security classification
-
-  @REQ-SEC-032 @happy
   Scenario: Security status information provides validation errors
     Given an open NovusPack package
     And a valid context

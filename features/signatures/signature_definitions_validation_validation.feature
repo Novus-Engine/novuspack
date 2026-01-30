@@ -1,14 +1,19 @@
 @skip @domain:signatures @m2 @spec(api_signatures.md#122-signature-validation-process)
 Feature: Signature Definitions
 
-# This file previously contained placeholder scenarios for signature definitions.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios:
-#
-# - REQ-SIG-023 (signature validation process): tested in dedicated validation feature files
-# - REQ-SIG-026 (signature information structure): tested in dedicated signature information feature files
-# - REQ-SIG-036, 037 (when to use AddSignature/SignPackage): tested in features/signatures/when_to_use_addsignature_low_level.feature and when_to_use_signpackage_functions_high_level.feature
-# - REQ-SIG-045 (verification performance): tested in dedicated performance feature files
-# - REQ-SIG-047 (generic signature strategy interface): tested in features/signatures/generic_signature_strategy_interface.feature
-# - REQ-SIG-051 (structured error system): tested in features/signatures/signature_structured_error_system.feature
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures signature validation process expectations from the signatures API specification.
+# Detailed runnable scenarios live in the dedicated signatures feature files.
+
+  @REQ-SIG-023 @documentation
+  Scenario: Signature validation is incremental and includes signature metadata
+    Given a signed package with one or more signatures appended
+    When signatures are validated
+    Then each signature validates all content up to its creation point
+    And each signature also validates its own metadata header and signature comment
+
+  @REQ-SIG-010 @documentation
+  Scenario: ValidateAllSignatures validates signatures in order
+    Given a signed package with multiple signatures
+    When ValidateAllSignatures is executed
+    Then signatures are read sequentially from the header SignatureOffset
+    And the validation result preserves signature ordering

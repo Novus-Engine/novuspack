@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-202 @REQ-FILEMGMT-205 @REQ-FILEMGMT-206 @spec(api_file_management.md#921-getfilebyfileid)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-062 @REQ-FILEMGMT-065 @REQ-FILEMGMT-250 @spec(api_file_mgmt_queries.md#23-getfilebyfileid)
 Feature: GetFileByFileID
 
-  @REQ-FILEMGMT-202 @happy
+  @REQ-FILEMGMT-062 @happy
   Scenario: GetFileByFileID finds file entry by unique 64-bit identifier
     Given an open NovusPack package
     And a valid context
@@ -11,7 +11,7 @@ Feature: GetFileByFileID
     And boolean true is returned if found
     And boolean false is returned if not found
 
-  @REQ-FILEMGMT-205 @happy
+  @REQ-FILEMGMT-065 @happy
   Scenario: GetFileByFileID returns FileEntry and boolean when found
     Given an open NovusPack package
     And a valid context
@@ -21,7 +21,7 @@ Feature: GetFileByFileID
     And boolean true is returned indicating found
     And FileEntry contains complete file information
 
-  @REQ-FILEMGMT-205 @happy
+  @REQ-FILEMGMT-065 @happy
   Scenario: GetFileByFileID returns nil and false when not found
     Given an open NovusPack package
     And a valid context
@@ -31,7 +31,7 @@ Feature: GetFileByFileID
     And boolean false is returned indicating not found
     And no error is returned for not found case
 
-  @REQ-FILEMGMT-206 @happy
+  @REQ-FILEMGMT-250 @happy
   Scenario: GetFileByFileID provides stable file references across package modifications
     Given an open NovusPack package
     And a valid context
@@ -42,7 +42,7 @@ Feature: GetFileByFileID
     And FileID persists when file content is updated
     And stable references enable reliable file tracking
 
-  @REQ-FILEMGMT-206 @happy
+  @REQ-FILEMGMT-250 @happy
   Scenario: GetFileByFileID supports database-style lookups by primary key
     Given an open NovusPack package
     And a valid context
@@ -52,7 +52,7 @@ Feature: GetFileByFileID
     And lookup performance is optimized
     And database-style access patterns are supported
 
-  @REQ-FILEMGMT-206 @happy
+  @REQ-FILEMGMT-250 @happy
   Scenario: GetFileByFileID supports file tracking and management systems
     Given an open NovusPack package
     And a valid context

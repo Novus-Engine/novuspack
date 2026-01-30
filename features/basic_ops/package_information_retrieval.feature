@@ -79,8 +79,7 @@ Feature: Package information retrieval
     Then a structured validation error is returned
 
   @error
-  Scenario: GetInfo respects context cancellation
-    Given an open NovusPack package
-    And a cancelled context
+  Scenario: GetInfo fails if package is not open
+    Given a closed NovusPack package
     When GetInfo is called
-    Then a structured context error is returned
+    Then a structured validation error is returned

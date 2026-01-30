@@ -1,4 +1,4 @@
-@domain:metadata @m2 @REQ-META-085 @spec(api_metadata.md#72-signatureinfo-structure)
+@domain:metadata @m2 @v2 @REQ-META-085 @spec(api_metadata.md#72-signatureinfo-structure)
 Feature: SignatureInfo Structure
 
   @REQ-META-085 @happy
@@ -38,7 +38,7 @@ Feature: SignatureInfo Structure
     And SignatureInfo structure
     When validation information is examined
     Then Algorithm contains algorithm name/description
-    And SecurityLevel contains security level (1-5)
+    And SecurityLevel contains algorithm security level
     And Valid indicates whether signature is valid
     And Trusted indicates whether signature is trusted
     And Error contains error message if validation failed

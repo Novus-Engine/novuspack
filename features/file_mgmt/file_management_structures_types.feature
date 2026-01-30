@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-042 @REQ-FILEMGMT-005 @spec(api_file_management.md#1-core-data-structures)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-042 @REQ-FILEMGMT-005 @spec(api_file_mgmt_file_entry.md#1-fileentry-structure)
 Feature: File Management Structures
 
   @REQ-FILEMGMT-042 @REQ-FILEMGMT-005 @happy
@@ -19,6 +19,7 @@ Feature: File Management Structures
     And structure contains version fields, counts, types
     And structure contains compression and encryption fields
     And structure contains offset and length fields
+    And structure contains on-disk offsets to file entry and file data (runtime only)
 
   @REQ-FILEMGMT-042 @REQ-FILEMGMT-005 @happy
   Scenario: FileEntry structure supports variable-length data

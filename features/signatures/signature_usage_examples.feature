@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-035 @spec(api_signatures.md#282-function-usage-guide)
+@domain:signatures @m2 @v2 @REQ-SIG-035 @spec(api_signatures.md#282-function-usage-guide)
 Feature: Signature Usage Examples
 
   @REQ-SIG-035 @happy

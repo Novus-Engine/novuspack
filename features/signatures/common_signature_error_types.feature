@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-052 @spec(api_signatures.md#52-common-signature-error-types)
+@domain:signatures @m2 @v2 @REQ-SIG-052 @spec(api_signatures.md#52-common-signature-error-types)
 Feature: Common Signature Error Types
 
   @REQ-SIG-052 @happy

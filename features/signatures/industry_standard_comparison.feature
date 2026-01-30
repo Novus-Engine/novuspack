@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-041 @REQ-SIG-043 @spec(api_signatures.md#31-industry-standard-comparison)
+@domain:signatures @m2 @v2 @REQ-SIG-041 @REQ-SIG-043 @spec(api_signatures.md#31-industry-standard-comparison)
 Feature: Industry Standard Comparison
 
   @REQ-SIG-041 @happy

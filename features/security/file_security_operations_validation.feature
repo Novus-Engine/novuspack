@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-033 @REQ-SEC-090 @spec(security.md#42-file-validation)
+@domain:security @m2 @REQ-SEC-033 @REQ-SEC-090 @spec(security.md#42-file-validation) @spec(api_security.md#46-package-file-encryption-operations)
 Feature: File Security Operations
 
   @REQ-SEC-033 @happy

@@ -1,4 +1,4 @@
-@domain:core @m1 @REQ-CORE-012 @spec(api_core.md#8-per-file-tags-management)
+@domain:core @m1 @REQ-CORE-012 @spec(api_core.md#8-per-file-tags-management) @spec(api_file_mgmt_file_entry.md#3-tag-management)
 Feature: Per-file tags management
 
   @happy
@@ -48,7 +48,7 @@ Feature: Per-file tags management
     And all matching files are included
 
   @happy
-  Scenario: GetInheritedTags retrieves tags with directory inheritance
+  Scenario: GetInheritedTags retrieves tags with path inheritance
     Given an open NovusPack package with directory tags
     When GetInheritedTags is called with file path
     Then file tags are included

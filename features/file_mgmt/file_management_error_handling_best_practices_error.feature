@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-117 @spec(api_file_management.md#124-error-handling-best-practices)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-117 @spec(api_file_mgmt_errors.md#124-error-handling-best-practices)
 Feature: File Management: Error Handling Best Practices
 
   @REQ-FILEMGMT-117 @happy

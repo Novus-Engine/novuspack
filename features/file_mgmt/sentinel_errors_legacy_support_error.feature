@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-113 @spec(api_file_management.md#1221-sentinel-errors-legacy-support)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-113 @spec(api_file_mgmt_errors.md#1221-sentinel-errors-legacy-support)
 Feature: Sentinel Errors Legacy Support
 
   @REQ-FILEMGMT-113 @happy

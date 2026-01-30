@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-132 @spec(api_file_management.md#1331-use-patterns-for-bulk-operations)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-132 @spec(api_file_mgmt_best_practices.md#1331-use-patterns-for-bulk-operations)
 Feature: Use Patterns for Bulk Operations
 
   @REQ-FILEMGMT-132 @happy

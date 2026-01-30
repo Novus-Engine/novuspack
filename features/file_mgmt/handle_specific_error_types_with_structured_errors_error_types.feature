@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-120 @spec(api_file_management.md#1243-handle-specific-error-types-with-structured-errors)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-120 @spec(api_file_mgmt_errors.md#1243-handle-specific-error-types-with-structured-errors)
 Feature: Handle Specific Error Types with Structured Errors
 
   @REQ-FILEMGMT-120 @happy

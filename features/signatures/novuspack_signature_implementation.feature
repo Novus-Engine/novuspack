@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-042 @spec(api_signatures.md#32-novuspack-advantages)
+@domain:signatures @m2 @v2 @REQ-SIG-042 @spec(api_signatures.md#32-novuspack-advantages)
 Feature: NovusPack Signature Implementation
 
   @REQ-SIG-042 @happy

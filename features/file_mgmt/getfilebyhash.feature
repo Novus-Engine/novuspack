@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-207 @REQ-FILEMGMT-210 @REQ-FILEMGMT-211 @spec(api_file_management.md#922-getfilebyhash)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-251 @REQ-FILEMGMT-210 @REQ-FILEMGMT-211 @spec(api_file_mgmt_queries.md#24-getfilebyhash)
 Feature: GetFileByHash
 
-  @REQ-FILEMGMT-207 @happy
+  @REQ-FILEMGMT-251 @happy
   Scenario: GetFileByHash finds file entry by content hash
     Given an open NovusPack package
     And a valid context

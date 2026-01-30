@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-111 @spec(api_file_management.md#121-structured-error-system)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-111 @spec(api_file_mgmt_errors.md#1-file-management-error-handling)
 Feature: File Management: Structured Error System
 
   @REQ-FILEMGMT-111 @happy

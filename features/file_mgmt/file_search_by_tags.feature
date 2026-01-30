@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-217 @REQ-FILEMGMT-218 @REQ-FILEMGMT-219 @REQ-FILEMGMT-220 @REQ-FILEMGMT-221 @spec(api_file_management.md#924-findentriesbytag)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-217 @REQ-FILEMGMT-218 @REQ-FILEMGMT-219 @REQ-FILEMGMT-220 @REQ-FILEMGMT-221 @spec(api_file_mgmt_queries.md#31-findentriesbytag)
 Feature: File Management: File Search by Tags
 
   @REQ-FILEMGMT-218 @REQ-FILEMGMT-219 @happy

@@ -8,7 +8,6 @@ Feature: Metadata: SecurityStatus Structure
     Then structure contains signature count information
     And structure contains signature validation results
     And structure contains checksum information
-    And structure contains security level information
     And structure contains validation errors
 
   @REQ-META-086 @happy
@@ -29,18 +28,9 @@ Feature: Metadata: SecurityStatus Structure
     Then HasChecksums indicates if checksums are present
     And ChecksumsValid indicates if checksums are valid
 
-  @REQ-META-086 @happy
-  Scenario: SecurityStatus contains security level and errors
-    Given a NovusPack package
-    And SecurityStatus structure
-    When security level and errors are examined
-    Then SecurityLevel contains overall security level
-    And ValidationErrors contains list of validation errors
-
   @REQ-META-086 @error
   Scenario: SecurityStatus handles security violations
     Given a NovusPack package
     When security violations are detected
     Then ValidationErrors contains violation details
-    And SecurityLevel reflects security state
     And appropriate security status is reported

@@ -1,8 +1,11 @@
-@skip @domain:security @m2 @spec(security.md#23-signature-types-and-algorithms)
-Feature: Signature Types and Algorithms
+@domain:security @m2 @REQ-SEC-016 @spec(security.md#22-signature-types-and-algorithms)
+Feature: Signature types and algorithms define supported signature algorithms
 
-# This file previously contained placeholder scenarios for signature types and algorithms.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios:
-#
-# Signature types, validation, comment security, and testing are tested in dedicated signature feature files.
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+  @REQ-SEC-016 @happy
+  Scenario: Signature types and algorithms define supported algorithms
+    Given security validation or signing context
+    When signature types and algorithms are queried
+    Then supported signature algorithms are defined as specified
+    And the behavior matches the signature types and algorithms specification
+    And algorithm selection is consistent with security requirements
+    And quantum-safe and traditional algorithms are documented

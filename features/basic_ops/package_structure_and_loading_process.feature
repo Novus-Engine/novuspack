@@ -7,7 +7,7 @@ Feature: Package structure and loading process
     When the package is created
     Then Info is initialized to a PackageInfo structure
     And FileEntries is initialized to an empty slice
-    And DirectoryEntries is initialized to an empty slice
+    And PathMetadataEntries is initialized to an empty slice
     And SpecialFiles is initialized to an empty map
     And IsOpen is set to false
     And FilePath is empty
@@ -19,11 +19,11 @@ Feature: Package structure and loading process
     When the package is opened
     Then package header is loaded first
     And package header magic number and version are validated
-    Then package info is loaded (comment, VendorID, AppID)
+    Then package info is synchronized from header using PackageInfo.FromHeader
     Then file entries are loaded from file index
     Then special metadata files are loaded (file types 65000-65535)
-    Then directory metadata is loaded from special files
-    Then file-directory associations are updated
+    Then path metadata is loaded from special files
+    Then file-path associations are updated
     And IsOpen is set to true
 
   @happy
@@ -35,20 +35,20 @@ Feature: Package structure and loading process
     And fileType maps to FileEntry in SpecialFiles
 
   @happy
-  Scenario: loadDirectoryMetadata parses directory structure
-    Given a NovusPack package with directory metadata files
-    When loadDirectoryMetadata is called
-    Then directory metadata is parsed from YAML special files
-    And DirectoryEntries are populated
-    And directory hierarchy is established
+  Scenario: loadPathMetadata parses path structure
+    Given a NovusPack package with path metadata files
+    When loadPathMetadata is called
+    Then path metadata is parsed from YAML special files
+    And PathMetadataEntries are populated
+    And path hierarchy is established
 
   @happy
-  Scenario: updateFileDirectoryAssociations links files to directories
-    Given a NovusPack package with files and directory metadata
-    When updateFileDirectoryAssociations is called
-    Then each file is linked to its parent directory
-    And ParentDirectory pointer is set correctly
-    And file-directory relationships are established
+  Scenario: updateFilePathAssociations links files to path metadata
+    Given a NovusPack package with files and path metadata
+    When updateFilePathAssociations is called
+    Then each file path is linked to its corresponding PathMetadataEntry
+    And PathMetadataEntries map is populated correctly
+    And file-path relationships are established
 
   @error
   Scenario: Package loading fails if header is invalid

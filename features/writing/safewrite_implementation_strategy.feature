@@ -1,7 +1,7 @@
-@domain:writing @m2 @REQ-WRITE-013 @spec(api_writing.md#12-safewrite-implementation-strategy)
+@domain:writing @m2 @REQ-WRITE-013 @REQ-WRITE-055 @REQ-WRITE-056 @REQ-WRITE-057 @REQ-WRITE-062 @spec(api_writing.md#12-safewrite-implementation-strategy)
 Feature: SafeWrite Implementation Strategy
 
-  @REQ-WRITE-013 @happy
+  @REQ-WRITE-013 @REQ-WRITE-056 @happy
   Scenario: SafeWrite implementation creates temporary file in same directory
     Given an open NovusPack package
     When SafeWrite is called with the target path
@@ -27,7 +27,15 @@ Feature: SafeWrite Implementation Strategy
     And in-memory writing is efficient
     And memory thresholds are respected
 
-  @REQ-WRITE-013 @happy
+  @REQ-WRITE-013 @REQ-WRITE-062 @happy @spec(api_metadata.md#714-packageheadertoheader-helper-method)
+  Scenario: SafeWrite implementation synchronizes header fields from PackageInfo before serialization
+    Given an open NovusPack package with in-memory metadata changes
+    When SafeWrite prepares the PackageHeader for writing
+    Then PackageHeader.ToHeader is used to synchronize header fields from PackageInfo
+    And header flags reflect PackageInfo feature flags and compression type
+    And header version fields reflect PackageInfo version fields
+
+  @REQ-WRITE-013 @REQ-WRITE-055 @REQ-WRITE-057 @happy
   Scenario: SafeWrite implementation atomically renames temp file to target
     Given an open NovusPack package
     And package has been written to temp file
@@ -62,6 +70,16 @@ Feature: SafeWrite Implementation Strategy
     And data section is compressed
     And index is compressed
     And header, comment, and signatures remain uncompressed
+
+  @REQ-WRITE-013 @happy
+  Scenario: SafeWrite implementation handles metadata-only packages
+    Given an open NovusPack package
+    And package has FileCount 0
+    When SafeWrite is called with the target path
+    Then metadata-only flag (Bit 7) is set in header
+    And package is written successfully
+    And FileCount remains 0
+    And metadata-only package is valid
 
   @REQ-WRITE-013 @error
   Scenario: SafeWrite implementation handles streaming failures gracefully

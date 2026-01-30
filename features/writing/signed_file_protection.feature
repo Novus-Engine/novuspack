@@ -1,4 +1,4 @@
-@domain:writing @m2 @REQ-WRITE-024 @spec(api_writing.md#41-signed-file-protection)
+@domain:writing @m2 @REQ-WRITE-024 @REQ-WRITE-065 @spec(api_writing.md#421-signed-package-protection) @spec(api_writing.md#422-compression-configuration)
 Feature: Signed File Protection
 
   @REQ-WRITE-024 @happy

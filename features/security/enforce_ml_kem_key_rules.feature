@@ -40,10 +40,10 @@ Feature: Enforce ML-KEM key rules
   @REQ-SEC-003 @security @error
   Scenario: ML-KEM key generation rejects invalid security levels
     Given a valid context
-    And invalid security level (outside 1-5 range)
+    And invalid security level (not 1, 3, or 5)
     When GenerateMLKEMKey is called
     Then ErrInvalidSecurityLevel error is returned
-    And error indicates security level must be 1-5
+    And error indicates security level must be 1, 3, or 5
     And error follows structured error format
 
   @REQ-SEC-003 @security @error

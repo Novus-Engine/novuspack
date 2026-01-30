@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-195 @REQ-FILEMGMT-196 @REQ-FILEMGMT-197 @REQ-FILEMGMT-198 @REQ-FILEMGMT-199 @REQ-FILEMGMT-200 @REQ-FILEMGMT-201 @spec(api_file_management.md#9-deduplication-operations)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-195 @REQ-FILEMGMT-196 @REQ-FILEMGMT-197 @REQ-FILEMGMT-198 @REQ-FILEMGMT-199 @REQ-FILEMGMT-253 @REQ-FILEMGMT-254 @spec(api_deduplication.md#31-file-deduplication) @spec(api_file_mgmt_file_entry.md#9-fileentry-encryption) @spec(api_deduplication.md#318-file-deduplication-behavior)
 Feature: File Management: File Deduplication Operations (Multi-Layer Detection)
 
-  @REQ-FILEMGMT-196 @REQ-FILEMGMT-200 @happy
+  @REQ-FILEMGMT-196 @REQ-FILEMGMT-253 @happy
   Scenario: FindExistingEntryByCRC32 detects duplicate by checksum
     Given an open package
     And file "original.txt" exists with CRC32 checksum 0xABCD1234
@@ -40,7 +40,7 @@ Feature: File Management: File Deduplication Operations (Multi-Layer Detection)
     Then the file entry now has both "original.txt" and "copy.txt" paths
     And content is shared between paths
 
-  @REQ-FILEMGMT-200 @happy
+  @REQ-FILEMGMT-253 @happy
   Scenario: Deduplication searches for existing files with matching checksums
     Given an open package
     And file with CRC32 0xAAAA exists
@@ -48,7 +48,7 @@ Feature: File Management: File Deduplication Operations (Multi-Layer Detection)
     Then matching file is found
     And duplicate storage is avoided
 
-  @REQ-FILEMGMT-200 @happy
+  @REQ-FILEMGMT-253 @happy
   Scenario: Deduplication performs multi-layer verification
     Given an open package
     And candidate file for deduplication
@@ -57,7 +57,7 @@ Feature: File Management: File Deduplication Operations (Multi-Layer Detection)
     Then content hash verification occurs
     And verification confirms exact match
 
-  @REQ-FILEMGMT-200 @happy
+  @REQ-FILEMGMT-253 @happy
   Scenario: Deduplication adds paths to existing entries when duplicates found
     Given an open package
     And existing file entry for "data.bin"
@@ -65,14 +65,14 @@ Feature: File Management: File Deduplication Operations (Multi-Layer Detection)
     Then new path is added to existing entry
     And storage space is reduced
 
-  @REQ-FILEMGMT-201 @happy
+  @REQ-FILEMGMT-254 @happy
   Scenario: Deduplication supports simple CRC32-based lookup
     Given an open package
     When FindExistingEntryByCRC32 is used for duplicate detection
     Then fast CRC32-based lookup is performed
     And duplicates can be quickly identified
 
-  @REQ-FILEMGMT-201 @happy
+  @REQ-FILEMGMT-254 @happy
   Scenario: Deduplication supports multi-layer verification for accuracy
     Given an open package
     When FindExistingEntryMultiLayer is used for duplicate detection

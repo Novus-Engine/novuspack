@@ -29,11 +29,10 @@ Feature: Security: SecurityStatus Structure
     And checksum information is accessible
 
   @REQ-SEC-078 @happy
-  Scenario: SecurityStatus struct contains security level and errors
+  Scenario: SecurityStatus struct contains validation errors
     Given an open NovusPack package
     And package validation results
     When SecurityStatus struct is examined
-    Then SecurityLevel field contains overall security level
     And ValidationErrors field contains list of validation errors
     And security assessment information is accessible
 
@@ -53,6 +52,5 @@ Feature: Security: SecurityStatus Structure
     When SecurityStatus struct is examined
     Then structure provides signature information
     And structure provides checksum information
-    And structure provides security level
     And structure provides validation errors
     And complete security information is available

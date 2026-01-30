@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-150 @REQ-FILEMGMT-013 @spec(api_file_management.md#523-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-150 @REQ-FILEMGMT-013 @spec(api_file_mgmt_updates.md#123-updatefilepattern-returns) @spec(api_file_mgmt_file_entry.md#613-updatefile-returns) @spec(api_file_mgmt_file_entry.md#614-updatefile-behavior) @spec(api_file_mgmt_file_entry.md#615-updatefile-error-conditions)
 Feature: UpdateFilePattern
 
   @REQ-FILEMGMT-150 @REQ-FILEMGMT-013 @happy

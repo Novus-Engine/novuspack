@@ -1,4 +1,4 @@
-@domain:signatures @security @m2 @REQ-SIG-003 @spec(api_signatures.md#13-immutability-check)
+@domain:signatures @security @m2 @v2 @REQ-SIG-003 @spec(api_signatures.md#13-immutability-check) @spec(api_signatures.md#immutability-check) @spec(api_writing.md#4-signed-file-write-operations)
 Feature: Enforce immutability after signing
 
   @security

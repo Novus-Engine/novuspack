@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-023 @spec(security.md#322-aes-256-gcm)
+@domain:security @m2 @REQ-SEC-023 @spec(security.md#322-aes-256-gcm) @spec(api_security.md#32-encryptiontype-validation)
 Feature: AES-256-GCM Encryption
 
   @REQ-SEC-023 @happy

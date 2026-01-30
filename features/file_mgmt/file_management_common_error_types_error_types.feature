@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-112 @spec(api_file_management.md#122-common-error-types)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-112 @spec(api_file_mgmt_errors.md#11-error-type-categories)
 Feature: File Management: Common Error Types
 
   @REQ-FILEMGMT-112 @happy

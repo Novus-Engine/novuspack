@@ -1,4 +1,4 @@
-@domain:writing @m2 @REQ-WRITE-040 @spec(api_writing.md#54-compression-and-signing-relationship)
+@domain:writing @m2 @v2 @REQ-WRITE-040 @spec(api_writing.md#54-compression-and-signing-relationship)
 Feature: Writing: Compression and Signing Relationship
 
   @REQ-WRITE-040 @happy

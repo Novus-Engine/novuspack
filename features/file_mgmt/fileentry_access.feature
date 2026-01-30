@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-091 @spec(api_file_management.md#1012-fileentry-access)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-091 @spec(api_file_mgmt_queries.md#13-fileentry-access)
 Feature: FileEntry Access
 
   @REQ-FILEMGMT-091 @happy

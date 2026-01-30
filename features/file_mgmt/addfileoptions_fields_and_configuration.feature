@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-067 @REQ-FILEMGMT-068 @REQ-FILEMGMT-007 @spec(api_file_management.md#252-fields)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-067 @REQ-FILEMGMT-068 @REQ-FILEMGMT-007 @spec(api_file_mgmt_addition.md#252-fields)
 Feature: AddFileOptions Fields and Configuration
 
   @REQ-FILEMGMT-067 @REQ-FILEMGMT-068 @REQ-FILEMGMT-007 @happy

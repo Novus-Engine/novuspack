@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-107 @spec(api_file_management.md#1133-processdata-behavior)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-107 @spec(api_file_mgmt_file_entry.md#93-processdata-behavior)
 Feature: ProcessData Operation Behavior
 
   @REQ-FILEMGMT-107 @happy

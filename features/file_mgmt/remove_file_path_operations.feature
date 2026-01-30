@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-016 @spec(api_file_management.md#65-remove-file-path)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-016 @spec(api_file_mgmt_removal.md#65-remove-file-path) @spec(api_file_mgmt_updates.md#65-remove-file-path)
 Feature: Remove file path operations
 
   @happy

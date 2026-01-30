@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-206 @spec(api_file_management.md#9213-use-cases)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-250 @spec(api_file_mgmt_queries.md#235-getfilebyfileid-use-cases)
 Feature: GetFileByFileID Use Cases
 
-  @REQ-FILEMGMT-206 @happy
+  @REQ-FILEMGMT-250 @happy
   Scenario: GetFileByFileID provides stable file references across package modifications
     Given an open NovusPack package
     And a valid context
@@ -12,7 +12,7 @@ Feature: GetFileByFileID Use Cases
     And FileID persists when file content is updated
     And stable references enable reliable file tracking
 
-  @REQ-FILEMGMT-206 @happy
+  @REQ-FILEMGMT-250 @happy
   Scenario: GetFileByFileID supports database-style lookups by primary key
     Given an open NovusPack package
     And a valid context
@@ -22,7 +22,7 @@ Feature: GetFileByFileID Use Cases
     And lookup performance is optimized
     And database-style access patterns are supported
 
-  @REQ-FILEMGMT-206 @happy
+  @REQ-FILEMGMT-250 @happy
   Scenario: GetFileByFileID supports file tracking and management systems
     Given an open NovusPack package
     And a valid context

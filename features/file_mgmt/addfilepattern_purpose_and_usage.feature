@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-055 @spec(api_file_management.md#221-purpose)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-055 @spec(api_file_mgmt_addition.md#221-purpose)
 Feature: AddFilePattern Purpose and Usage
 
   @REQ-FILEMGMT-055 @happy

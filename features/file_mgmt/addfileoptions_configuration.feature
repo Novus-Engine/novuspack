@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-007 @spec(api_file_management.md#25-addfileoptions-configuration)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-007 @spec(api_file_mgmt_addition.md#25-addfileoptions-configuration) @spec(api_file_mgmt_transform_pipelines.md#19-configuration-options)
 Feature: AddFileOptions configuration
 
   @happy
@@ -66,3 +66,19 @@ Feature: AddFileOptions configuration
     When file is added
     Then structured validation error is returned
     And error indicates invalid option
+
+  @REQ-FILEMGMT-347 @REQ-PIPELINE-027 @happy
+  Scenario: MaxTransformStages configuration limits pipeline depth
+    Given AddFileOptions with MaxTransformStages set to 10
+    When file requiring multi-stage pipeline is added
+    Then MaxTransformStages limit is enforced
+    And pipeline creation succeeds if within limit
+    And validation error returned if exceeds limit
+
+  @REQ-FILEMGMT-348 @REQ-PIPELINE-028 @happy
+  Scenario: ValidateProcessingState enables strict validation
+    Given AddFileOptions with ValidateProcessingState set to true
+    When file is added with transformations
+    Then ProcessingState is validated against actual data state
+    And validation error returned if mismatch detected
+    And validation is skipped when option is false (default)

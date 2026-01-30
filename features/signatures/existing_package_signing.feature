@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-033 @spec(api_signatures.md#28-existing-package-signing)
+@domain:signatures @m2 @v2 @REQ-SIG-033 @spec(api_signatures.md#28-existing-package-signing)
 Feature: Existing Package Signing
 
   @REQ-SIG-033 @happy

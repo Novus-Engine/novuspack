@@ -1,4 +1,4 @@
-@domain:file_format @m1 @REQ-FILEFMT-022 @spec(package_file_format.md#72-signature-types)
+@domain:file_format @m1 @v2 @REQ-FILEFMT-022 @spec(package_file_format.md#72-signature-types)
 Feature: Signature types and encoding
 
   @happy

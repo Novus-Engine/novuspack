@@ -18,14 +18,6 @@ Feature: Concurrent compression methods
     And parallel decompression improves performance
 
   @REQ-COMPR-145 @happy
-  Scenario: CompressMultiplePackages compresses multiple packages concurrently
-    Given multiple NovusPack packages requiring compression
-    When CompressMultiplePackages is called
-    Then packages are compressed concurrently
-    And worker pool manages concurrent operations
-    And concurrent compression optimizes throughput
-
-  @REQ-COMPR-145 @happy
   Scenario: Concurrent compression methods use worker pool for resource management
     Given concurrent compression operations
     When compression methods are called

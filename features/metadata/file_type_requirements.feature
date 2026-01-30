@@ -15,7 +15,7 @@ Feature: File Type Requirements
     And a special metadata file
     When file name is examined
     Then file has reserved file name
-    And file name follows naming convention (e.g., "__NPK_DIR_65001__.npkdir")
+    And file name follows naming convention (e.g., "__NVPK_PATH_65001__.nvpkpath")
     And reserved name ensures uniqueness
 
   @REQ-META-092 @happy
@@ -33,7 +33,7 @@ Feature: File Type Requirements
     And a special metadata file
     When package header flags are examined
     Then bit 6 is set to 1 when special files exist
-    And bit 5 is set to 1 if directory metadata provides inheritance
+    And bit 5 is set to 1 if path metadata provides inheritance
     And flags indicate special file presence
 
   @REQ-META-092 @happy

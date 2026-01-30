@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-207 @REQ-FILEMGMT-208 @REQ-FILEMGMT-209 @REQ-FILEMGMT-210 @REQ-FILEMGMT-211 @spec(api_file_management.md#922-getfilebyhash)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-251 @REQ-FILEMGMT-252 @REQ-FILEMGMT-209 @REQ-FILEMGMT-210 @REQ-FILEMGMT-211 @spec(api_file_mgmt_queries.md#24-getfilebyhash)
 Feature: File lookup by content hash
 
-  @REQ-FILEMGMT-208 @REQ-FILEMGMT-209 @happy
+  @REQ-FILEMGMT-252 @REQ-FILEMGMT-209 @happy
   Scenario: GetFileByHash finds file by SHA-256 hash
     Given an open package with file "document.pdf"
     And the file has SHA-256 hash "abc123def456..."
@@ -9,7 +9,7 @@ Feature: File lookup by content hash
     Then the file entry for "document.pdf" is returned
     And the found flag is true
 
-  @REQ-FILEMGMT-208 @REQ-FILEMGMT-209 @happy
+  @REQ-FILEMGMT-252 @REQ-FILEMGMT-209 @happy
   Scenario: GetFileByHash finds file by SHA-512 hash
     Given an open package with file "archive.zip"
     And the file has SHA-512 hash "xyz789uvw012..."
@@ -17,7 +17,7 @@ Feature: File lookup by content hash
     Then the file entry for "archive.zip" is returned
     And the found flag is true
 
-  @REQ-FILEMGMT-208 @REQ-FILEMGMT-209 @happy
+  @REQ-FILEMGMT-252 @REQ-FILEMGMT-209 @happy
   Scenario: GetFileByHash returns false when hash not found
     Given an open package
     When GetFileByHash is called with non-existent hash

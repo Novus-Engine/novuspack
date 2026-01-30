@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-047 @spec(api_signatures.md#41-generic-signature-strategy-interface)
+@domain:signatures @m2 @v2 @REQ-SIG-047 @spec(api_signatures.md#41-generic-signature-strategy-interface)
 Feature: Generic Signature Strategy Interface
 
   @REQ-SIG-047 @happy

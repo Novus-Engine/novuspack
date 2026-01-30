@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-048 @spec(api_signatures.md#42-generic-signature-configuration)
+@domain:signatures @m2 @v2 @REQ-SIG-048 @spec(api_signatures.md#42-generic-signature-configuration)
 Feature: Generic Signature Configuration
 
   @REQ-SIG-048 @happy

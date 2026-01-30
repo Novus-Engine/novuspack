@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-119 @spec(api_file_management.md#1242-use-structured-errors-for-better-debugging)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-119 @spec(api_file_mgmt_errors.md#1242-use-structured-errors-for-better-debugging)
 Feature: File Management: Use Structured Errors for Better Debugging
 
   @REQ-FILEMGMT-119 @happy

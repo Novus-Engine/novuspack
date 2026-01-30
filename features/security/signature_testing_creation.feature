@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-070 @spec(security.md#911-signature-testing)
+@domain:security @m2 @v2 @REQ-SEC-070 @spec(security.md#911-signature-testing)
 Feature: Signature Testing
 
   @REQ-SEC-070 @happy

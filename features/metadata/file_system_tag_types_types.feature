@@ -1,4 +1,4 @@
-@domain:metadata @m2 @REQ-META-023 @REQ-META-050 @REQ-META-092 @spec(metadata.md#126-file-system)
+@domain:metadata @m2 @REQ-META-023 @REQ-META-050 @REQ-META-092 @spec(metadata.md#126-file-system) @spec(api_metadata.md#831-special-file-type-requirements)
 Feature: File System Tag Types
 
   @REQ-META-023 @happy

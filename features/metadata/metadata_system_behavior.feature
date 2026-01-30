@@ -5,13 +5,13 @@ Feature: Metadata System Behavior
   Scenario: Tag inheritance rules define tag inheritance behavior
     Given a NovusPack package
     When tag inheritance rules are examined
-    Then directory-based inheritance is supported
+    Then path-based inheritance is supported
     And override priority rules are defined
     And inheritance resolution rules are specified
     And path matching rules are enforced
 
   @REQ-META-030 @happy
-  Scenario: Directory-based inheritance follows path hierarchy
+  Scenario: Path-based inheritance follows path hierarchy
     Given a NovusPack package
     And a file at path "/assets/textures/ui/button.png"
     When tag inheritance is resolved
@@ -23,27 +23,26 @@ Feature: Metadata System Behavior
   @REQ-META-030 @happy
   Scenario: Override priority determines tag precedence
     Given a NovusPack package
-    And directory metadata with tags
-    When tag inheritance is resolved
-    Then direct file tags have highest priority
-    And directory tags override based on inheritance priority
-    And root directory tags have lowest priority
+    And path metadata with tags
+    When tag inheritance is resolved via GetEffectiveTags on PathMetadataEntry
+    Then direct path tags have highest priority
+    And path tags override based on inheritance priority via ParentPath
+    And root path tags have lowest priority
 
   @REQ-META-030 @happy
-  Scenario: Inheritance resolution handles multiple directories
+  Scenario: Inheritance resolution handles multiple paths
     Given a NovusPack package
-    And multiple directories with tags
-    When inheritance is resolved
-    Then directories with exact path matches take priority
-    And directories with higher priority values override lower ones
-    And if priorities are equal, more recently modified directories take priority
+    And multiple paths with tags
+    When inheritance is resolved via GetEffectiveTags on PathMetadataEntry
+    Then paths with exact path matches take priority
+    And paths with higher priority values override lower ones via ParentPath
+    And if priorities are equal, more recently modified paths take priority
 
   @REQ-META-030 @error
   Scenario: Path matching rules are case-sensitive
     Given a NovusPack package
-    And directory paths in metadata
+    And paths in metadata
     When path matching is performed
-    Then directory paths must end with "/" in metadata
-    And path matching is case-sensitive
+    Then path matching is case-sensitive
     And path separators must match exactly
-    And root directory is represented as "/" in metadata
+    And root path is represented as "/" in metadata

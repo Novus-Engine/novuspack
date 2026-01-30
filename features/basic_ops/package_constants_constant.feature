@@ -2,18 +2,18 @@
 Feature: Package Constants
 
   @REQ-API_BASIC-023 @happy
-  Scenario: NPKMagic constant defines package identifier
+  Scenario: NVPKMagic constant defines package identifier
     Given the NovusPack package format
     When package constants are examined
-    Then NPKMagic equals 0x4E56504B
+    Then NVPKMagic equals 0x4E56504B
     And magic number represents "NVPK" in hex
-    And magic number identifies .npk files
+    And magic number identifies .nvpk files
 
   @REQ-API_BASIC-023 @happy
-  Scenario: NPKVersion constant defines current format version
+  Scenario: NVPKVersion constant defines current format version
     Given the NovusPack package format
     When package constants are examined
-    Then NPKVersion equals 1
+    Then NVPKVersion equals 1
     And version represents current format version
     And version is used for compatibility checking
 
@@ -29,8 +29,8 @@ Feature: Package Constants
   Scenario: Package constants are used for validation
     Given a package file to be validated
     When package header is validated
-    Then NPKMagic is used to identify package format
-    And NPKVersion is used to check compatibility
+    Then NVPKMagic is used to identify package format
+    And NVPKVersion is used to check compatibility
     And HeaderSize is used for header parsing
 
   @REQ-API_BASIC-025 @happy

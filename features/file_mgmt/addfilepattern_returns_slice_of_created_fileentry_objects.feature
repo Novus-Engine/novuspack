@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-057 @spec(api_file_management.md#223-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-057 @spec(api_file_mgmt_addition.md#223-returns)
 Feature: AddFilePattern Returns Slice of Created FileEntry Objects
 
   @REQ-FILEMGMT-057 @happy

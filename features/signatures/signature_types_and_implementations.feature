@@ -1,4 +1,4 @@
-@domain:signatures @security @m2 @REQ-SIG-004 @spec(api_signatures.md#2-signature-types)
+@domain:signatures @security @m2 @v2 @REQ-SIG-004 @spec(api_signatures.md#2-signature-types)
 Feature: Signature types and implementations
 
   @happy

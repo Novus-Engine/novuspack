@@ -1,10 +1,11 @@
-@skip @domain:metadata @m2 @spec(api_metadata.md#5-special-metadata-file-types)
-Feature: Special Metadata File Types
+@domain:metadata @m2 @REQ-META-062 @spec(api_metadata.md#5-special-metadata-file-types)
+Feature: Special metadata file types define special file classifications
 
-# This file previously contained placeholder scenarios for special metadata file types.
-# All requirements in this file are documentation-only definitions that don't require test coverage.
-#
-# Special file type definitions document classifications but are not testable requirements.
-# Actual special file behavior is tested in dedicated behavior feature files.
-#
-# This file is kept for reference but contains no test scenarios.
+  @REQ-META-062 @happy
+  Scenario: Special metadata file types define classifications
+    Given a package with special metadata files
+    When special file types are queried or used
+    Then special metadata file types define classifications as specified
+    And file type 65000, 65001, 65002, 65003 are recognized
+    And the behavior matches the special metadata file types specification
+    And special files are handled correctly

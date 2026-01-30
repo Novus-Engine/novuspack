@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-093 @spec(api_file_management.md#102-file-lookup-by-metadata)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-093 @spec(api_file_mgmt_queries.md#2-single-entry-lookups)
 Feature: File Lookup by Metadata
 
   @REQ-FILEMGMT-093 @happy

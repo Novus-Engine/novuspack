@@ -1,4 +1,4 @@
-@domain:basic_ops @m1 @REQ-API_BASIC-002 @spec(api_basic_operations.md#51-open-method)
+@domain:basic_ops @m1 @REQ-API_BASIC-002 @spec(api_basic_operations.md#51-openpackage)
 Feature: Open existing package for read
 
   Scenario: Open a valid package

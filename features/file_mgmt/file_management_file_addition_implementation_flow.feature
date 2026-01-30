@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-072 @spec(api_file_management.md#3-file-addition-implementation-flow)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-072 @spec(api_file_mgmt_addition.md#3-file-addition-implementation-flow)
 Feature: File Addition Implementation Flow
 
   @REQ-FILEMGMT-072 @happy

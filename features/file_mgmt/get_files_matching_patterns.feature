@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-027 @spec(api_file_management.md#22-add-file-pattern)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-027 @spec(api_file_mgmt_addition.md#24-addfilepattern-package-method)
 Feature: Get files matching patterns
 
   @happy

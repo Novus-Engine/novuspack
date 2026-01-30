@@ -6,7 +6,7 @@ Feature: Special File Types
     Given a NovusPack package
     When special file types are examined
     Then Type 65000 is package metadata file
-    And Type 65001 is directory metadata file
+    And Type 65001 is path metadata file
     And Type 65002 is symbolic link metadata file
     And Types 65003-65535 are reserved for future use
 
@@ -15,23 +15,23 @@ Feature: Special File Types
     Given a NovusPack package
     When special file type 65000 is examined
     Then type represents package metadata file
-    And file name is "__NPK_PKG_65000__.yaml"
+    And file name is "__NVPK_PKG_65000__.yaml"
     And file contains package metadata
 
   @REQ-META-093 @happy
-  Scenario: Directory metadata file type 65001 is defined
+  Scenario: Path metadata file type 65001 is defined
     Given a NovusPack package
     When special file type 65001 is examined
-    Then type represents directory metadata file
-    And file name is "__NPK_DIR_65001__.npkdir"
-    And file contains directory metadata
+    Then type represents path metadata file
+    And file name is "__NVPK_PATH_65001__.nvpkpath"
+    And file contains path metadata
 
   @REQ-META-093 @happy
   Scenario: Symbolic link metadata file type 65002 is defined
     Given a NovusPack package
     When special file type 65002 is examined
     Then type represents symbolic link metadata file
-    And file name is "__NPK_SYMLINK_65002__.npksym"
+    And file name is "__NVPK_SYMLINK_65002__.nvpksym"
     And file contains symbolic link metadata
 
   @REQ-META-093 @error

@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-038 @spec(api_core.md#62-package-compression-functions)
+@domain:core @m2 @REQ-CORE-038 @spec(api_core.md#62-package-compression-functions) @spec(api_package_compression.md#4-in-memory-compression-methods)
 Feature: Package Compression Functions
 
   @REQ-CORE-038 @happy

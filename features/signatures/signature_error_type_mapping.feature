@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-054 @spec(api_signatures.md#522-error-type-mapping)
+@domain:signatures @m2 @v2 @REQ-SIG-054 @spec(api_signatures.md#522-error-type-mapping)
 Feature: Signature Error Type Mapping
 
   @REQ-SIG-054 @happy

@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-047 @spec(api_file_management.md#124-serialization)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-047 @spec(api_file_mgmt_file_entry.md#6-marshaling)
 Feature: FileEntry Serialization
 
   @REQ-FILEMGMT-047 @happy

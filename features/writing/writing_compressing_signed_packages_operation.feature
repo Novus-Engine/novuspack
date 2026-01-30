@@ -8,16 +8,15 @@ Feature: Writing: Compressing Signed Packages
     When compression operation is attempted
     Then compressing signed packages is unsupported
     And error is returned if compression is attempted
-    And operation prevents signature invalidation
+    And operation enforces signed package immutability
 
   @REQ-WRITE-042 @error
-  Scenario: Compressing signed packages requires decompression for signature access
+  Scenario: Compressing signed packages is disallowed by immutability constraints
     Given a NovusPack package
     And a signed package
     When compression reason is examined
-    Then compression would require decompression to access signatures
-    And signature validation requires direct signature access
-    And compression would invalidate existing signatures
+    Then compression would modify package content
+    And signed package immutability forbids in-place modification
 
   @REQ-WRITE-042 @error
   Scenario: Compressing signed packages returns error
@@ -35,17 +34,16 @@ Feature: Writing: Compressing Signed Packages
     When compressing signed packages workflow is followed
     Then signatures must be cleared first
     And package is compressed after clearing signatures
-    And package is re-signed after compression
+    And package signing is deferred to v2
     And workflow maintains package integrity
 
   @REQ-WRITE-042 @happy
-  Scenario: Clear-compress-resign workflow enables compression
+  Scenario: Clear-compress workflow enables compression
     Given a NovusPack package
     And a signed package
-    When clear-compress-resign workflow is used
+    When clear-compress workflow is used
     Then clearSignatures flag removes existing signatures
-    Then compression operation succeeds without signatures
-    Then re-signing adds new signatures to compressed package
+    And compression operation succeeds without signatures
     And workflow enables compression of previously signed packages
 
   @REQ-WRITE-042 @error

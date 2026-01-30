@@ -50,24 +50,24 @@ Feature: Per-File Tags Usage Examples
     And example demonstrates audio metadata
 
   @REQ-META-036 @happy
-  Scenario: Directory tagging sets tags for inheritance
+  Scenario: Path tagging sets tags for inheritance
     Given an open NovusPack package
-    And a directory entry
-    When directory tags are set
-    Then category tag identifies directory type
-    And compression tag sets directory compression
-    And directory tags are inherited by child files
+    And a PathMetadataEntry
+    When path tags are set
+    Then category tag identifies path type
+    And compression tag sets path compression
+    And path tags are inherited by child paths via ParentPath
     And inheritance provides default tag values
 
   @REQ-META-036 @happy
-  Scenario: Directory tagging example demonstrates textures directory
+  Scenario: Path tagging example demonstrates textures path
     Given an open NovusPack package
-    And a textures directory entry
-    When directory tags are set with example values
+    And a textures PathMetadataEntry
+    When path tags are set with example values
     Then category tag is set to texture
     And compression tag is set to lossless
     And mipmaps tag is enabled
-    And example demonstrates directory inheritance
+    And example demonstrates path inheritance
 
   @REQ-META-036 @happy
   Scenario: File search by tags finds files by tag values

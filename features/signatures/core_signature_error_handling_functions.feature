@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-059 @spec(api_signatures.md#5331-core-error-handling-functions)
+@domain:signatures @m2 @v2 @REQ-SIG-059 @spec(api_signatures.md#5331-core-error-handling-functions)
 Feature: Core Signature Error Handling Functions
 
   @REQ-SIG-059 @happy

@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-190 @spec(api_file_management.md#612-decompressfile-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-190 @spec(api_file_mgmt_compression.md#612-decompressfile-parameters) @spec(api_file_mgmt_file_entry.md#713-decompressfile-parameters)
 Feature: DecompressFile Parameter Specification
 
   @REQ-FILEMGMT-190 @happy

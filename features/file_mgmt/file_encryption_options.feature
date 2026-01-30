@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-069 @spec(api_file_management.md#2522-encryption-options)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-069 @spec(api_file_mgmt_addition.md#286-encryption-options)
 Feature: File Encryption Options
 
   @REQ-FILEMGMT-069 @happy

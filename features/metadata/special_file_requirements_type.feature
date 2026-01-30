@@ -22,7 +22,7 @@ Feature: Special File Requirements
   Scenario: Special file requirements specify file name requirements
     Given a NovusPack package
     When file name requirements are examined
-    Then reserved file names must be used (e.g., "__NPK_DIR_241__.npkdir")
+    Then reserved file names must be used (e.g., "__NVPK_PATH_65001__.nvpkpath")
     And file names follow naming convention
     And file names ensure uniqueness
 

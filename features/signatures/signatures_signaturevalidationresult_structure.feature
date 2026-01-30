@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-028 @spec(api_signatures.md#222-signaturevalidationresult-struct)
+@domain:signatures @m2 @v2 @REQ-SIG-028 @spec(api_signatures.md#222-signaturevalidationresult-struct)
 Feature: Signatures: SignatureValidationResult Structure
 
   @REQ-SIG-028 @happy

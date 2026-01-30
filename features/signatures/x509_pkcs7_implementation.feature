@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-032 @spec(api_signatures.md#26-x509pkcs7-implementation)
+@domain:signatures @m2 @v2 @REQ-SIG-032 @spec(api_signatures.md#26-x509pkcs7-implementation)
 Feature: X.509 PKCS#7 Implementation
 
   @REQ-SIG-032 @happy

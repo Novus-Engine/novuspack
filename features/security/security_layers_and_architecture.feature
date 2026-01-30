@@ -1,14 +1,19 @@
 @skip @domain:security @m2 @spec(security.md#11-security-layers)
 Feature: Security Layers and Architecture
 
-# This file previously contained placeholder scenarios for security layers and architecture.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios:
-#
-# Security layers, principles, validation, and best practices are tested in dedicated feature files:
-# - features/security/security_principles.feature
-# - features/security/security_industry_standard_compliance.feature
-# - features/security/security_best_practices.feature
-# - features/security/comment_security_architecture.feature
-# - features/security/comment_security_principles.feature
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures high-level security architecture expectations from the security specs.
+# Detailed runnable scenarios live in the dedicated security feature files.
+
+  @documentation
+  Scenario: Security uses defense in depth across multiple layers
+    Given a NovusPack package is distributed to consumers
+    When the package is evaluated for security protections
+    Then integrity checks, encryption, validation, access control, and transparency layers apply
+    And no single layer is relied upon as the only protection
+
+  @documentation
+  Scenario: Security principles prioritize transparent and inspectable packages
+    Given a package is subject to antivirus or security scanning
+    When the package structure is inspected
+    Then the package format supports transparency and inspection
+    And security features do not require opaque or self-modifying behavior

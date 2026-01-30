@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-059 @spec(api_file_management.md#225-error-conditions)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-059 @spec(api_file_mgmt_addition.md#225-error-conditions)
 Feature: AddFilePattern Error Conditions
 
   @REQ-FILEMGMT-059 @error

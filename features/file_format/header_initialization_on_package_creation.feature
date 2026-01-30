@@ -1,4 +1,4 @@
-@domain:file_format @m1 @REQ-FILEFMT-016 @spec(package_file_format.md#28-header-initialization)
+@domain:file_format @m1 @REQ-FILEFMT-016 @REQ-FILEFMT-075 @spec(package_file_format.md#28-header-initialization)
 Feature: Header initialization on package creation
 
   @happy
@@ -95,7 +95,7 @@ Feature: Header initialization on package creation
     And ArchivePartInfo encodes total M in bits 15-0
     And ArchiveChainID links related archive parts
 
-  @happy
+  @REQ-FILEFMT-075 @happy
   Scenario: NewPackageHeader creates header with default values
     Given NewPackageHeader is called
     Then a PackageHeader is returned

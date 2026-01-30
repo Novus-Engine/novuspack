@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-031 @spec(api_signatures.md#25-pgp-openpgp-implementation)
+@domain:signatures @m2 @v2 @REQ-SIG-031 @spec(api_signatures.md#25-pgp-openpgp-implementation)
 Feature: PGP OpenPGP Implementation
 
   @REQ-SIG-031 @happy

@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-212 @REQ-FILEMGMT-213 @REQ-FILEMGMT-214 @REQ-FILEMGMT-215 @REQ-FILEMGMT-216 @spec(api_file_management.md#923-getfilebychecksum)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-212 @REQ-FILEMGMT-213 @REQ-FILEMGMT-214 @REQ-FILEMGMT-215 @REQ-FILEMGMT-216 @spec(api_file_mgmt_queries.md#25-getfilebychecksum)
 Feature: File lookup by CRC32 checksum
 
   @REQ-FILEMGMT-213 @REQ-FILEMGMT-214 @happy

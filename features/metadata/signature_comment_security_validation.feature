@@ -1,4 +1,4 @@
-@domain:metadata @security @m2 @REQ-META-010 @spec(api_metadata.md#13-signature-comment-security)
+@domain:metadata @security @m2 @v2 @REQ-META-010 @spec(api_metadata.md#13-signature-comment-security)
 Feature: Signature Comment Security Validation
 
   @happy

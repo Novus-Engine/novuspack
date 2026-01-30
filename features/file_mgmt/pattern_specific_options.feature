@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-070 @spec(api_file_management.md#2523-pattern-specific-options)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-070 @spec(api_file_mgmt_addition.md#2523-pattern-specific-options)
 Feature: Pattern-Specific Options
 
   @REQ-FILEMGMT-070 @happy

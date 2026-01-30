@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-115 @spec(api_file_management.md#1223-creating-file-management-errors)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-115 @spec(api_file_mgmt_errors.md#121-creating-file-management-errors)
 Feature: Creating File Management Errors
 
   @REQ-FILEMGMT-115 @happy

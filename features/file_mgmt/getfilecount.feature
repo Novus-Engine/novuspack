@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-227 @REQ-FILEMGMT-230 @REQ-FILEMGMT-231 @spec(api_file_management.md#926-getfilecount)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-227 @REQ-FILEMGMT-230 @REQ-FILEMGMT-231 @spec(api_file_mgmt_queries.md#41-getfilecount)
 Feature: GetFileCount
 
   @REQ-FILEMGMT-227 @happy

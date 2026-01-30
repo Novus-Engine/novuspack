@@ -1,4 +1,4 @@
-@domain:core @m1 @REQ-CORE-011 @spec(api_core.md#111-error-types-and-categories)
+@domain:core @m1 @REQ-CORE-011 @spec(api_core.md#101-error-types-and-categories)
 Feature: Error type categories and usage
 
   @happy

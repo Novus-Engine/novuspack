@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-211 @spec(api_file_management.md#9224-use-cases)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-211 @spec(api_file_mgmt_queries.md#245-getfilebyhash-use-cases)
 Feature: GetFileByHash Use Cases
 
   @REQ-FILEMGMT-211 @happy

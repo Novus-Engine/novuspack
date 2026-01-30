@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-030 @spec(api_signatures.md#24-slh-dsa-sphincs-implementation)
+@domain:signatures @m2 @v2 @REQ-SIG-030 @spec(api_signatures.md#24-slh-dsa-sphincs-implementation)
 Feature: SLH-DSA SPHINCS Implementation
 
   @REQ-SIG-030 @happy

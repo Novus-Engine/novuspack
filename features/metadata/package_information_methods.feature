@@ -33,9 +33,7 @@ Feature: Package Information Structures and Methods
     Then structured validation error is returned
 
   @REQ-META-011 @REQ-META-014 @error
-  Scenario: Package information methods respect context cancellation
-    Given an open package
-    And a cancelled context
-    When package information method is called
-    Then structured context error is returned
-    And error type is context cancellation
+  Scenario: GetPackageInfo fails if package is not open
+    Given a closed package
+    When GetPackageInfo is called
+    Then structured validation error is returned

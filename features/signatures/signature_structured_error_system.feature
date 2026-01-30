@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-051 @spec(api_signatures.md#51-structured-error-system)
+@domain:signatures @m2 @v2 @REQ-SIG-051 @spec(api_signatures.md#51-structured-error-system)
 Feature: Signature Structured Error System
 
   @REQ-SIG-051 @happy

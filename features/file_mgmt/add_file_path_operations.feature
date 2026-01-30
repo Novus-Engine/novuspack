@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-015 @spec(api_file_management.md#64-add-file-path)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-015 @spec(api_file_mgmt_addition.md#64-add-file-path) @spec(api_file_mgmt_updates.md#64-add-file-path)
 Feature: Add file path operations
 
   @happy

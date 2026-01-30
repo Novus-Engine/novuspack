@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-020 @REQ-SIG-034 @REQ-SIG-038 @spec(api_signatures.md#111-implementation-requirements)
+@domain:signatures @m2 @v2 @REQ-SIG-020 @REQ-SIG-034 @REQ-SIG-038 @spec(api_signatures.md#111-implementation-requirements)
 Feature: Signatures: Signature Implementation Requirements (AddSignature)
 
   @REQ-SIG-020 @happy

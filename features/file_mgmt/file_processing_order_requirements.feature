@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-073 @REQ-FILEMGMT-075 @spec(api_file_management.md#311-required-processing-sequence)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-073 @REQ-FILEMGMT-075 @spec(api_file_mgmt_addition.md#31-processing-order-requirements)
 Feature: File Processing Order Requirements
 
   @REQ-FILEMGMT-073 @happy

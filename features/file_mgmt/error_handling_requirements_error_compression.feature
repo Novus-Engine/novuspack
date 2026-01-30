@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-074 @spec(api_file_management.md#312-error-handling-requirements)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-074 @spec(api_file_mgmt_addition.md#error-handling-requirements) @spec(api_file_mgmt_compression.md#312-error-handling-requirements)
 Feature: Error Handling Requirements
 
   @REQ-FILEMGMT-074 @error

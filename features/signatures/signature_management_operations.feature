@@ -1,4 +1,4 @@
-@domain:signatures @security @m2 @REQ-SIG-005 @spec(api_signatures.md#1-signature-management)
+@domain:signatures @security @m2 @v2 @REQ-SIG-005 @spec(api_signatures.md#1-signature-management)
 Feature: Signature management operations
 
   @happy

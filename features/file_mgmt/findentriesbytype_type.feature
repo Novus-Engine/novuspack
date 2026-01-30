@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-222 @REQ-FILEMGMT-225 @REQ-FILEMGMT-226 @spec(api_file_management.md#925-findentriesbytype)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-222 @REQ-FILEMGMT-225 @REQ-FILEMGMT-226 @spec(api_file_mgmt_queries.md#32-findentriesbytype)
 Feature: FindEntriesByType
 
   @REQ-FILEMGMT-222 @happy

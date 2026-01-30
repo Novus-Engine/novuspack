@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-053 @spec(api_signatures.md#521-specific-signature-error-types)
+@domain:signatures @m2 @v2 @REQ-SIG-053 @spec(api_signatures.md#521-specific-signature-error-types)
 Feature: Specific Signature Error Types
 
   @REQ-SIG-053 @happy

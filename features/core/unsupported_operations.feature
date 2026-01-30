@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-036 @spec(api_core.md#5242-unsupported-operations)
+@domain:core @m2 @REQ-CORE-036 @spec(api_core.md#5242-unsupported-operations) @spec(api_writing.md#542-compressing-signed-packages)
 Feature: Unsupported operations
 
   @REQ-CORE-036 @error

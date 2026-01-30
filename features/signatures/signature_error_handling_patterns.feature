@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-057 @spec(api_signatures.md#532-error-handling-patterns)
+@domain:signatures @m2 @v2 @REQ-SIG-057 @spec(api_signatures.md#532-error-handling-patterns)
 Feature: Signature Error Handling Patterns
 
   @REQ-SIG-057 @happy

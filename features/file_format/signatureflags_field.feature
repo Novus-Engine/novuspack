@@ -1,4 +1,4 @@
-@domain:file_format @m2 @REQ-FILEFMT-067 @spec(package_file_format.md#722-signatureflags-field)
+@domain:file_format @m2 @v2 @REQ-FILEFMT-067 @spec(package_file_format.md#722-signatureflags-field)
 Feature: SignatureFlags Field
 
   @REQ-FILEFMT-067 @happy

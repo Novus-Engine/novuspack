@@ -1,4 +1,4 @@
-@domain:metadata @m2 @REQ-META-063 @spec(api_metadata.md#51-package-metadata-file-type-65000)
+@domain:metadata @m2 @REQ-META-063 @spec(api_metadata.md#51-package-metadata-file-type-65000) @spec(api_metadata.md#515-packagehasmetadatafile-method)
 Feature: Package Metadata File Type 65000
 
   @REQ-META-063 @happy

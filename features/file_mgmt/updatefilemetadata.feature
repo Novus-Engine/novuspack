@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-157 @REQ-FILEMGMT-014 @spec(api_file_management.md#534-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-157 @REQ-FILEMGMT-014 @spec(api_file_mgmt_updates.md#134-updatefilemetadata-returns) @spec(api_file_mgmt_file_entry.md#633-filemetadataupdate-structure) @spec(api_file_mgmt_file_entry.md#634-updatefilemetadata-returns) @spec(api_file_mgmt_file_entry.md#635-updatefilemetadata-behavior) @spec(api_file_mgmt_file_entry.md#636-updatefilemetadata-error-conditions)
 Feature: UpdateFileMetadata
 
   @REQ-FILEMGMT-157 @REQ-FILEMGMT-014 @happy

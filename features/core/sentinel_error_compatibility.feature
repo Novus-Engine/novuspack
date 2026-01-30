@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-026 @spec(api_core.md#1144-sentinel-error-compatibility)
+@domain:core @m2 @REQ-CORE-026 @spec(api_core.md#1044-sentinel-error-compatibility)
 Feature: Sentinel Error Compatibility
 
   @REQ-CORE-026 @happy

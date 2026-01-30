@@ -14,7 +14,7 @@ Feature: Core interfaces
     Given a NovusPack package
     When PackageWriter interface is used
     Then package modification capabilities are provided
-    And WriteFile, RemoveFile, Write, SafeWrite, and FastWrite methods are available
+    And Write, SafeWrite, and FastWrite methods are available
     And interface defines write operations contract
 
   @REQ-CORE-019 @happy

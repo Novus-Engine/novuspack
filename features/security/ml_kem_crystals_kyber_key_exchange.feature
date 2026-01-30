@@ -1,12 +1,19 @@
 @skip @domain:security @m2 @spec(security.md#321-ml-kem-crystals-kyber)
 Feature: ML-KEM Crystals Kyber Key Exchange
 
-# This file previously contained placeholder scenarios for ML-KEM key exchange.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios:
-#
-# - REQ-SEC-095 (ML-KEM key generation): tested in features/security/ml_kem_key_generation.feature
-# - REQ-SEC-101 (ML-KEM encryption operations): tested in features/security/ml_kem_encryption_operations.feature
-# - REQ-SEC-104 (ML-KEM encryption purpose): documentation-only, has real tests in ml_kem_encryption_operations.feature
-# - REQ-SEC-107 (ML-KEM key information): tested in features/security/ml_kem_key_information.feature
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures high-level expectations for ML-KEM from the security specs.
+# Detailed runnable scenarios live in the dedicated security feature files.
+
+  @documentation
+  Scenario: ML-KEM provides quantum-safe key exchange with multiple security levels
+    Given ML-KEM encryption is enabled
+    When a key pair is generated
+    Then the selected security level determines key sizes and security strength
+    And keys are suitable for quantum-safe key exchange in the encryption system
+
+  @documentation
+  Scenario: ML-KEM is used for key exchange in a hybrid encryption approach
+    Given a package uses hybrid encryption
+    When a file is encrypted
+    Then ML-KEM is used for key exchange
+    And AES-256-GCM may be used for bulk data encryption

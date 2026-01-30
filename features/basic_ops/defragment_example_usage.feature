@@ -1,7 +1,7 @@
-@domain:basic_ops @m2 @REQ-API_BASIC-057 @spec(api_basic_operations.md#723-defragment-example-usage)
+@domain:basic_ops @m2 @REQ-API_BASIC-056 @spec(api_basic_operations.md#723-defragment-example-usage)
 Feature: Defragment Example Usage
 
-  @REQ-API_BASIC-057 @happy
+  @REQ-API_BASIC-056 @happy
   Scenario: Defragment example demonstrates defragmentation usage
     Given an open NovusPack package
     And a valid context
@@ -11,7 +11,7 @@ Feature: Defragment Example Usage
     And error handling is shown
     And usage example is complete
 
-  @REQ-API_BASIC-057 @happy
+  @REQ-API_BASIC-056 @happy
   Scenario: Defragment example shows error checking pattern
     Given an open NovusPack package
     And a valid context
@@ -21,7 +21,7 @@ Feature: Defragment Example Usage
     And proper error handling is shown
     And example follows best practices
 
-  @REQ-API_BASIC-057 @happy
+  @REQ-API_BASIC-056 @happy
   Scenario: Defragment example follows standard Go error handling
     Given a code example using Defragment
     When example code is examined
@@ -29,7 +29,7 @@ Feature: Defragment Example Usage
     And error is handled with if err != nil pattern
     And function returns error on failure
 
-  @REQ-API_BASIC-057 @happy
+  @REQ-API_BASIC-056 @happy
   Scenario: Defragment example uses context parameter correctly
     Given a code example using Defragment
     When example code is examined
@@ -37,7 +37,7 @@ Feature: Defragment Example Usage
     And context supports cancellation and timeout
     And context follows standard Go patterns
 
-  @REQ-API_BASIC-057 @error
+  @REQ-API_BASIC-056 @error
   Scenario: Defragment example handles validation errors
     Given an open NovusPack package
     And a valid context

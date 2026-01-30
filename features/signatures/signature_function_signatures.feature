@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-058 @spec(api_signatures.md#533-function-signatures)
+@domain:signatures @m2 @v2 @REQ-SIG-058 @spec(api_signatures.md#533-function-signatures)
 Feature: Signature Function Signatures
 
   @REQ-SIG-058 @happy

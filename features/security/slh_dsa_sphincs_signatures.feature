@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-018 @spec(security.md#232-slh-dsa-sphincs)
+@domain:security @m2 @v2 @REQ-SEC-018 @spec(security.md#232-slh-dsa-sphincs)
 Feature: SLH-DSA SPHINCS Signatures
 
   @REQ-SEC-018 @happy

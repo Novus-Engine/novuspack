@@ -5,9 +5,10 @@ Feature: Package Header Flags
   Scenario: Package header flags define special metadata file flags
     Given a NovusPack package
     When package header flags are examined
-    Then Bit 6 indicates has special metadata files
+    Then Bit 7 indicates metadata-only package (FileCount = 0)
+    And Bit 6 indicates has special metadata files
     And Bit 5 indicates has per-file tags
-    And flags are set when special files exist
+    And flags are set appropriately
 
   @REQ-META-094 @happy
   Scenario: Bit 6 flag indicates special metadata files
@@ -20,9 +21,9 @@ Feature: Package Header Flags
   @REQ-META-094 @happy
   Scenario: Bit 5 flag indicates per-file tags
     Given a NovusPack package
-    And directory metadata providing inheritance
+    And path metadata providing inheritance
     When package header flags are examined
-    Then Bit 5 is set to 1 if directory metadata provides inheritance
+    Then Bit 5 is set to 1 if path metadata provides inheritance
     And flag accurately reflects per-file tag support
 
   @REQ-META-094 @happy
@@ -33,6 +34,15 @@ Feature: Package Header Flags
     Then UpdateSpecialMetadataFlags updates package header flags
     And flags accurately reflect current state
     And context supports cancellation
+
+  @REQ-META-094 @happy
+  Scenario: Bit 7 flag indicates metadata-only package
+    Given a NovusPack package
+    And package with FileCount 0
+    When package header flags are examined
+    Then Bit 7 is set to 1 when FileCount is 0
+    And flag accurately reflects metadata-only status
+    And flag is set regardless of special metadata files presence
 
   @REQ-META-094 @error
   Scenario: Package header flags handle invalid flag states

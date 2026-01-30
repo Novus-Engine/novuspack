@@ -1,4 +1,4 @@
-@domain:core @m1 @REQ-CORE-001 @REQ-CORE-010 @spec(api_core.md#11-structured-error-system)
+@domain:core @m1 @REQ-CORE-001 @REQ-CORE-010 @spec(api_core.md#10-structured-error-system)
 Feature: Comprehensive structured error system
 
   @happy

@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @spec(api_file_management.md#41-remove-file)
+@domain:file_mgmt @m2 @spec(api_file_mgmt_removal.md#41-removefile)
 Feature: Remove file entry
 
-  @REQ-FILEMGMT-002 @happy
+  @REQ-FILEMGMT-139 @happy
   Scenario: Removing a file updates directory state
     Given a package containing a file "old.bin"
     When I remove the file "old.bin"

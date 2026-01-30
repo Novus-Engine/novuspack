@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-067 @spec(security.md#842-signature-comment-testing)
+@domain:security @m2 @v2 @REQ-SEC-067 @spec(security.md#842-signature-comment-testing)
 Feature: Signature Comment Testing
 
   @REQ-SEC-067 @happy

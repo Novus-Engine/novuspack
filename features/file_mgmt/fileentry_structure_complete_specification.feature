@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-005 @spec(api_file_management.md#11-fileentry-structure)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-005 @spec(api_file_mgmt_file_entry.md#1-fileentry-structure)
 Feature: FileEntry structure complete specification
 
   @happy
@@ -31,7 +31,8 @@ Feature: FileEntry structure complete specification
   Scenario: FileEntry data management fields
     Given a FileEntry instance
     When data management fields are examined
-    Then Data is byte slice for in-memory content
+    Then EntryOffset stores absolute offset to FileEntry metadata in package file
+    And Data is byte slice for in-memory content
     And SourceFile is file handle for streaming
     And SourceOffset and SourceSize indicate source location
     And TempFilePath is path to temp file
@@ -40,12 +41,12 @@ Feature: FileEntry structure complete specification
     And ProcessingState tracks current state
 
   @happy
-  Scenario: FileEntry directory association fields
+  Scenario: FileEntry path metadata association fields
     Given a FileEntry instance
-    When directory association is examined
-    Then ParentDirectory points to parent directory
-    And InheritedTags points to cached inherited tags
-    And directory hierarchy is maintained
+    When path metadata association is examined
+    Then PathMetadataEntries map contains path to PathMetadataEntry mappings
+    And GetPathMetadataForPath retrieves PathMetadataEntry for specific paths
+    And path metadata association enables per-path tag inheritance
 
   @happy
   Scenario: PathEntry structure contains all fields

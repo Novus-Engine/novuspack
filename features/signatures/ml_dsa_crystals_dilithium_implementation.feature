@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-029 @spec(api_signatures.md#23-ml-dsa-crystals-dilithium-implementation)
+@domain:signatures @m2 @v2 @REQ-SIG-029 @spec(api_signatures.md#23-ml-dsa-crystals-dilithium-implementation)
 Feature: ML-DSA Crystals Dilithium Implementation
 
   @REQ-SIG-029 @happy
