@@ -6,6 +6,8 @@
 - REQ-TEST-002: Cross-check tech spec scenarios against feature files by domain; fail if any scenario lacks a mapped feature or any feature references a missing spec anchor. [testing.md#0-overview](../tech_specs/testing.md#0-overview)
 - REQ-TEST-003: Testing coverage targets are defined per domain [type: documentation-only]. [testing.md#0-overview](../tech_specs/testing.md#0-overview)
 
+The Go API definitions index is available for reference but should not be used as a source specification.
+
 ## Dual Encryption Testing
 
 - REQ-TEST-004: Dual encryption testing requirements define encryption testing needs [type: documentation-only]. [testing.md#1-dual-encryption-testing-requirements](../tech_specs/testing.md#1-dual-encryption-testing-requirements)

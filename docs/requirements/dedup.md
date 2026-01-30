@@ -5,8 +5,10 @@
 - REQ-DEDUP-001: Content dedup occurs per defined layers. [api_deduplication.md#11-deduplication-layers](../tech_specs/api_deduplication.md#11-deduplication-layers)
 - REQ-DEDUP-002: Dedup metadata without breaking integrity. [api_deduplication.md#1-deduplication-strategy](../tech_specs/api_deduplication.md#1-deduplication-strategy)
 - REQ-DEDUP-006: Deduplication implementation strategy defines deduplication approach [type: architectural]. [api_deduplication.md#12-deduplication-implementation-strategy](../tech_specs/api_deduplication.md#12-deduplication-implementation-strategy)
-- REQ-DEDUP-007: findExistingEntry locates duplicate file entries. [api_deduplication.md#121-findexistingentryoriginalsize-int64-rawchecksum-uint32-contenthash-byte-fileentry](../tech_specs/api_deduplication.md#121-findexistingentryoriginalsize-int64-rawchecksum-uint32-contenthash-byte-fileentry)
+- REQ-DEDUP-007: findExistingEntry locates duplicate file entries. [api_deduplication.md#121-findexistingentry-function](../tech_specs/api_deduplication.md#121-findexistingentry-function)
 - REQ-DEDUP-016: selectDeduplicationLevel determines appropriate deduplication level. [api_deduplication.md#241-selectdeduplicationlevelentry-fileentry-deduplicationlevel](../tech_specs/api_deduplication.md#241-selectdeduplicationlevelentry-fileentry-deduplicationlevel)
+- REQ-DEDUP-017: Deduplication integrates with PathHandling option to create symlinks or hard links [type: architectural]. [api_deduplication.md#122-pathhandling-integration](../tech_specs/api_deduplication.md#122-pathhandling-integration), [api_deduplication.md#1222-integration-with-addfile](../tech_specs/api_deduplication.md#1222-integration-with-addfile)
+- REQ-DEDUP-018: AutoConvertToSymlinks enables automatic symlink creation during deduplication [type: constraint]. [api_deduplication.md#122-pathhandling-integration](../tech_specs/api_deduplication.md#122-pathhandling-integration)
 
 ## Deduplication Levels
 
@@ -32,4 +34,5 @@
 
 ## Validation
 
-- REQ-DEDUP-004: Checksum/hash parameters validated (non-empty, valid format) [type: constraint]. [api_file_management.md#91-file-deduplication](../tech_specs/api_file_management.md#91-file-deduplication)
+- REQ-DEDUP-004: Checksum/hash parameters validated (non-empty, valid format) [type: constraint]. [api_deduplication.md#31-file-deduplication](../tech_specs/api_deduplication.md#31-file-deduplication)
+- REQ-DEDUP-019: File deduplication behavior defines duplicate detection and handling [type: architectural]. [api_deduplication.md#318-file-deduplication-behavior](../tech_specs/api_deduplication.md#318-file-deduplication-behavior)

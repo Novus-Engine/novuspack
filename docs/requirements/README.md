@@ -27,6 +27,7 @@ Requirements are organized by domain, with each domain having its own file:
 - [`signatures.md`](signatures.md) - Digital signature requirements
 - [`streaming.md`](streaming.md) - Streaming API requirements
 - [`testing.md`](testing.md) - Testing requirements
+- [`transformation_pipeline.md`](transformation_pipeline.md) - Multi-stage transformation pipeline requirements
 - [`validation.md`](validation.md) - Validation requirements
 - [`writing.md`](writing.md) - Writing API requirements
 
@@ -37,7 +38,72 @@ Requirements are organized by domain, with each domain having its own file:
 - Requirement IDs use `REQ-<DOMAIN>-NNN`.
 - Requirements list `@spec(file#anchor)` sources.
 - Functional requirements link to at least one feature scenario.
-- Documentation-only requirements are marked with strikethrough and explicit "DO NOT CREATE FEATURE FILE" notation.
+- See [Documentation-Only Requirements](#documentation-only-requirements) section for documentation-only requirement conventions.
+
+### Domain Prefixes
+
+Each requirements file has a single canonical `REQ-<DOMAIN>-NNN` prefix.
+
+| Requirements file              | Canonical prefix   |
+| ------------------------------ | ------------------ |
+| `basic_ops.md`                 | `REQ-API_BASIC-`   |
+| `compression.md`               | `REQ-COMPR-`       |
+| `core.md`                      | `REQ-CORE-`        |
+| `dedup.md`                     | `REQ-DEDUP-`       |
+| `file_format.md`               | `REQ-FILEFMT-`     |
+| `file_mgmt.md`                 | `REQ-FILEMGMT-`    |
+| `file_types.md`                | `REQ-FILETYPES-`   |
+| `generics.md`                  | `REQ-GEN-`         |
+| `metadata.md`                  | `REQ-META-`        |
+| `metadata_system.md`           | `REQ-METASYS-`     |
+| `security.md`                  | `REQ-SEC-`         |
+| `security_encryption.md`       | `REQ-CRYPTO-`      |
+| `signatures.md`                | `REQ-SIG-`         |
+| `streaming.md`                 | `REQ-STREAM-`      |
+| `testing.md`                   | `REQ-TEST-`        |
+| `transformation_pipeline.md`   | `REQ-PIPELINE-`    |
+| `validation.md`                | `REQ-VALID-`       |
+| `writing.md`                   | `REQ-WRITE-`       |
+
+### Disallowed or Legacy Prefixes
+
+Do not introduce additional lookalike prefixes.
+
+- `REQ-FILEFORMAT-` => use `REQ-FILEFMT-`.
+- `REQ-FILETYPE-` => use `REQ-FILETYPES-`.
+- `REQ-GENERIC-` => use `REQ-GEN-`.
+- `REQ-SECURITY-` => use `REQ-SEC-`.
+- `REQ-SEC_ENC-` => use `REQ-CRYPTO-`.
+
+`traceability.md` is a matrix document and is not a requirements domain file.
+
+### Multiple Anchor References
+
+A single requirement can reference multiple headings from the same or different spec files.
+This is useful when:
+
+- Multiple headings describe aspects of the same requirement.
+- A requirement covers related functionality across multiple sections.
+- An existing requirement should be extended to cover an additional heading.
+
+#### Format for Multiple Anchors
+
+When a requirement references multiple headings, list them as comma-separated markdown links:
+
+```markdown
+- REQ-XXX-NNN: Description. [file#anchor1](../tech_specs/file.md#anchor1), [file#anchor2](../tech_specs/file.md#anchor2)
+- REQ-XXX-NNN: Description. [file1#anchor1](../tech_specs/file1.md#anchor1), [file2#anchor2](../tech_specs/file2.md#anchor2)
+```
+
+#### When to Add Multiple Anchors
+
+1. **Extending existing requirements**: If a valid requirement already exists for a heading, add the new heading reference to that existing requirement instead of creating a duplicate.
+
+   - Example: If `REQ-API_BASIC-021` already covers "Package structure and loading", and a new heading "3. Package Structure and Loading" describes the same concept, add the new anchor to the existing requirement.
+
+2. **Related functionality**: When multiple headings describe aspects of the same functional requirement.
+
+3. **Avoiding duplication**: Before creating a new requirement, check if an existing requirement already covers the same concept and can be extended with an additional anchor reference.
 
 ### Requirement Type Classification
 
@@ -48,10 +114,8 @@ All requirements must be classified by type:
   - Type can be implied (no explicit tag needed for standard functional requirements).
 
 - **Documentation-only** - Examples, guidance, best practices.
-  - Marked with strikethrough: `~~REQ-XXX-NNN: Description~~`
-  - Include explicit notation: `(documentation-only: [reason] - DO NOT CREATE FEATURE FILE)`
-  - Examples, guidance, and best practices belong in tech specs only.
-  - See Documentation-Only Requirements section below.
+
+  - See [Documentation-Only Requirements](#documentation-only-requirements) section for details.
 
 - **Non-functional** - Performance, security characteristics, quality attributes.
   - Must have measurable criteria.
@@ -70,7 +134,8 @@ All requirements must be classified by type:
 ```markdown
 - REQ-XXX-NNN: Description. [spec#anchor]
 - REQ-XXX-NNN: Description [type: non-functional]. [spec#anchor]
-- ~~REQ-XXX-NNN: Description~~ [type: documentation-only] (documentation-only: examples - DO NOT CREATE FEATURE FILE). [spec#anchor]
+- REQ-XXX-NNN: Description [type: documentation-only] (documentation-only: examples - DO NOT CREATE FEATURE FILE). [spec#anchor]
+- ~~REQ-XXX-NNN: Description~~ [type: obsolete] (obsolete: replaced by REQ-XXX-YYY - see [reference]). [spec#anchor]
 ```
 
 ### Organization and Grouping
@@ -89,36 +154,160 @@ Requirements within each domain file should be organized by feature or API metho
 
 ## Package Creation
 
-- REQ-API_BASIC-001: NewPackage creates an empty, valid container in memory. [api_basic_operations.md#41-package-constructor](../tech_specs/api_basic_operations.md#41-package-constructor)
-- REQ-API_BASIC-006: Create validates path and directory, configures package in memory. [api_basic_operations.md#42-create-method](../tech_specs/api_basic_operations.md#42-create-method)
-- ~~REQ-API_BASIC-032: Create example usage demonstrates creation usage~~ [type: documentation-only] (documentation-only: examples - DO NOT CREATE FEATURE FILE). [api_basic_operations.md#424-create-example-usage](../tech_specs/api_basic_operations.md#424-create-example-usage)
+- REQ-API_BASIC-001: NewPackage creates an empty, valid container in memory. [api_basic_operations.md#41-package-constructor](../tech_specs/api_basic_operations.md)
+- REQ-API_BASIC-006: Create validates path and directory, configures package in memory. [api_basic_operations.md#42-create-method](../tech_specs/api_basic_operations.md)
+- REQ-API_BASIC-032: Create example usage demonstrates creation usage [type: documentation-only] (documentation-only: examples - DO NOT CREATE FEATURE FILE). [api_basic_operations.md#424-create-example-usage](../tech_specs/api_basic_operations.md)
 
 ## Package Opening
 
-- REQ-API_BASIC-002: OpenPackage validates format and returns structured errors. [api_basic_operations.md#51-open-method](../tech_specs/api_basic_operations.md#51-open-method)
-- REQ-API_BASIC-009: OpenWithValidation opens package and performs full validation. [api_basic_operations.md#52-open-with-validation](../tech_specs/api_basic_operations.md#52-open-with-validation)
+- REQ-API_BASIC-002: OpenPackage validates format and returns structured errors. [api_basic_operations.md#51-openpackage](../tech_specs/api_basic_operations.md)
+- REQ-API_BASIC-088: OpenPackageReadOnly opens an existing package and enforces read-only behavior. [api_basic_operations.md#52-openpackagereadonly](../tech_specs/api_basic_operations.md)
+- REQ-API_BASIC-092: OpenPackageReadOnly enforces read-only behavior via a wrapper Package without duplicating OpenPackage parsing logic. [api_basic_operations.md#5212-go-v1-reference-implementation-sketch](../tech_specs/api_basic_operations.md)
+- REQ-API_BASIC-091: OpenBrokenPackage opens a broken package for repair workflows. [api_basic_operations.md#53-openbrokenpackage](../tech_specs/api_basic_operations.md)
 
 ## Error Handling
 
-- REQ-API_BASIC-016: Error handling returns structured errors for all failure cases. [api_basic_operations.md#8-error-handling](../tech_specs/api_basic_operations.md#8-error-handling)
+- REQ-API_BASIC-016: Error handling returns structured errors for all failure cases. [api_basic_operations.md#8-error-handling](../tech_specs/api_basic_operations.md)
 ```
+
+## Requirement Numbering Best Practices
+
+### Finding Available Numbers
+
+Before adding a new requirement, check for available gap numbers in the sequence:
+
+```bash
+make validate-req-references
+```
+
+This will show warnings for sequential numbering gaps (missing numbers in the sequence).
+Use these gap numbers for new requirements to maintain sequential numbering.
+
+### Numbering Guidelines
+
+1. **Fill gaps first**: When adding new requirements, use the lowest available gap number from the warnings.
+
+   - Example: If warnings show missing numbers `9, 44, 45`, use `9` for the next new requirement.
+
+2. **Avoid duplicates**: Never reuse an existing requirement number, even if the requirement is obsoleted.
+
+   - See [Obsoleted Requirements](#obsoleted-requirements) section for details on obsoleted requirements.
+   - Always check for duplicates before committing: `make validate-req-references`
+
+3. **Sequential numbering per category**: Each requirement category (e.g., `REQ-FILEMGMT-*`, `REQ-API_BASIC-*`) should have sequential numbering within each requirements file.
+
+   - Gaps are acceptable but should be minimized.
+   - Large gaps (50+ numbers) may indicate significant refactoring occurred.
+
+4. **Validation before commit**: Always run `make validate-req-references` before committing requirement changes:
+
+   - Ensures no duplicate requirements
+   - Identifies available gap numbers via warnings
+   - Validates format consistency
+   - Checks feature file references
+
+### Example Workflow
+
+1. Check for gaps:
+
+   ```bash
+   make validate-req-references
+   # Look for "Warnings: Sequential Numbering Gaps" section
+   ```
+
+2. Use the lowest available gap number for your new requirement.
+
+3. Verify no duplicates:
+
+   ```bash
+   make validate-req-references
+   # Should show "Duplicate requirements: 0"
+   ```
+
+4. Commit your changes.
+
+## Obsoleted Requirements
+
+Obsoleted requirements are requirements that have been replaced by newer requirements or are no longer applicable.
+They are marked with strikethrough but remain in the requirements file for historical reference and traceability.
+
+### Marking Obsoleted Requirements
+
+Obsoleted requirements must be clearly marked:
+
+- **Must use strikethrough**: `~~REQ-XXX-NNN: Description~~` (this distinguishes them from documentation-only requirements)
+- Include `[type: obsolete]` classification
+- Include explicit notation explaining why it's obsolete and what replaces it: `(obsolete: replaced by REQ-XXX-YYY - see [reference])`
+- Optionally mark the section header as obsolete: `## ~~Section Name~~ (Obsolete - Use [Alternative])`
+
+**Note**: The validation script uses the combination of strikethrough (`~~`) and `[type: obsolete]` to identify obsoleted requirements.
+
+### Example: Obsoleted Requirements
+
+```markdown
+## ~~File Unstage Operations~~ (Obsolete - Use File Removal Operations)
+
+- ~~REQ-FILEMGMT-002: Unstaging a file updates path metadata state or tombstones~~ [type: obsolete] (obsolete: replaced by RemoveFile operations - see REQ-FILEMGMT-136 through REQ-FILEMGMT-141).
+- ~~REQ-FILEMGMT-011: UnstageFilePattern unstages files matching patterns~~ [type: obsolete] (obsolete: replaced by RemoveFilePattern operations - see REQ-FILEMGMT-325 through REQ-FILEMGMT-330).
+```
+
+### Handling Obsoleted Requirements
+
+1. **Sequential numbering**: Obsoleted requirements remain in the sequential count.
+
+   - They are NOT gaps in the numbering sequence.
+   - They should NOT be reused for new requirements.
+   - The validation script correctly includes them in gap detection (they are not flagged as gaps).
+   - See [Requirement Numbering Best Practices](#requirement-numbering-best-practices) for numbering guidelines.
+
+2. **Replacement references**: Always reference the replacement requirement(s) in the obsolete notation.
+
+   - Use format: `(obsolete: replaced by REQ-XXX-YYY - see [reference])`
+   - For multiple replacements, list all: `(obsolete: replaced by REQ-XXX-YYY through REQ-XXX-ZZZ)`
+
+3. **Feature files**: Obsoleted requirements should not have active feature files.
+
+   - Existing feature files referencing obsoleted requirements should be updated to reference the replacement requirements.
+   - Remove or update `@REQ-XXX-NNN` tags in feature files when requirements become obsolete.
+   - If a feature file only references obsoleted requirements (no valid remaining requirement references), the feature file should be deleted.
+
+4. **Validation**: Run `make validate-req-references` before committing.
+
+   - See [Requirement Numbering Best Practices](#requirement-numbering-best-practices) for validation guidelines.
 
 ## Documentation-Only Requirements
 
-Some requirements are documentation-only (examples, guidance, best practices) and should NOT have feature files:
+Some requirements are documentation-only (examples, guidance, best practices) and should NOT have feature files.
 
-- Marked with strikethrough: `~~REQ-XXX-NNN: Description~~`
+### Marking Documentation-Only Requirements
+
+Documentation-only requirements must be clearly marked:
+
+- Do NOT use strikethrough (unlike obsoleted requirements)
+- Format: `- REQ-XXX-NNN: Description [type: documentation-only] ...`
+- Include `[type: documentation-only]` classification
 - Include explicit notation: `(documentation-only: [reason] - DO NOT CREATE FEATURE FILE)`
 - Examples, guidance, and best practices belong in tech specs only.
-- See `dev_docs/2025-11-07_documentation_only_requirements_policy.md--` for full policy.
 
-### Example
+### Handling Documentation-Only Requirements
+
+1. **Sequential numbering**: Documentation-only requirements remain in the sequential count.
+
+   - They are NOT gaps in the numbering sequence.
+   - They should NOT be reused for new requirements.
+   - See [Requirement Numbering Best Practices](#requirement-numbering-best-practices) for numbering guidelines.
+
+2. **No feature files**: Documentation-only requirements must NOT have feature files.
+
+   - The notation explicitly states "DO NOT CREATE FEATURE FILE".
+   - Examples and guidance belong in tech specs, not in testable feature scenarios.
+
+3. **Validation**: Run `make validate-req-references` before committing.
+
+   - See [Requirement Numbering Best Practices](#requirement-numbering-best-practices) for validation guidelines.
+
+### Example: Documentation-Only Requirements
 
 ```markdown
-- ~~REQ-API_BASIC-032: Create example usage demonstrates creation usage~~ [type: documentation-only] (documentation-only: examples - DO NOT CREATE FEATURE FILE). [api_basic_operations.md#424-create-example-usage](../tech_specs/api_basic_operations.md#424-create-example-usage)
+- REQ-API_BASIC-032: Create example usage demonstrates creation usage [type: documentation-only] (documentation-only: examples - DO NOT CREATE FEATURE FILE). [api_basic_operations.md#424-create-example-usage](../tech_specs/api_basic_operations.md)
 ```
-
-## Related Documents
-
-- `dev_docs/2025-11-07_documentation_only_requirements_policy.md--` - Documentation-only requirements policy
-- `dev_docs/2025-11-07_requirements_categorization_proposal.md` - Full categorization proposal and rationale
