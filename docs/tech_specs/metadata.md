@@ -2,17 +2,34 @@
 
 - [0. Overview](#0-overview)
   - [0.1 Cross-References](#01-cross-references)
-- [1 Per-File Tags System Specification](#1-per-file-tags-system-specification)
+- [1. Per-File Tags System Specification](#1-per-file-tags-system-specification)
   - [1.1 Tag Storage Format](#11-tag-storage-format)
+    - [1.1.1 Tag Structure](#111-tag-structure)
   - [1.2 Tag Value Types](#12-tag-value-types)
-  - [1.3 Directory Metadata System](#13-directory-metadata-system)
+    - [1.2.1 Basic Types](#121-basic-types)
+    - [1.2.2 Structured Data](#122-structured-data)
+    - [1.2.3 Identifier Value Types](#123-identifier-value-types)
+    - [1.2.4 Time Value Types](#124-time-value-types)
+    - [1.2.5 Network and Communication Value Types](#125-network-and-communication-value-types)
+    - [1.2.6 File System](#126-file-system)
+    - [1.2.7 Localization Value Types](#127-localization-value-types)
+    - [1.2.8 NovusPack Special Files](#128-novuspack-special-files)
+    - [1.2.9 Reserved Value Types](#129-reserved-value-types)
+  - [1.3 PathMetadata System](#13-pathmetadata-system)
+    - [1.3.1 PathMetadata File](#131-pathmetadata-file)
+    - [1.3.2 PathMetadataEntry Structure](#132-pathmetadataentry-structure)
+    - [1.3.3 Tag Inheritance Rules](#133-tag-inheritance-rules)
+    - [1.3.4 Inheritance Examples](#134-inheritance-examples)
   - [1.4 Tag Validation](#14-tag-validation)
   - [1.5 Per-File Tags Usage Examples](#15-per-file-tags-usage-examples)
-- [2 Package Metadata File Specification](#2-package-metadata-file-specification)
+    - [1.5.1 Texture File Tagging](#151-texture-file-tagging)
+- [2. Package Metadata File Specification](#2-package-metadata-file-specification)
   - [2.1 Metadata File Requirements](#21-metadata-file-requirements)
   - [2.2 YAML Schema Structure](#22-yaml-schema-structure)
+    - [2.2.1 Package Metadata Schema v1.0](#221-package-metadata-schema-v10)
   - [2.3 Metadata File API](#23-metadata-file-api)
   - [2.4 Package Metadata Example](#24-package-metadata-example)
+    - [2.4.1 Package Information Example](#241-package-information-example)
 
 ---
 
@@ -23,19 +40,21 @@ This document defines the per-file tags system and package metadata file specifi
 ### 0.1 Cross-References
 
 - [Main Index](_main.md) - Central navigation for all NovusPack specifications
-- [Package File Format](package_file_format.md) - .npk format and file entry structure
+- [Package File Format](package_file_format.md) - .nvpk format and FileEntry structure
 - [File Types System](file_type_system.md) - Comprehensive file type system
-- [API Signatures Index](api_func_signatures_index.md) - Complete index of all functions, types, and structures
+- [Go API Definitions Index](api_go_defs_index.md) - Complete index of all Go API functions, types, and structures
 - [Security and Encryption](security.md) - Comprehensive security architecture, encryption implementation, and digital signature requirements
 - [File Validation](file_validation.md) - File validation and transparency requirements
 - [Testing Requirements](testing.md) - Comprehensive testing requirements and validation
-- [Package Metadata API](api_metadata.md) - Comment/AppID/VendorID methods and directory metadata APIs
+- [Package Metadata API](api_metadata.md) - Comment/AppID/VendorID methods and path metadata APIs
 
-## 1 Per-File Tags System Specification
+## 1. Per-File Tags System Specification
 
 The per-file tags system provides extensible metadata for individual files within the package, supporting key-value pairs with type validation and inheritance.
 
 ### 1.1 Tag Storage Format
+
+This section describes the tag storage format used in packages.
 
 #### 1.1.1 Tag Structure
 
@@ -50,6 +69,8 @@ The per-file tags system provides extensible metadata for individual files withi
 
 ### 1.2 Tag Value Types
 
+This section describes tag value types supported in the metadata system.
+
 #### 1.2.1 Basic Types
 
 - **0x00 - String**: UTF-8 encoded string value
@@ -63,17 +84,17 @@ The per-file tags system provides extensible metadata for individual files withi
 - **0x05 - YAML**: YAML-encoded data (stored as UTF-8 string)
 - **0x06 - StringList**: Comma-separated list of strings (stored as UTF-8 string)
 
-#### 1.2.3 Identifiers
+#### 1.2.3 Identifier Value Types
 
 - **0x07 - UUID**: UUID string (stored as UTF-8 string)
 - **0x08 - Hash**: Hash/checksum string (stored as UTF-8 string)
 - **0x09 - Version**: Semantic version string (stored as UTF-8 string)
 
-#### 1.2.4 Time
+#### 1.2.4 Time Value Types
 
 - **0x0A - Timestamp**: ISO8601 timestamp (stored as UTF-8 string)
 
-#### 1.2.5 Network/Communication
+#### 1.2.5 Network and Communication Value Types
 
 - **0x0B - URL**: URL string (stored as UTF-8 string)
 - **0x0C - Email**: Email address (stored as UTF-8 string)
@@ -83,7 +104,7 @@ The per-file tags system provides extensible metadata for individual files withi
 - **0x0D - Path**: File system path (stored as UTF-8 string)
 - **0x0E - MimeType**: MIME type string (stored as UTF-8 string)
 
-#### 1.2.7 Localization
+#### 1.2.7 Localization Value Types
 
 - **0x0F - Language**: Language code (ISO 639-1) (stored as UTF-8 string)
 
@@ -91,75 +112,95 @@ The per-file tags system provides extensible metadata for individual files withi
 
 - **0x10 - NovusPackMetadata**: NovusPack special metadata file reference (stored as UTF-8 string)
 
-#### 1.2.9 Reserved
+#### 1.2.9 Reserved Value Types
 
 - **0x11-0xFF**: Reserved for future value types
 
-### 1.3 Directory Metadata System
+### 1.3 PathMetadata System
 
-Cross-Reference: Operational APIs, structures, and methods for directory metadata are defined in [Package Metadata API](api_metadata.md#8-directory-metadata-system).
+Cross-Reference: Operational APIs, structures, and methods for path metadata are defined in [Package Metadata API](api_metadata.md#8-pathmetadata-system).
 
-Since NovusPack uses a flat file structure, directory metadata is stored in special metadata files rather than implicit directory relationships.
+Since NovusPack uses a flat file structure, path metadata is stored in special metadata files rather than implicit directory relationships.
 
-#### 1.3.1 Directory Metadata File
+#### 1.3.1 PathMetadata File
 
-**File Type**: 65001 (Directory metadata file - see [File Types System](file_type_system.md#special-files-65000-65535))
-**File Name**: `__NPK_DIR_65001__.npkdir` (case-sensitive)
-**Content Format**: YAML syntax (uncompressed for FastWrite compatibility)
-**Purpose**: Defines directory properties and inheritance rules
+**File Type**: 65001 (Path metadata file - see [File Types System](file_type_system.md#339-special-file-types-65000-65535))
+**File Name**: `__NVPK_PATH_65001__.nvpkpath` (case-sensitive)
+**Content Format**: YAML syntax (stored as uncompressed or LZ4-compressed data)
+**Purpose**: Defines path properties and inheritance rules
 
-#### 1.3.2 Directory Entry Structure
+Cross-Reference: Storage format, CompressionType, and automatic decompression rules for special metadata files are defined in [Package Metadata API - Special Metadata File Management](api_metadata.md#83-special-metadata-file-management).
 
-Each directory entry in the metadata file contains:
+#### 1.3.2 PathMetadataEntry Structure
+
+Each path metadata entry in the metadata file contains:
 
 ```yaml
-directories:
-  - path: "/assets/"                    # Directory path (must end with /)
+paths:
+  - path: "/assets/"                    # Path (directory paths must end with /, all paths have leading /)
+    type: 1                             # PathMetadataTypeDirectory
     properties:
-      category: "texture"               # Directory-specific tags
+      category: "texture"               # Path-specific tags
       compression: "lossless"
       mipmaps: true
     inheritance:
-      enabled: true                     # Whether this directory provides inheritance
+      enabled: true                     # Whether this path provides inheritance
       priority: 1                       # Inheritance priority (higher = more specific)
     metadata:
-      created: "2024-01-01T00:00:00Z"  # Directory creation time
+      created: "2024-01-01T00:00:00Z"  # Path creation time
       modified: "2024-01-15T12:30:00Z" # Last modification time
-      description: "Asset directory"    # Human-readable description
+      description: "Asset path"        # Human-readable description
 ```
 
 #### 1.3.3 Tag Inheritance Rules
 
-1. **Directory-Based Inheritance**: Tags are inherited from directory metadata files
-    - File `/assets/textures/ui/button.png` inherits from:
-        - `/assets/textures/ui/` (if directory metadata exists)
-        - `/assets/textures/` (if directory metadata exists)
-        - `/assets/` (if directory metadata exists)
-        - `/` (root directory metadata)
+**Important**: Tag inheritance only works with `PathMetadataEntry` instances, not `FileEntry` instances directly.
+This is because `FileEntry` can have multiple paths, while `PathMetadataEntry` represents a single path.
+Inheritance is resolved per-path by walking up the path hierarchy for each `PathMetadataEntry`.
 
-2. **Override Priority**: Child directory tags override parent directory tags
-    - Direct file tags have highest priority
-    - Directory tags override based on inheritance priority
-    - Root directory tags have lowest priority
+1. **Path-Based Inheritance**: Tags are inherited from path metadata entries in the path hierarchy
+    - For a file at `/assets/textures/ui/button.png`, the associated `PathMetadataEntry` inherits from:
+        - `/assets/textures/ui/` (if path metadata exists with inheritance enabled)
+        - `/assets/textures/` (if path metadata exists with inheritance enabled)
+        - `/assets/` (if path metadata exists with inheritance enabled)
+        - `/` (root path metadata with inheritance enabled)
 
-3. **Inheritance Resolution**: When multiple directories could provide tags:
-    - Directories with exact path matches take priority
-    - Directories with higher priority values override lower ones
-    - If priorities are equal, more recently modified directories take priority
+2. **Override Priority**: Child path tags override parent path tags
+    - PathMetadataEntry tags (path-specific) have highest priority
+    - Inherited path tags override based on inheritance priority
+    - FileEntry tags are treated as if applied to each associated PathMetadataEntry (included in effective tags)
+    - Root path tags have lowest priority
+
+3. **Inheritance Resolution**: When multiple paths could provide tags:
+    - Paths with exact path matches take priority
+    - Paths with higher priority values override lower ones
+    - If priorities are equal, more recently modified paths take priority
 
 4. **Path Matching Rules**:
     - Directory paths must end with `/` in metadata
     - Path matching is case-sensitive
-    - Path separators must match exactly (`/` on Unix, `\` on Windows)
-    - Root directory is represented as `/` in metadata
+    - All paths are stored with forward slashes (`/`) as separators (Unix-style), regardless of source platform
+    - All paths are stored with a leading `/` to indicate the package root (internal storage format)
+    - Root path is represented as `/` in metadata files
+    - **User Display**: When displaying paths to end users, the leading `/` MUST be stripped
+      - Stored: `/assets/textures/ui/button.png` => Displayed: `assets/textures/ui/button.png`
+    - When extracting or viewing on Windows, the leading `/` is stripped and paths are converted to Windows-style (backslashes) for file system operations
+
+5. **Inheritance Scope**:
+    - Only `PathMetadataEntry` instances with `Inheritance.Enabled = true` participate in inheritance
+    - Inheritance walks up the `PathMetadataEntry.ParentPath` chain
+    - Each `PathMetadataEntry` represents a single path, making inheritance unambiguous
+    - `FileEntry` tags are treated as if applied to each associated `PathMetadataEntry` and are included in effective tags
 
 #### 1.3.4 Inheritance Examples
 
-##### 1.3.4.1 Example 1: Basic Directory Inheritance
+This section provides examples of tag inheritance patterns.
+
+##### 1.3.4.1 Example 1: Basic PathInheritance
 
 ```yaml
-# Directory metadata file (__NPK_DIR_65001__.npkdir)
-directories:
+# Path metadata file (__NVPK_PATH_65001__.nvpkpath)
+paths:
   - path: "/assets/"
     properties:
       - key: "category"
@@ -192,14 +233,15 @@ directories:
       priority: 3
 
 # File: /assets/textures/ui/button.png
-# Result: Inherits category=texture, compression=lossless, format=png, mipmaps=true, priority=high
+# PathMetadataEntry for this path inherits: category=texture, compression=lossless, format=png, mipmaps=true, priority=high
+# Note: Inheritance is resolved per-path using PathMetadataEntry, not per-FileEntry
 ```
 
 ##### 1.3.4.2 Example 2: Priority-Based Override
 
 ```yaml
-# Directory metadata file
-directories:
+# Path metadata file
+paths:
   - path: "/assets/"
     properties:
       - key: "category"
@@ -222,7 +264,7 @@ directories:
     inheritance:
       enabled: true
       priority: 2
-  - path: "/assets/textures/ui/"
+  - path: "assets/textures/ui/"
     properties:
       - key: "category"
         value_type: "string"
@@ -241,9 +283,9 @@ directories:
 ##### 1.3.4.3 Example 3: Inheritance Disabled
 
 ```yaml
-# Directory metadata file
-directories:
-  - path: "/assets/"
+# Path metadata file
+paths:
+  - path: "assets/"
     properties:
       - key: "category"
         value_type: "string"
@@ -254,7 +296,7 @@ directories:
     inheritance:
       enabled: true
       priority: 1
-  - path: "/assets/temp/"
+  - path: "assets/temp/"
     properties:
       - key: "category"
         value_type: "string"
@@ -263,10 +305,10 @@ directories:
         value_type: "string"
         value: "lossy"
     inheritance:
-      enabled: false  # This directory doesn't provide inheritance
+      enabled: false  # This path doesn't provide inheritance
       priority: 2
 
-# File: /assets/temp/file.png
+# File: assets/temp/file.png
 # Result: No inherited tags (temp/ inheritance disabled)
 ```
 
@@ -279,6 +321,8 @@ directories:
 
 ### 1.5 Per-File Tags Usage Examples
 
+This section provides usage examples for per-file tags.
+
 #### 1.5.1 Texture File Tagging
 
 - Set comprehensive tags on texture files including category, type, format, size, compression, priority, and descriptive tags
@@ -289,34 +333,38 @@ directories:
 - Set audio-specific tags including category, type, format, duration, loop settings, and volume
 - Example: Ambient forest sound with WAV format, 120-second duration, loop enabled, 0.7 volume
 
-###### Directory Tagging
+##### Path Tagging
 
-- Set tags on directories that are inherited by child files
-- Example: Textures directory with texture category, lossless compression, and mipmaps enabled
+- Set tags on paths that are inherited by child files
+- Example: Textures path with texture category, lossless compression, and mipmaps enabled
 
-###### File Search by Tags
+##### File Search by Tags
 
-- Search for files by specific tag values using GetFilesByTag()
+- Search for files by specific tag values using Package.FindEntriesByTag() or by iterating FileEntry tags
 - Examples: Find all texture files by category, UI files by type, high-priority files by priority level
+- Tag management is performed directly on FileEntry or PathMetadataEntry instances using AddTag(), SetTag(), GetTag(), etc.
 
 ---
 
-## 2 Package Metadata File Specification
+## 2. Package Metadata File Specification
 
-The package metadata file is a special file type (65000 - see [File Types System](file_type_system.md#special-files-65000-65535)) that contains structured YAML metadata about the package.
+The package metadata file is a special file type (65000 - see [File Types System](file_type_system.md#339-special-file-types-65000-65535)) that contains structured YAML metadata about the package.
 
 ### 2.1 Metadata File Requirements
 
 - **File Type**: Must be marked as Type 65000 (Package metadata file)
-- **File Name**: Reserved name `__NPK_META_65000__.npkmeta` (case-sensitive)
-- **Content Format**: YAML syntax (uncompressed for FastWrite compatibility)
-- **Compression**: Optional (disabled by default for FastWrite performance)
+- **File Name**: Reserved name `__NVPK_META_65000__.nvpkmeta` (case-sensitive)
+- **Content Format**: YAML syntax (stored as uncompressed or LZ4-compressed data)
+- **Compression**: Optional (FastWrite SHOULD prefer uncompressed, but readers MUST support both uncompressed and LZ4-compressed data)
+- **Automatic Decompression**: See [Package Metadata API - Special Metadata File Management](api_metadata.md#83-special-metadata-file-management)
 - **Encryption**: Optional (can be encrypted like any other file)
 - **Validation**: Must be valid YAML syntax
 
 ### 2.2 YAML Schema Structure
 
-#### 2.2.1 Package Metadata Schema v1.0
+This section describes the YAML schema structure for package metadata.
+
+#### 2.2.1. Package Metadata Schema V1.0
 
 ##### Package Information
 
@@ -328,7 +376,7 @@ The package metadata file is a special file type (65000 - see [File Types System
 - **created (ISO8601-timestamp)**: Creation timestamp
 - **modified (ISO8601-timestamp)**: Last modification timestamp
 
-###### Game-Specific Metadata
+##### Game-Specific Metadata
 
 - **engine (string)**: Game engine (Unity, Unreal, etc.)
 - **platform (array of strings)**: Target platforms
@@ -340,7 +388,7 @@ The package metadata file is a special file type (65000 - see [File Types System
   - **graphics (string)**: Graphics requirements
   - **os (array of strings)**: Supported operating systems
 
-###### Asset Metadata
+##### Asset Metadata
 
 - **textures (integer)**: Number of texture files
 - **sounds (integer)**: Number of sound files
@@ -348,14 +396,14 @@ The package metadata file is a special file type (65000 - see [File Types System
 - **scripts (integer)**: Number of script files
 - **total_size (integer)**: Total asset size in bytes
 
-###### Security Metadata
+##### Security Metadata
 
 - **encryption_level (string)**: Encryption level used
-- **signature_type (string)**: Signature type used
+- **signature_type (string, optional)**: Signature type used (deferred to v2)
 - **security_scan (boolean)**: Whether security scan was performed
 - **trusted_source (boolean)**: Whether from trusted source
 
-###### Custom Metadata
+##### Custom Metadata
 
 - **custom (object)**: Extensible key-value pairs for additional metadata
 
@@ -365,9 +413,9 @@ See the authoritative API definitions in [Package Metadata API](api_metadata.md)
 
 ### 2.4 Package Metadata Example
 
-**File**: `__NPK_META_65000__.npkmeta`
+**File**: `__NVPK_META_65000__.nvpkmeta`
 
-#### 2.2.2 Package Information Example
+#### 2.4.1 Package Information Example
 
 - **name**: "MyAwesomeGame"
 - **version**: "1.2.0"
@@ -389,7 +437,7 @@ See the authoritative API definitions in [Package Metadata API](api_metadata.md)
   - **graphics**: "DirectX 11 compatible"
   - **os**: ["Windows 10", "macOS 12", "Ubuntu 20.04"]
 
-###### Asset Metadata Example
+##### Asset Metadata Example
 
 - **textures**: 1247 files
 - **sounds**: 89 files
@@ -397,14 +445,14 @@ See the authoritative API definitions in [Package Metadata API](api_metadata.md)
 - **scripts**: 23 files
 - **total_size**: 15728640 bytes
 
-###### Security Metadata Example
+##### Security Metadata Example
 
 - **encryption_level**: "ML-KEM Level 3"
-- **signature_type**: "ML-DSA Level 3"
+- **signature_type**: "none"
 - **security_scan**: true
 - **trusted_source**: true
 
-###### Custom Metadata Example
+##### Custom Metadata Example
 
 - **build_number**: 42
 - **beta_version**: false

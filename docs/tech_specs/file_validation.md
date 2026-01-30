@@ -2,7 +2,7 @@
 
 - [0. Overview](#0-overview)
   - [0.1 Cross-References](#01-cross-references)
-- [1 File Validation Requirements](#1-file-validation-requirements)
+- [1. File Validation Requirements](#1-file-validation-requirements)
   - [1.1 File Name Validation](#11-file-name-validation)
   - [1.2 File Content Validation](#12-file-content-validation)
   - [1.3 Path Preservation Requirements](#13-path-preservation-requirements)
@@ -17,13 +17,15 @@ This document defines the file validation requirements, transparency requirement
 ### 0.1 Cross-References
 
 - [Main Index](_main.md) - Central navigation for all NovusPack specifications
-- [Package File Format](package_file_format.md) - .npk format and file entry structure
+- [Package File Format](package_file_format.md) - .nvpk format and FileEntry structure
 - [File Types System](file_type_system.md) - Comprehensive file type system
 - [Metadata System](metadata.md) - Package metadata and tags system
-- [API Signatures Index](api_func_signatures_index.md) - Complete index of all functions, types, and structures
+- [Go API Definitions Index](api_go_defs_index.md) - Complete index of all Go API functions, types, and structures
 - [Security and Encryption](security.md) - Comprehensive security architecture, encryption implementation, and digital signature requirements
 
-## 1 File Validation Requirements
+## 1. File Validation Requirements
+
+This section describes file validation requirements for packages.
 
 ### 1.1 File Name Validation
 
@@ -41,10 +43,13 @@ This document defines the file validation requirements, transparency requirement
 
 ### 1.3 Path Preservation Requirements
 
-- **Tar-like path handling:** Package must handle paths in the same way as tar files
-- **Path normalization:** Paths are normalized to remove redundant separators and resolve relative references
-- **Standardized path format:** All paths are stored in a consistent, normalized format
-- **Cross-platform compatibility:** Paths are handled consistently regardless of input platform
+**Cross-Reference**: For complete package path semantics, validation rules, and normalization requirements, see [Package Path Semantics](api_core.md#2-package-path-semantics).
+
+- **Tar-like path handling:** Package must handle paths in the same way as tar files (see [Package Path Semantics](api_core.md#2-package-path-semantics))
+- **Path normalization:** Paths are normalized according to [Path Rules](api_core.md#22-path-rules) (separators normalized to `/`, dot segments converted to canonical paths)
+- **Standardized path format:** All paths are stored in a consistent, normalized format as specified in [Package Path Semantics](api_core.md#2-package-path-semantics)
+- **Cross-platform compatibility:** Paths are handled consistently regardless of input platform per [Package Path Semantics](api_core.md#2-package-path-semantics)
+- **Path length:** Path length limits and portability warnings are specified in [api_core.md Path Length Limits](api_core.md#215-path-length-limits) and [ValidatePathLength Function](api_core.md#124-validatepathlength-function). **Go API**: `novuspack.ValidatePathLength(path string) ([]string, error)`. See [api_go_defs_index 5.4](api_go_defs_index.md#151-general-validation-functions).
 
 ### 1.4 Transparency Requirements
 

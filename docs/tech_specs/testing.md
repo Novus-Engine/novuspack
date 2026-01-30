@@ -22,16 +22,18 @@ This document defines the comprehensive testing requirements for the NovusPack s
 
 - [Main Index](_main.md) - Central navigation for all NovusPack specifications
 - [System Overview](_overview.md) - System overview and core components
-- [Package File Format](package_file_format.md) - .npk format and file entry structure
+- [Package File Format](package_file_format.md) - .nvpk format and FileEntry structure
 - [File Types System](file_type_system.md) - Comprehensive file type system
 - [Metadata System](metadata.md) - Package metadata and tags system
-- [API Signatures Index](api_func_signatures_index.md) - Complete index of all functions, types, and structures
+- [Go API Definitions Index](api_go_defs_index.md) - Complete index of all Go API functions, types, and structures
 - [Security and Encryption](security.md) - Comprehensive security architecture, encryption implementation, and digital signature requirements
 - [File Validation](file_validation.md) - File validation and transparency requirements
 
 ---
 
 ## 1. Dual Encryption Testing Requirements
+
+This section defines testing requirements for dual encryption functionality, covering both ML-KEM and AES-256-GCM encryption methods.
 
 ### 1.1 ML-KEM Encryption Testing
 
@@ -58,6 +60,8 @@ This document defines the comprehensive testing requirements for the NovusPack s
 - **Key management:** Test that appropriate keys are used for each encryption type
 
 ## 2. File Validation Testing Requirements
+
+This section defines testing requirements for file validation functionality.
 
 ### 2.1 Empty File Testing
 
