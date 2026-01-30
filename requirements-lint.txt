@@ -1,0 +1,9 @@
+# Python lint tooling for make lint-python and CI (python-lint.yml).
+# Install into a venv: python3 -m venv .venv && .venv/bin/pip install -r requirements-lint.txt
+# Or use: make venv
+flake8
+pylint
+radon
+xenon
+vulture
+bandit

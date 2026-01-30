@@ -1,0 +1,151 @@
+name: Documentation Checks
+
+# NOTE: This workflow must be kept in sync with the 'docs-check' target in the root Makefile.
+#       The Makefile "docs-check" target performs the same checks locally.
+#       When adding or modifying documentation checks, update both this workflow and the Makefile to ensure consistency.
+#       The workflow runs documentation validation checks in the same order as the root Makefile `docs-check` target:
+#         - validate-go-code-blocks (python3 scripts/validate_go_code_blocks.py)
+#         - validate-go-spec-signature-consistency (python3 scripts/validate_go_spec_signature_consistency.py)
+#         - validate-heading-numbering (python3 scripts/validate_heading_numbering.py)
+#         - validate-api-go-defs-index (python3 scripts/validate_api_go_defs_index.py)
+#         - validate-req-references (python3 scripts/validate_req_references.py)
+#         - audit-coverage (python3 scripts/audit_feature_coverage.py and audit_requirements_coverage.py)
+#         - validate-links (python3 scripts/validate_links.py)
+#         - markdown-lint (markdownlint-cli2) (always runs, even if earlier steps fail)
+#       NOTE: validate-go-signatures is run as part of Go CI (api/go/Makefile ci) to avoid duplicate execution
+#
+# NOTE: Order matters:
+#       - validate-go-code-blocks runs first to check code block structure
+#       - validate-go-spec-signature-consistency runs after code blocks to check signature consistency
+#       - validate-heading-numbering runs before validate-api-go-defs-index and validate-links
+#         because fixing heading numbering changes anchor IDs
+#       - validate-api-go-defs-index runs before validate-links to catch missing definitions early
+
+on:
+  push:
+    paths:
+      - '*.md'
+      - '**/*.md'
+      - 'docs/**'
+      - 'features/**/*.feature'
+      - 'scripts/validate_*.py'
+      - 'scripts/audit_*.py'
+      - 'Makefile'
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-check:
+    name: Documentation Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+
+      - name: Run Go code blocks validation
+        run: python3 scripts/validate_go_code_blocks.py --output go_code_blocks_report.md --verbose
+
+      - name: Upload Go code blocks report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-code-blocks-validation-report
+          path: go_code_blocks_report.md
+          if-no-files-found: ignore
+
+      - name: Run Go signature consistency validation
+        run: python3 scripts/validate_go_spec_signature_consistency.py --output signature_consistency_report.txt --verbose
+
+      - name: Upload signature consistency report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signature-consistency-report
+          path: signature_consistency_report.txt
+          if-no-files-found: ignore
+
+      - name: Run heading numbering validation
+        run: python3 scripts/validate_heading_numbering.py --output heading_numbering_report.txt --verbose
+
+      - name: Upload heading numbering report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heading-numbering-validation-report
+          path: heading_numbering_report.txt
+          if-no-files-found: ignore
+
+      - name: Run Go definitions index validation
+        run: python3 scripts/validate_api_go_defs_index.py --output go_defs_index_report.txt --verbose
+
+      - name: Upload Go definitions index report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-definitions-index-report
+          path: go_defs_index_report.txt
+          if-no-files-found: ignore
+
+      - name: Run requirement reference validation
+        run: python3 scripts/validate_req_references.py --output req_references_report.txt --verbose
+
+      - name: Upload requirement reference report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirement-reference-report
+          path: req_references_report.txt
+          if-no-files-found: ignore
+
+      - name: Run feature coverage audit
+        run: python3 scripts/audit_feature_coverage.py --output feature_coverage_report.txt --verbose
+
+      - name: Upload feature coverage report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feature-coverage-report
+          path: feature_coverage_report.txt
+          if-no-files-found: ignore
+
+      - name: Run requirements coverage audit
+        run: python3 scripts/audit_requirements_coverage.py --output requirements_coverage_report.txt --verbose
+
+      - name: Upload requirements coverage report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirements-coverage-report
+          path: requirements_coverage_report.txt
+          if-no-files-found: ignore
+
+      - name: Run link validation
+        run: python3 scripts/validate_links.py --output validation_report.txt --verbose
+
+      - name: Upload link validation report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-validation-report
+          path: validation_report.txt
+          if-no-files-found: ignore
+
+      - name: Run markdown linting
+        if: always()
+        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md"
