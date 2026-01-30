@@ -1,5 +1,11 @@
 # Digital Signature API Requirements
 
+## Status
+
+Signature management and signature validation are deferred to v2.
+V1 only enforces signed package immutability and supports clear-signatures workflows via the writing API.
+Unless noted otherwise, requirements in this document are v2 future work.
+
 ## Signature Management
 
 - REQ-SIG-001: Multiple signature types supported including quantum-safe. [api_signatures.md#2-signature-types](../tech_specs/api_signatures.md#2-signature-types)
@@ -9,7 +15,7 @@
 - REQ-SIG-007: GetSignature retrieves signature information by index. [api_signatures.md#1-signature-management](../tech_specs/api_signatures.md#1-signature-management)
 - REQ-SIG-008: GetAllSignatures returns all signatures in package. [api_signatures.md#1-signature-management](../tech_specs/api_signatures.md#1-signature-management)
 - REQ-SIG-009: ClearAllSignatures removes all signatures. [api_signatures.md#1-signature-management](../tech_specs/api_signatures.md#1-signature-management)
-- REQ-SIG-020: Implementation requirements define signature implementation needs [type: architectural]. [api_signatures.md#111-implementation-requirements](../tech_specs/api_signatures.md#111-implementation-requirements)
+- REQ-SIG-020: Implementation requirements define signature implementation needs [type: architectural]. [api_signatures.md#117-implementation-requirements](../tech_specs/api_signatures.md#117-implementation-requirements)
 - REQ-SIG-021: Incremental signing implementation provides sequential signature support. [api_signatures.md#12-incremental-signing-implementation](../tech_specs/api_signatures.md#12-incremental-signing-implementation)
 - REQ-SIG-022: Adding subsequent signatures supports incremental signing. [api_signatures.md#121-adding-subsequent-signatures](../tech_specs/api_signatures.md#121-adding-subsequent-signatures)
 - REQ-SIG-023: Signature validation process defines validation workflow. [api_signatures.md#122-signature-validation-process](../tech_specs/api_signatures.md#122-signature-validation-process)
@@ -41,40 +47,59 @@
 
 ## Immutability
 
-- REQ-SIG-003: Post-sign write operations are blocked [type: constraint]. [api_signatures.md#13-immutability-check](../tech_specs/api_signatures.md#13-immutability-check)
+- REQ-SIG-003: Post-sign write operations are blocked [type: constraint] (v1). [api_signatures.md#13-immutability-check](../tech_specs/api_signatures.md#13-immutability-check)
 
 ## Existing Package Signing
 
 - REQ-SIG-033: Existing package signing supports signing existing packages. [api_signatures.md#28-existing-package-signing](../tech_specs/api_signatures.md#28-existing-package-signing)
-- REQ-SIG-034: Implementation requirements for existing packages define signing needs [type: architectural]. [api_signatures.md#281-implementation-requirements](../tech_specs/api_signatures.md#281-implementation-requirements)
-- REQ-SIG-035: Function usage guide provides signature function guidance [type: documentation-only]. [api_signatures.md#282-function-usage-guide](../tech_specs/api_signatures.md#282-function-usage-guide)
-- REQ-SIG-036: When to use AddSignature defines low-level usage [type: documentation-only]. [api_signatures.md#2821-when-to-use-addsignature-low-level](../tech_specs/api_signatures.md#2821-when-to-use-addsignature-low-level)
-- REQ-SIG-037: When to use SignPackage functions defines high-level usage [type: documentation-only]. [api_signatures.md#2822-when-to-use-signpackage-functions-high-level](../tech_specs/api_signatures.md#2822-when-to-use-signpackage-functions-high-level)
-- REQ-SIG-038: Implementation pattern provides signature implementation guidance [type: documentation-only]. [api_signatures.md#2823-implementation-pattern](../tech_specs/api_signatures.md#2823-implementation-pattern)
+- REQ-SIG-034: Implementation requirements for existing packages define signing needs [type: architectural]. [api_signatures.md#285-implementation-requirements-signpackage](../tech_specs/api_signatures.md#285-implementation-requirements-signpackage)
+- REQ-SIG-035: Function usage guide provides signature function guidance [type: documentation-only]. [api_signatures.md#286-function-usage-guide](../tech_specs/api_signatures.md#286-function-usage-guide)
+- REQ-SIG-036: When to use AddSignature defines low-level usage [type: documentation-only]. [api_signatures.md#2861-when-to-use-addsignature-low-level](../tech_specs/api_signatures.md#2861-when-to-use-addsignature-low-level)
+- REQ-SIG-037: When to use SignPackage functions defines high-level usage [type: documentation-only]. [api_signatures.md#2862-when-to-use-signpackage-functions-high-level](../tech_specs/api_signatures.md#2862-when-to-use-signpackage-functions-high-level)
+- REQ-SIG-038: Implementation pattern provides signature implementation guidance [type: documentation-only]. [api_signatures.md#2863-implementation-pattern](../tech_specs/api_signatures.md#2863-implementation-pattern)
+- REQ-SIG-068: Secure signing operations using key material MUST execute within `runtime/secret.Do` for signature generation and key-loading workflows. [api_signatures.md#2851-secure-signing-operations-with-runtimesecret](../tech_specs/api_signatures.md#2851-secure-signing-operations-with-runtimesecret)
 
 ## Key Management
 
-- REQ-SIG-039: Signing key management provides key handling operations. [api_signatures.md#29-signing-key-management](../tech_specs/api_signatures.md#29-signing-key-management)
+- REQ-SIG-039: Signing key management provides key handling operations. [api_signatures.md#413-signingkey-structure](../tech_specs/api_signatures.md#413-signingkey-structure)
 
 ## Generic Signature Patterns
 
 - REQ-SIG-046: Generic signature patterns provide type-safe signature support. [api_signatures.md#4-generic-signature-patterns](../tech_specs/api_signatures.md#4-generic-signature-patterns)
-- REQ-SIG-047: Generic signature strategy interface defines signature strategy contract. [api_signatures.md#41-generic-signature-strategy-interface](../tech_specs/api_signatures.md#41-generic-signature-strategy-interface)
-- REQ-SIG-048: Generic signature configuration provides type-safe configuration. [api_signatures.md#42-generic-signature-configuration](../tech_specs/api_signatures.md#42-generic-signature-configuration)
-- REQ-SIG-049: Generic signature validation provides type-safe validation. [api_signatures.md#43-generic-signature-validation](../tech_specs/api_signatures.md#43-generic-signature-validation)
+- REQ-SIG-047: Generic signature strategy interface defines signature strategy contract. [api_signatures.md#41-signaturestrategy-interface](../tech_specs/api_signatures.md#41-signaturestrategy-interface)
+- REQ-SIG-048: Generic signature configuration provides type-safe configuration. [api_signatures.md#43-generic-signature-configuration](../tech_specs/api_signatures.md#43-generic-signature-configuration)
+- REQ-SIG-049: Generic signature validation provides type-safe validation. [api_signatures.md#44-generic-signature-validation](../tech_specs/api_signatures.md#44-generic-signature-validation)
+- REQ-SIG-061: Signature typed representation uses Option[T] as source of truth [type: architectural]. [api_signatures.md#221-signatureinfo-struct](../tech_specs/api_signatures.md#221-signatureinfo-struct)
+- REQ-SIG-062: Signature GetData returns (T, error) not (T, bool) [type: constraint]. [api_signatures.md#221-signatureinfo-struct](../tech_specs/api_signatures.md#221-signatureinfo-struct)
+- REQ-SIG-063: Signature.IsValid semantics are intentionally incomplete for v1 [type: documentation-only]. [api_signatures.md#42-isvalid-and-isexpired-semantics](../tech_specs/api_signatures.md#42-isvalid-and-isexpired-semantics)
+- REQ-SIG-064: All SigningKey keys must be treated as private key material [type: constraint]. [api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret](../tech_specs/api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret)
+- REQ-SIG-065: SigningKey GetKey must execute within runtime/secret.Do for all keys [type: constraint]. [api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret](../tech_specs/api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret)
+- REQ-SIG-066: SigningKey SetKey must execute within runtime/secret.Do for all keys [type: constraint]. [api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret](../tech_specs/api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret)
+- REQ-SIG-067: Signing operations must execute within runtime/secret.Do when accessing keys [type: constraint]. [api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret](../tech_specs/api_signatures.md#416-signaturestrategy-secure-signingkey-operations-with-runtimesecret)
+
+- REQ-SIG-069: SigningKey GetKey returns a copy (deep copy for slices), returns error when missing/invalid/expired, and should be used within runtime/secret.Do. [api_signatures.md#4151-getkey-behavior](../tech_specs/api_signatures.md#4151-getkey-behavior)
+- REQ-SIG-070: SigningKey SetKey overwrites existing key with a copy, does not update timestamps, and validates key type and expiration. [api_signatures.md#4152-setkey-behavior](../tech_specs/api_signatures.md#4152-setkey-behavior)
+- REQ-SIG-071: SigningKey GetKey and SetKey error conditions return `*PackageError` with `ErrTypeSignature` and descriptive messages for key-not-set, invalid, expired, and type mismatch. [api_signatures.md#4153-error-conditions](../tech_specs/api_signatures.md#4153-error-conditions)
+- REQ-SIG-072: Operations using SigningKey re-validate key state before use and return `*PackageError` with `ErrTypeSignature` and context on failure. [api_signatures.md#4154-operation-requirements](../tech_specs/api_signatures.md#4154-operation-requirements)
+
+- REQ-SIG-073: SigningKey IsValid returns true only when key is set, KeyID non-empty, CreatedAt non-zero, KeyType is valid, and ExpiresAt (if set) is after CreatedAt. [api_signatures.md#421-isvalid-requirements](../tech_specs/api_signatures.md#421-isvalid-requirements)
+- REQ-SIG-074: SigningKey IsExpired returns true only when ExpiresAt is set and current time is at or after ExpiresAt. [api_signatures.md#422-isexpired-requirements](../tech_specs/api_signatures.md#422-isexpired-requirements)
+- REQ-SIG-075: SigningKey expiration semantics define ExpiresAt=nil means never expires, ExpiresAt <= CreatedAt is invalid, and CreatedAt zero makes key invalid. [api_signatures.md#423-expiration-semantics](../tech_specs/api_signatures.md#423-expiration-semantics)
+- REQ-SIG-076: Validation order requires checking IsValid first, then IsExpired, and both must pass for the key to be usable. [api_signatures.md#424-validation-order](../tech_specs/api_signatures.md#424-validation-order)
 
 ## Error Handling
 
 - REQ-SIG-050: Error handling provides signature error management. [api_signatures.md#5-error-handling](../tech_specs/api_signatures.md#5-error-handling)
 - REQ-SIG-051: Structured error system defines signature error types [type: architectural]. [api_signatures.md#51-structured-error-system](../tech_specs/api_signatures.md#51-structured-error-system)
-- REQ-SIG-052: Common signature error types define standard error classifications. [api_signatures.md#52-common-signature-error-types](../tech_specs/api_signatures.md#52-common-signature-error-types)
-- REQ-SIG-053: Specific signature error types define signature-specific errors. [api_signatures.md#521-specific-signature-error-types](../tech_specs/api_signatures.md#521-specific-signature-error-types)
-- REQ-SIG-054: Error type mapping maps legacy to structured errors. [api_signatures.md#522-error-type-mapping](../tech_specs/api_signatures.md#522-error-type-mapping)
-- REQ-SIG-055: Structured error examples demonstrate error handling patterns. [api_signatures.md#53-structured-error-examples](../tech_specs/api_signatures.md#53-structured-error-examples)
-- REQ-SIG-056: Creating signature errors supports structured error creation. [api_signatures.md#531-creating-signature-errors](../tech_specs/api_signatures.md#531-creating-signature-errors)
-- REQ-SIG-057: Error handling patterns define recommended error handling [type: documentation-only]. [api_signatures.md#532-error-handling-patterns](../tech_specs/api_signatures.md#532-error-handling-patterns)
-- REQ-SIG-058: Function signatures define error handling functions. [api_signatures.md#533-function-signatures](../tech_specs/api_signatures.md#533-function-signatures)
-- REQ-SIG-059: Core error handling functions provide error management utilities. [api_signatures.md#5331-core-error-handling-functions](../tech_specs/api_signatures.md#5331-core-error-handling-functions)
+- REQ-SIG-052: Common signature error types define standard error classifications. [api_signatures.md#52-signature-error-messages](../tech_specs/api_signatures.md#52-signature-error-messages)
+- REQ-SIG-053: Specific signature error types define signature-specific errors. [api_signatures.md#53-signature-specific-error-context-types](../tech_specs/api_signatures.md#53-signature-specific-error-context-types)
+- REQ-SIG-054: Error type mapping maps legacy to structured errors. [api_signatures.md#52-signature-error-messages](../tech_specs/api_signatures.md#52-signature-error-messages)
+- REQ-SIG-055: Structured error examples demonstrate error handling patterns. [api_signatures.md#53-signature-specific-error-context-types](../tech_specs/api_signatures.md#53-signature-specific-error-context-types)
+- REQ-SIG-077: ValidationErrorContext structure defines signature validation error context fields. [api_signatures.md#534-validationerrorcontext-structure](../tech_specs/api_signatures.md#534-validationerrorcontext-structure)
+- REQ-SIG-056: Creating signature errors supports structured error creation. [api_signatures.md#53-signature-specific-error-context-types](../tech_specs/api_signatures.md#53-signature-specific-error-context-types)
+- REQ-SIG-057: Error handling patterns define recommended error handling [type: documentation-only]. [api_signatures.md#52-signature-error-messages](../tech_specs/api_signatures.md#52-signature-error-messages)
+- REQ-SIG-058: Function signatures define error handling functions. [api_signatures.md#51-structured-error-system](../tech_specs/api_signatures.md#51-structured-error-system)
+- REQ-SIG-059: Core error handling functions provide error management utilities. [api_signatures.md#51-structured-error-system](../tech_specs/api_signatures.md#51-structured-error-system)
 
 ## Industry Standards and Comparison
 

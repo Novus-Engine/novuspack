@@ -2,22 +2,32 @@
 
 ## SafeWrite
 
-- REQ-WRITE-001: SafeWrite uses temp file and atomic rename. [api_writing.md#1-safewrite---atomic-package-writing](../tech_specs/api_writing.md#1-safewrite---atomic-package-writing)
+- REQ-WRITE-001: SafeWrite uses temp file and atomic rename (write temp file is distinct from transformation pipeline temp files). [api_writing.md#1-safewrite---atomic-package-writing](../tech_specs/api_writing.md#1-safewrite---atomic-package-writing)
 - REQ-WRITE-007: Write method provides general write with compression handling. [api_writing.md#1-safewrite---atomic-package-writing](../tech_specs/api_writing.md#1-safewrite---atomic-package-writing)
-- REQ-WRITE-012: SafeWrite method signature defines atomic write interface. [api_writing.md#11-safewrite-method-signature](../tech_specs/api_writing.md#11-safewrite-method-signature)
+- REQ-WRITE-012: SafeWrite method signature defines atomic write interface. [api_writing.md#11-packagesafewrite-method](../tech_specs/api_writing.md#11-packagesafewrite-method)
 - REQ-WRITE-013: SafeWrite implementation strategy defines atomic write approach. [api_writing.md#12-safewrite-implementation-strategy](../tech_specs/api_writing.md#12-safewrite-implementation-strategy)
 - REQ-WRITE-014: SafeWrite use cases define appropriate usage scenarios [type: documentation-only]. [api_writing.md#13-safewrite-use-cases](../tech_specs/api_writing.md#13-safewrite-use-cases)
 - REQ-WRITE-015: SafeWrite performance characteristics define performance trade-offs [type: non-functional]. [api_writing.md#14-safewrite-performance-characteristics](../tech_specs/api_writing.md#14-safewrite-performance-characteristics)
 - REQ-WRITE-016: SafeWrite error handling defines error conditions. [api_writing.md#16-safewrite-error-handling](../tech_specs/api_writing.md#16-safewrite-error-handling)
+- REQ-WRITE-055: SafeWrite atomic replace guarantee ensures atomicity on same filesystem [type: constraint]. [api_writing.md#12-safewrite-implementation-strategy](../tech_specs/api_writing.md#12-safewrite-implementation-strategy)
+- REQ-WRITE-056: SafeWrite temp file must be created in same directory as target (this is the final write temp file, separate from any transformation pipeline temp files which use system temp directory) [type: constraint]. [api_writing.md#12-safewrite-implementation-strategy](../tech_specs/api_writing.md#12-safewrite-implementation-strategy)
+- REQ-WRITE-057: SafeWrite must not support cross-filesystem operations [type: constraint]. [api_writing.md#12-safewrite-implementation-strategy](../tech_specs/api_writing.md#12-safewrite-implementation-strategy)
+- REQ-WRITE-062: SafeWrite synchronizes PackageHeader fields from PackageInfo using PackageHeader.ToHeader. [api_metadata.md#716-packageheadertoheader-method](../tech_specs/api_metadata.md#716-packageheadertoheader-method)
 
 ## FastWrite
 
 - REQ-WRITE-002: FastWrite allowed only when safe criteria met [type: constraint]. [api_writing.md#2-fastwrite---in-place-package-updates](../tech_specs/api_writing.md#2-fastwrite---in-place-package-updates)
 - REQ-WRITE-005: FastWrite performance characteristics meet requirements [type: non-functional]. [api_writing.md#24-fastwrite-performance-characteristics](../tech_specs/api_writing.md#24-fastwrite-performance-characteristics)
-- REQ-WRITE-017: FastWrite method signature defines in-place write interface. [api_writing.md#21-fastwrite-method-signature](../tech_specs/api_writing.md#21-fastwrite-method-signature)
+- REQ-WRITE-017: FastWrite method signature defines in-place write interface. [api_writing.md#21-packagefastwrite-method](../tech_specs/api_writing.md#21-packagefastwrite-method)
 - REQ-WRITE-018: FastWrite implementation strategy defines in-place write approach. [api_writing.md#22-fastwrite-implementation-strategy](../tech_specs/api_writing.md#22-fastwrite-implementation-strategy)
 - REQ-WRITE-019: FastWrite use cases define appropriate usage scenarios [type: documentation-only]. [api_writing.md#23-fastwrite-use-cases](../tech_specs/api_writing.md#23-fastwrite-use-cases)
 - REQ-WRITE-020: FastWrite error handling defines error conditions. [api_writing.md#25-fastwrite-error-handling](../tech_specs/api_writing.md#25-fastwrite-error-handling)
+- REQ-WRITE-058: FastWrite can corrupt target file on crash or interruption [type: constraint]. [api_writing.md#24-fastwrite-performance-characteristics](../tech_specs/api_writing.md#24-fastwrite-performance-characteristics)
+- REQ-WRITE-059: FastWrite recovery capabilities provide corruption recovery [type: architectural]. [api_writing.md#25-fastwrite-error-handling](../tech_specs/api_writing.md#25-fastwrite-error-handling), [api_writing.md#273-openbrokenpackage-integration](../tech_specs/api_writing.md#273-openbrokenpackage-integration)
+- REQ-WRITE-060: FastWrite automatic recovery file creation dumps in-memory data on failure [type: constraint]. [api_writing.md#262-automatic-recovery-file-creation](../tech_specs/api_writing.md#262-automatic-recovery-file-creation)
+- REQ-WRITE-061: FastWrite requires target path to match opened package path [type: constraint]. [api_writing.md#22-fastwrite-implementation-strategy](../tech_specs/api_writing.md#22-fastwrite-implementation-strategy)
+- REQ-WRITE-063: FastWrite COW filesystem backup recovery creates `.nvpk.backup` before in-place writes and enables restoration after failure or interruption. [api_writing.md#261-cow-filesystem-backup-recovery](../tech_specs/api_writing.md#261-cow-filesystem-backup-recovery)
+- REQ-WRITE-064: RecoveryMetadata length-prefixed record includes error details and system state for FastWrite recovery workflows. [api_writing.md#2724-recoverymetadata-length-prefixed](../tech_specs/api_writing.md#2724-recoverymetadata-length-prefixed)
 
 ## Write Strategy Selection
 
@@ -29,16 +39,17 @@
 ## Signed File Operations
 
 - REQ-WRITE-006: Signed file write operations respect immutability [type: constraint]. [api_writing.md#4-signed-file-write-operations](../tech_specs/api_writing.md#4-signed-file-write-operations)
-- REQ-WRITE-024: Signed file protection prevents modification of signed packages [type: constraint]. [api_writing.md#41-signed-file-protection](../tech_specs/api_writing.md#41-signed-file-protection)
-- REQ-WRITE-025: Clear-signatures flag allows signature removal. [api_writing.md#42-clear-signatures-flag](../tech_specs/api_writing.md#42-clear-signatures-flag)
-- REQ-WRITE-026: Clear-signatures behavior defines signature removal process. [api_writing.md#43-clear-signatures-behavior](../tech_specs/api_writing.md#43-clear-signatures-behavior)
-- REQ-WRITE-027: Error conditions define signed file write errors. [api_writing.md#44-error-conditions](../tech_specs/api_writing.md#44-error-conditions)
-- REQ-WRITE-028: Use cases define signed file write scenarios [type: documentation-only]. [api_writing.md#45-use-cases](../tech_specs/api_writing.md#45-use-cases)
+- REQ-WRITE-024: Signed file protection prevents modification of signed packages [type: constraint]. [api_writing.md#421-signed-package-protection](../tech_specs/api_writing.md#421-signed-package-protection)
+- REQ-WRITE-025: Clear-signatures flag allows signature removal. [api_writing.md#43-writing-signed-package-content-to-new-path](../tech_specs/api_writing.md#43-writing-signed-package-content-to-new-path)
+- REQ-WRITE-026: Clear-signatures behavior defines signature removal process. [api_writing.md#43-writing-signed-package-content-to-new-path](../tech_specs/api_writing.md#43-writing-signed-package-content-to-new-path)
+- REQ-WRITE-027: Error conditions define signed file write errors. [api_writing.md#44-signed-package-writing-error-conditions](../tech_specs/api_writing.md#44-signed-package-writing-error-conditions)
+- REQ-WRITE-028: Use cases define signed file write scenarios [type: documentation-only]. [api_writing.md#45-signed-package-use-cases](../tech_specs/api_writing.md#45-signed-package-use-cases)
+- REQ-WRITE-065: Signed package compression configuration is controlled by in-memory package state (header and/or FileEntries), not passed as a parameter. [api_writing.md#422-compression-configuration](../tech_specs/api_writing.md#422-compression-configuration)
 - REQ-WRITE-029: Security considerations define signed file security [type: documentation-only]. [api_writing.md#46-security-considerations](../tech_specs/api_writing.md#46-security-considerations)
 
 ## Compressed Package Write Operations
 
-- REQ-WRITE-030: Compressed package write operations support compressed packages. [api_writing.md#5-compressed-package-write-operations](../tech_specs/api_writing.md#5-compressed-package-write-operations)
+- REQ-WRITE-030: Compressed package write operations support compressed packages. [api_writing.md#5-compressed-package-writing-operations](../tech_specs/api_writing.md#5-compressed-package-writing-operations)
 - REQ-WRITE-031: Compressed package detection identifies compressed packages. [api_writing.md#51-compressed-package-detection](../tech_specs/api_writing.md#51-compressed-package-detection)
 - REQ-WRITE-032: Write operations on compressed packages handle compression. [api_writing.md#52-write-operations-on-compressed-packages](../tech_specs/api_writing.md#52-write-operations-on-compressed-packages)
 - REQ-WRITE-033: SafeWrite with compressed packages handles compression. [api_writing.md#521-safewrite-with-compressed-packages](../tech_specs/api_writing.md#521-safewrite-with-compressed-packages)
@@ -50,7 +61,8 @@
 
 - REQ-WRITE-037: In-memory compression methods provide compression operations. [api_writing.md#531-in-memory-compression-methods](../tech_specs/api_writing.md#531-in-memory-compression-methods)
 - REQ-WRITE-038: File-based compression methods provide file compression. [api_writing.md#532-file-based-compression-methods](../tech_specs/api_writing.md#532-file-based-compression-methods)
-- REQ-WRITE-039: Write method compression handling manages compression during writes. [api_writing.md#533-write-method-compression-handling](../tech_specs/api_writing.md#533-write-method-compression-handling)
+- REQ-WRITE-039: Write method compression handling manages compression during writes. [api_writing.md#533-packagewrite-method](../tech_specs/api_writing.md#533-packagewrite-method)
+- REQ-WRITE-066: Package.Write uses internal compression methods and selects SafeWrite vs FastWrite based on package compression state. [api_writing.md#533-packagewrite-method](../tech_specs/api_writing.md#533-packagewrite-method)
 
 ## Compression and Signing Relationship
 
@@ -82,7 +94,7 @@
 
 ## Use Cases
 
-- REQ-WRITE-052: Use cases define write operation scenarios [type: documentation-only]. [api_writing.md#58-use-cases](../tech_specs/api_writing.md#58-use-cases)
+- REQ-WRITE-052: Use cases define write operation scenarios [type: documentation-only]. [api_writing.md#58-compression-use-cases](../tech_specs/api_writing.md#58-compression-use-cases)
 - REQ-WRITE-053: When to use compressed packages guides compression usage [type: documentation-only]. [api_writing.md#581-when-to-use-compressed-packages](../tech_specs/api_writing.md#581-when-to-use-compressed-packages)
 - REQ-WRITE-054: When to use uncompressed packages guides uncompressed usage [type: documentation-only]. [api_writing.md#582-when-to-use-uncompressed-packages](../tech_specs/api_writing.md#582-when-to-use-uncompressed-packages)
 

@@ -12,6 +12,7 @@
 - REQ-FILEFMT-030: Excluded from calculation defines checksum exclusions. [package_file_format.md#2241-excluded-from-calculation](../tech_specs/package_file_format.md#2241-excluded-from-calculation)
 - REQ-FILEFMT-031: Performance considerations define checksum performance [type: non-functional]. [package_file_format.md#2242-performance-considerations](../tech_specs/package_file_format.md#2242-performance-considerations)
 - REQ-FILEFMT-039: Initial package creation defines package initialization. [package_file_format.md#281-initial-package-creation](../tech_specs/package_file_format.md#281-initial-package-creation)
+- REQ-FILEFMT-075: NewPackageHeader creates a new PackageHeader with default values. [package_file_format.md#282-newpackageheader-function](../tech_specs/package_file_format.md#282-newpackageheader-function)
 
 ## Package Version and Identification
 
@@ -33,8 +34,8 @@
 
 - REQ-FILEFMT-017: File layout order defines section arrangement [type: architectural]. [package_file_format.md#11-file-layout-order](../tech_specs/package_file_format.md#11-file-layout-order)
 - REQ-FILEFMT-045: File entries and data section define file storage structure [type: architectural]. [package_file_format.md#4-file-entries-and-data-section](../tech_specs/package_file_format.md#4-file-entries-and-data-section)
-- REQ-FILEFMT-046: File entry static section field encoding defines field representation. [package_file_format.md#411-file-entry-static-section-field-encoding](../tech_specs/package_file_format.md#411-file-entry-static-section-field-encoding)
-- REQ-FILEFMT-047: File entry structure requirements define entry format rules [type: constraint]. [package_file_format.md#412-file-entry-structure-requirements](../tech_specs/package_file_format.md#412-file-entry-structure-requirements)
+- REQ-FILEFMT-046: File entry static section field encoding defines field representation. [package_file_format.md#411-fileentry-static-section-field-encoding](../tech_specs/package_file_format.md#411-fileentry-static-section-field-encoding)
+- REQ-FILEFMT-047: File entry structure requirements define entry format rules [type: constraint]. [package_file_format.md#412-fileentry-structure-requirements](../tech_specs/package_file_format.md#412-fileentry-structure-requirements)
 - REQ-FILEFMT-048: Unique file identification provides file uniqueness. [package_file_format.md#4121-unique-file-identification](../tech_specs/package_file_format.md#4121-unique-file-identification)
 - REQ-FILEFMT-049: File version tracking provides version management. [package_file_format.md#4122-file-version-tracking](../tech_specs/package_file_format.md#4122-file-version-tracking)
 - REQ-FILEFMT-050: Multiple path support with per-path metadata enables path aliasing. [package_file_format.md#4123-multiple-path-support-with-per-path-metadata](../tech_specs/package_file_format.md#4123-multiple-path-support-with-per-path-metadata)
@@ -43,7 +44,8 @@
 - REQ-FILEFMT-053: Fixed structure provides 64-byte optimized structure [type: architectural]. [package_file_format.md#413-fixed-structure-64-bytes-optimized-for-8-byte-alignment](../tech_specs/package_file_format.md#413-fixed-structure-64-bytes-optimized-for-8-byte-alignment)
 - REQ-FILEFMT-054: Field ordering defines field arrangement. [package_file_format.md#4131-field-ordering](../tech_specs/package_file_format.md#4131-field-ordering)
 - REQ-FILEFMT-055: Variable-length data order defines data arrangement. [package_file_format.md#4141-variable-length-data-order](../tech_specs/package_file_format.md#4141-variable-length-data-order)
-- REQ-FILEFMT-071: 4.1 File Entry Binary Format Specification is specified and implemented. [package_file_format.md#41-file-entry-binary-format-specification](../tech_specs/package_file_format.md#41-file-entry-binary-format-specification)
+- REQ-FILEFMT-071: 4.1 File Entry Binary Format Specification is specified and implemented. [package_file_format.md#41-fileentry-binary-format-specification](../tech_specs/package_file_format.md#41-fileentry-binary-format-specification)
+- REQ-FILEFMT-083: Sequential scan logic locates the next FileEntry correctly when scanning file entries in order. [package_file_format.md#41112-locating-the-next-fileentry-during-sequential-scans](../tech_specs/package_file_format.md#41112-locating-the-next-fileentry-during-sequential-scans)
 - REQ-FILEFMT-072: 4.1.4.2 Path Entries is specified and implemented. [package_file_format.md#4142-path-entries](../tech_specs/package_file_format.md#4142-path-entries)
 - REQ-FILEFMT-073: 4.1.4.3 Hash Data is specified and implemented. [package_file_format.md#4143-hash-data](../tech_specs/package_file_format.md#4143-hash-data)
 - REQ-FILEFMT-074: 4.1.4.4 Optional Data is specified and implemented. [package_file_format.md#4144-optional-data](../tech_specs/package_file_format.md#4144-optional-data)
@@ -74,29 +76,43 @@
 - REQ-FILEFMT-044: Key constraints define compression limitations [type: constraint]. [package_file_format.md#321-key-constraints](../tech_specs/package_file_format.md#321-key-constraints)
 - REQ-FILEFMT-070: 3 Package Compression is specified and implemented. [package_file_format.md#3-package-compression](../tech_specs/package_file_format.md#3-package-compression)
 
+## Metadata Index
+
+- REQ-FILEFMT-077: Metadata index section provides metadata file lookup and offset information [type: architectural]. [package_file_format.md#5-metadata-index-section](../tech_specs/package_file_format.md#5-metadata-index-section)
+- REQ-FILEFMT-078: Metadata index structure defines binary format for metadata file entries [type: architectural]. [package_file_format.md#51-metadata-index-structure](../tech_specs/package_file_format.md#51-metadata-index-structure)
+- REQ-FILEFMT-079: Metadata index detection enables discovery of special metadata files in packages [type: architectural]. [package_file_format.md#322-metadata-index-detection](../tech_specs/package_file_format.md#322-metadata-index-detection)
+- REQ-FILEFMT-082: Compressed package metadata index detection defines how compressed packages detect and interpret the metadata index [type: architectural]. [package_file_format.md#52-compressed-package-metadata-index-detection](../tech_specs/package_file_format.md#52-compressed-package-metadata-index-detection)
+
 ## File Index
 
-- REQ-FILEFMT-002: Index entries expose path, size, compression, encryption. [package_file_format.md#5-file-index-section](../tech_specs/package_file_format.md#5-file-index-section)
-- REQ-FILEFMT-019: Index table provides file lookup and metadata access. [package_file_format.md#5-file-index-section](../tech_specs/package_file_format.md#5-file-index-section)
+- REQ-FILEFMT-002: Index entries expose path, size, compression, encryption. [package_file_format.md#6-file-index-section](../tech_specs/package_file_format.md#6-file-index-section)
+- REQ-FILEFMT-019: Index table provides file lookup and metadata access. [package_file_format.md#6-file-index-section](../tech_specs/package_file_format.md#6-file-index-section)
+- REQ-FILEFMT-076: NewFileIndex creates a new FileIndex with zero values. [package_file_format.md#613-newfileindex-function](../tech_specs/package_file_format.md#613-newfileindex-function)
+- REQ-FILEFMT-080: File index structure defines organization and access patterns for file entries [type: architectural]. [package_file_format.md#61-file-index-structure](../tech_specs/package_file_format.md#61-file-index-structure)
+- REQ-FILEFMT-081: File index compression reduces index size and improves package efficiency [type: architectural]. [package_file_format.md#62-file-index-compression](../tech_specs/package_file_format.md#62-file-index-compression)
 
 ## Package Comment
 
-- REQ-FILEFMT-020: Package comment section stores human-readable package description. [package_file_format.md#61-package-comment-format-specification](../tech_specs/package_file_format.md#61-package-comment-format-specification)
-- REQ-FILEFMT-062: Package comment section provides comment storage. [package_file_format.md#6-package-comment-section-optional](../tech_specs/package_file_format.md#6-package-comment-section-optional)
-- REQ-FILEFMT-063: Package comment structure defines comment format. [package_file_format.md#611-package-comment-structure](../tech_specs/package_file_format.md#611-package-comment-structure)
-- REQ-FILEFMT-064: Field specifications define comment field format. [package_file_format.md#6111-field-specifications](../tech_specs/package_file_format.md#6111-field-specifications)
-- REQ-FILEFMT-065: Implementation requirements define comment implementation needs. [package_file_format.md#6112-implementation-requirements](../tech_specs/package_file_format.md#6112-implementation-requirements)
+- REQ-FILEFMT-020: Package comment section stores human-readable package description. [package_file_format.md#71-package-comment-format-specification](../tech_specs/package_file_format.md#71-package-comment-format-specification)
+- REQ-FILEFMT-062: Package comment section provides comment storage. [package_file_format.md#7-package-comment-section-optional](../tech_specs/package_file_format.md#7-package-comment-section-optional)
+- REQ-FILEFMT-063: Package comment structure defines comment format. [package_file_format.md#711-package-comment-structure](../tech_specs/package_file_format.md#711-package-comment-structure)
+- REQ-FILEFMT-064: Field specifications define comment field format. [package_file_format.md#711-package-comment-structure](../tech_specs/package_file_format.md#711-package-comment-structure)
+- REQ-FILEFMT-065: Implementation requirements define comment implementation needs. [package_file_format.md#711-package-comment-structure](../tech_specs/package_file_format.md#711-package-comment-structure)
 
 ## Digital Signatures
 
-- REQ-FILEFMT-003: Signature blocks are discoverable with type and offset. [package_file_format.md#7-digital-signatures-section-optional](../tech_specs/package_file_format.md#7-digital-signatures-section-optional)
-- REQ-FILEFMT-010: Signed packages enforce immutability after first signature [type: constraint]. [package_file_format.md#29-signed-package-file-immutability-and-incremental-signatures](../tech_specs/package_file_format.md#29-signed-package-file-immutability-and-incremental-signatures)
-- REQ-FILEFMT-021: Signature structure defines signature block binary format [type: architectural]. [package_file_format.md#71-signature-structure](../tech_specs/package_file_format.md#71-signature-structure)
-- REQ-FILEFMT-022: Signature types encode supported signature algorithms. [package_file_format.md#72-signature-types](../tech_specs/package_file_format.md#72-signature-types)
-- REQ-FILEFMT-023: Signature data sizes vary by algorithm and security level. [package_file_format.md#73-signature-data-sizes](../tech_specs/package_file_format.md#73-signature-data-sizes)
-- REQ-FILEFMT-024: Multi-signature blocks support incremental signature addition. [package_file_format.md#7-digital-signatures-section-optional](../tech_specs/package_file_format.md#7-digital-signatures-section-optional)
-- REQ-FILEFMT-040: File immutability enforcement prevents file modification [type: constraint]. [package_file_format.md#291-file-immutability-enforcement](../tech_specs/package_file_format.md#291-file-immutability-enforcement)
-- REQ-FILEFMT-066: SignatureType field stores signature type identifier. [package_file_format.md#721-signaturetype-field](../tech_specs/package_file_format.md#721-signaturetype-field)
-- REQ-FILEFMT-067: SignatureFlags field stores signature flags. [package_file_format.md#722-signatureflags-field](../tech_specs/package_file_format.md#722-signatureflags-field)
-- REQ-FILEFMT-068: SignatureTimestamp field stores signature timestamp. [package_file_format.md#723-signaturetimestamp-field](../tech_specs/package_file_format.md#723-signaturetimestamp-field)
-- REQ-FILEFMT-069: CommentLength field stores comment length. [package_file_format.md#724-commentlength-field](../tech_specs/package_file_format.md#724-commentlength-field)
+Status: Signature parsing and signature validation are deferred to v2.
+V1 only requires signature presence detection for signed package immutability enforcement.
+
+- REQ-FILEFMT-003: Signature blocks are discoverable by offset in v1. Signature type is opaque in v1. [package_file_format.md#8-digital-signatures-section-optional](../tech_specs/package_file_format.md#8-digital-signatures-section-optional)
+- REQ-FILEFMT-010: Signed packages enforce immutability after first signature [type: constraint] (v1). [package_file_format.md#29-signed-package-file-immutability-and-incremental-signatures](../tech_specs/package_file_format.md#29-signed-package-file-immutability-and-incremental-signatures)
+- REQ-FILEFMT-084: Implementation requirements define required behaviors and constraints for signature section processing [type: constraint] (v2). [package_file_format.md#7112-implementation-requirements](../tech_specs/package_file_format.md#7112-implementation-requirements)
+- REQ-FILEFMT-021: Signature structure defines signature block binary format [type: architectural] (v2). [package_file_format.md#81-signature-structure](../tech_specs/package_file_format.md#81-signature-structure)
+- REQ-FILEFMT-022: Signature types encode supported signature algorithms (v2). [package_file_format.md#82-signature-types](../tech_specs/package_file_format.md#82-signature-types)
+- REQ-FILEFMT-023: Signature data sizes vary by algorithm and security level (v2). [package_file_format.md#83-signature-data-sizes](../tech_specs/package_file_format.md#83-signature-data-sizes)
+- REQ-FILEFMT-024: Multi-signature blocks support incremental signature addition (v2). [package_file_format.md#8-digital-signatures-section-optional](../tech_specs/package_file_format.md#8-digital-signatures-section-optional)
+- REQ-FILEFMT-040: File immutability enforcement prevents file modification [type: constraint] (v1). [package_file_format.md#291-file-immutability-enforcement](../tech_specs/package_file_format.md#291-file-immutability-enforcement)
+- REQ-FILEFMT-066: SignatureType field stores signature type identifier (v2). [package_file_format.md#821-signaturetype-field](../tech_specs/package_file_format.md#821-signaturetype-field)
+- REQ-FILEFMT-067: SignatureFlags field stores signature flags (v2). [package_file_format.md#822-signatureflags-field](../tech_specs/package_file_format.md#822-signatureflags-field)
+- REQ-FILEFMT-068: SignatureTimestamp field stores signature timestamp (v2). [package_file_format.md#823-signaturetimestamp-field](../tech_specs/package_file_format.md#823-signaturetimestamp-field)
+- REQ-FILEFMT-069: CommentLength field stores comment length (v2). [package_file_format.md#824-commentlength-field](../tech_specs/package_file_format.md#824-commentlength-field)
