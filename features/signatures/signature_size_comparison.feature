@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-044 @spec(api_signatures.md#34-signature-size-comparison)
+@domain:signatures @m2 @v2 @REQ-SIG-044 @spec(api_signatures.md#34-signature-size-comparison)
 Feature: Signature Size Comparison
 
   @REQ-SIG-044 @happy

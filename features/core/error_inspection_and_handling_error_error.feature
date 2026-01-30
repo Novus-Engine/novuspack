@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-024 @spec(api_core.md#1142-error-inspection-and-handling)
+@domain:core @m2 @REQ-CORE-024 @spec(api_core.md#1042-error-inspection-and-handling)
 Feature: Error Inspection and Handling
 
   @REQ-CORE-024 @happy

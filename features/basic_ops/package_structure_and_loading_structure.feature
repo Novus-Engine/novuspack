@@ -7,7 +7,7 @@ Feature: Package Structure and Loading
     When the package is examined
     Then package contains Info metadata field
     And package contains FileEntries array
-    And package contains DirectoryEntries array
+    And package contains PathMetadataEntries array
     And package contains SpecialFiles map indexed by file type
     And package contains IsOpen state field
     And package contains FilePath string field
@@ -18,11 +18,11 @@ Feature: Package Structure and Loading
     Given a NovusPack file on disk
     When package is opened
     Then package header is loaded and validated
-    And package info metadata is loaded
+    And package info metadata is synchronized from header using PackageInfo.FromHeader
     And file entries index is loaded
     And special metadata files are loaded
-    And directory metadata is parsed from YAML
-    And file-directory associations are updated
+    And path metadata is parsed from YAML
+    And file-path associations are updated
     And package IsOpen state is set to true
 
   @REQ-API_BASIC-021 @happy

@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-020 @spec(security.md#234-x509pkcs7)
+@domain:security @m2 @v2 @REQ-SEC-020 @spec(security.md#234-x509pkcs7)
 Feature: X.509 PKCS#7 Signatures
 
   @REQ-SEC-020 @happy

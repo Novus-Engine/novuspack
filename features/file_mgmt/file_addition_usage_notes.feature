@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-083 @spec(api_file_management.md#315-usage-notes)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-141 @spec(api_file_mgmt_removal.md#27-removefile-usage-notes)
 Feature: File Addition Usage Notes
 
-  @REQ-FILEMGMT-083 @happy
+  @REQ-FILEMGMT-141 @happy
   Scenario: RemoveFile usage notes document removal behavior
     Given an open NovusPack package
     And a valid context
@@ -11,7 +11,7 @@ Feature: File Addition Usage Notes
     And directory state update behavior is explained
     And usage patterns are provided
 
-  @REQ-FILEMGMT-083 @happy
+  @REQ-FILEMGMT-141 @happy
   Scenario: Usage notes explain file removal operations
     Given an open NovusPack package
     And a valid context

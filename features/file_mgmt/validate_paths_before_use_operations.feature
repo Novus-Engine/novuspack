@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-127 @spec(api_file_management.md#1312-validate-paths-before-use)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-127 @spec(api_file_mgmt_best_practices.md#1312-validate-paths-before-use) @spec(api_file_mgmt_file_entry.md#1312-validate-paths-before-use)
 Feature: Validate Paths Before Use
 
   @REQ-FILEMGMT-127 @happy

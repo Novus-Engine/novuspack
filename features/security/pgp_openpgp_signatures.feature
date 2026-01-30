@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-019 @spec(security.md#233-pgp-openpgp)
+@domain:security @m2 @v2 @REQ-SEC-019 @spec(security.md#233-pgp-openpgp)
 Feature: PGP OpenPGP Signatures
 
   @REQ-SEC-019 @happy

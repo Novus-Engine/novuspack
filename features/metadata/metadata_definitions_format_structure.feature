@@ -1,9 +1,19 @@
 @skip @domain:metadata @m2 @spec(metadata.md#11-tag-storage-format)
 Feature: Metadata Definitions
 
-# This file previously contained placeholder scenarios for metadata definitions.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios or are documentation-only:
-#
-# Metadata format and structure definitions are tested in dedicated feature files or are documentation-only requirements that don't require test coverage.
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures metadata encoding expectations from the metadata spec.
+# Detailed runnable scenarios live in the dedicated metadata feature files.
+
+  @format
+  Scenario: Tag storage encodes key, value type, length, and value bytes
+    Given a file entry with one or more metadata tags
+    When the tags are serialized
+    Then the serialized format includes a tag count
+    And each tag includes a key length, key bytes, value type, value length, and value bytes
+
+  @format
+  Scenario: Tag keys and values are stored as UTF-8 strings
+    Given a tag key and value to be stored
+    When the tag is serialized
+    Then the key is stored as a UTF-8 string without null termination
+    And the value is stored as a UTF-8 string representation according to its value type

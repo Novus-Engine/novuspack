@@ -1,4 +1,4 @@
-@domain:file_format @m1 @REQ-FILEFMT-023 @spec(package_file_format.md#73-signature-data-sizes)
+@domain:file_format @m1 @v2 @REQ-FILEFMT-023 @spec(package_file_format.md#73-signature-data-sizes)
 Feature: Signature data sizes for different algorithms
 
   @happy

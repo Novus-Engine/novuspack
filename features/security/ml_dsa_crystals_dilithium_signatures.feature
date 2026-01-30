@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-017 @spec(security.md#231-ml-dsa-crystals-dilithium)
+@domain:security @m2 @v2 @REQ-SEC-017 @spec(security.md#231-ml-dsa-crystals-dilithium)
 Feature: ML-DSA Crystals Dilithium Signatures
 
   @REQ-SEC-017 @happy

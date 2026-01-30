@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-040 @spec(api_signatures.md#3-comparison-with-other-signed-file-implementations)
+@domain:signatures @m2 @v2 @REQ-SIG-040 @spec(api_signatures.md#3-comparison-with-other-signed-file-implementations)
 Feature: Signature Implementation Comparison
 
   @REQ-SIG-040 @happy

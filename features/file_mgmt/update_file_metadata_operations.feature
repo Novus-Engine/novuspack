@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-014 @spec(api_file_management.md#63-update-file-metadata)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-014 @spec(api_file_mgmt_updates.md#63-update-file-metadata)
 Feature: Update file metadata operations
 
   @happy

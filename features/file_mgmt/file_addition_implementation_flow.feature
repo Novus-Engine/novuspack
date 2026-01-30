@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-010 @spec(api_file_management.md#31-processing-order-requirements)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-010 @spec(api_file_mgmt_addition.md#31-processing-order-requirements) @spec(api_file_mgmt_transform_pipelines.md#1-multi-stage-transformation-pipelines) @spec(api_file_mgmt_transform_pipelines.md#11-pipeline-structure) @spec(api_file_mgmt_transform_pipelines.md#112-pipeline-validation) @spec(api_file_mgmt_transform_pipelines.md#12-processingstate-transitions)
 Feature: File Addition Processing Order
 
   @happy
@@ -59,3 +59,21 @@ Feature: File Addition Processing Order
     Then operation is cancelled
     And partial state is cleaned up
     And context error is returned
+
+  @REQ-FILEMGMT-342 @REQ-PIPELINE-001 @happy
+  Scenario: File addition flow uses multi-stage pipeline for large files
+    Given a large file exceeding memory threshold
+    And file requires compression and encryption
+    When file addition flow executes
+    Then TransformPipeline is initialized with ordered stages
+    And each stage tracks input source, output source, and completion status
+    And CurrentSource is updated after each stage completes
+    And OriginalSource preserves initial file location
+
+  @REQ-PIPELINE-012 @happy
+  Scenario: CurrentSource tracks progression through transformation stages
+    Given file addition with multi-stage pipeline
+    When each transformation stage completes
+    Then CurrentSource is updated to point to stage output
+    And subsequent stages read from updated CurrentSource
+    And final CurrentSource points to data ready for package write

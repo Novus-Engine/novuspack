@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-034 @spec(api_core.md#524-signing-and-compression-relationship)
+@domain:core @m2 @REQ-CORE-034 @spec(api_core.md#524-signing-and-compression-relationship) @spec(api_writing.md#54-compression-and-signing-relationship)
 Feature: Signing and Compression Relationship
 
   @REQ-CORE-034 @happy

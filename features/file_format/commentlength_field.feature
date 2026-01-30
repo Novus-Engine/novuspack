@@ -1,4 +1,4 @@
-@domain:file_format @m2 @REQ-FILEFMT-069 @spec(package_file_format.md#724-commentlength-field)
+@domain:file_format @m2 @v2 @REQ-FILEFMT-069 @spec(package_file_format.md#724-commentlength-field)
 Feature: CommentLength Field
 
   @REQ-FILEFMT-069 @happy

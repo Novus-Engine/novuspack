@@ -1,13 +1,17 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-023 @spec(api_file_management.md#21-add-file)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-023 @spec(api_file_mgmt_addition.md#216-convenience-wrapper-addfilewithencryption) @spec(api_file_mgmt_transform_pipelines.md#12-processingstate-transitions) @spec(api_file_mgmt_transform_pipelines.md#17-temporary-file-security) @spec(file_validation.md#11-file-name-validation) @spec(api_file_mgmt_file_entry.md#9-fileentry-encryption)
 Feature: Add file with encryption
 
   @happy
-  Scenario: AddFileWithEncryption adds file with specific encryption type
+  Scenario: AddFileWithEncryption adds file with encryption key
     Given an open writable package
-    When AddFileWithEncryption is called with file source and encryption type
-    Then file is added with specified encryption type
-    And encryption type is stored in file entry
-    And file can be decrypted with appropriate key
+    And a valid encryption key
+    And a filesystem file path
+    When AddFileWithEncryption is called with path, encryption key, and nil options
+    Then file is added with encryption enabled
+    And encryption key is associated with file entry
+    And file can be decrypted with the same key
+    And AddFileWithEncryption is a convenience wrapper around AddFile
+    And returned FileEntry matches the added file
 
   @happy
   Scenario: GetFileEncryptionType returns encryption type
@@ -25,11 +29,11 @@ Feature: Add file with encryption
     And unencrypted files are excluded
 
   @error
-  Scenario: AddFileWithEncryption fails with invalid encryption type
+  Scenario: AddFileWithEncryption fails with invalid encryption key
     Given an open writable package
-    When AddFileWithEncryption is called with invalid encryption type
+    When AddFileWithEncryption is called with invalid encryption key
     Then structured validation error is returned
-    And error indicates unsupported encryption type
+    And error indicates invalid or expired encryption key
 
   @REQ-FILEMGMT-037 @REQ-FILEMGMT-038 @error
   Scenario: Encryption-aware operations validate path parameter
@@ -45,6 +49,17 @@ Feature: Add file with encryption
     Then structured validation error is returned
     And error indicates unsupported encryption type
 
+  @happy
+  Scenario: AddFileWithEncryption accepts additional options
+    Given an open writable package
+    And a valid encryption key
+    And a filesystem file path
+    And AddFileOptions with compression enabled
+    When AddFileWithEncryption is called with path, encryption key, and options
+    Then file is added with encryption and compression enabled
+    And encryption key is associated with file entry
+    And file is compressed and encrypted
+
   @REQ-FILEMGMT-037 @REQ-FILEMGMT-041 @error
   Scenario: Encryption-aware operations respect context cancellation
     Given an open writable package
@@ -52,3 +67,23 @@ Feature: Add file with encryption
     When encryption-aware operation is called
     Then structured context error is returned
     And error type is context cancellation
+
+  @REQ-CRYPTO-012 @REQ-PIPELINE-013 @happy
+  Scenario: Encryption works as pipeline stage with compression
+    Given an open writable package
+    And a large file
+    And AddFileOptions with compression and encryption enabled
+    When AddFile is called
+    Then compression stage executes first (Raw to Compressed)
+    And encryption stage executes second (Compressed to CompressedAndEncrypted)
+    And pipeline stages execute sequentially
+    And final encrypted file written to package
+
+  @REQ-CRYPTO-013 @REQ-PIPELINE-025 @happy
+  Scenario: Encrypted temp files use context-aware security
+    Given an open writable package
+    And AddFileOptions with encryption enabled
+    When large file is added using pipeline
+    Then intermediate temp files are secured appropriately
+    And temp file security follows context-aware rules
+    And sensitive data is protected

@@ -5,7 +5,7 @@ Feature: Special File Naming Strategy
   Scenario: Special file naming strategy uses systematic naming convention
     Given a NovusPack package
     When special file naming strategy is examined
-    Then prefix "__NPK_" clearly identifies NovusPack special files
+    Then prefix "__NVPK_" clearly identifies NovusPack special files
     And type code provides abbreviated type identifier
     And type ID provides numeric type identifier
     And suffix "__" provides delimiter for consistency
@@ -15,11 +15,11 @@ Feature: Special File Naming Strategy
   Scenario: Special file naming strategy components are structured
     Given a NovusPack package
     When special file names are examined
-    Then prefix is "__NPK_"
+    Then prefix is "__NVPK_"
     And type codes include "META", "MAN", "IDX", "SIG"
     And type IDs include 240, 241, 242, 243
     And suffix is "__"
-    And extensions include ".npkmeta", ".npkman", ".npkidx", ".npksig"
+    And extensions include ".nvpkmeta", ".nvpkman", ".nvpkidx", ".nvpksig"
 
   @REQ-FILETYPES-006 @happy
   Scenario: Special file naming strategy ensures uniqueness

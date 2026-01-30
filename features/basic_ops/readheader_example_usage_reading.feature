@@ -1,7 +1,7 @@
-@domain:basic_ops @m2 @REQ-API_BASIC-063 @spec(api_basic_operations.md#744-readheader-example-usage)
+@domain:basic_ops @m2 @REQ-API_BASIC-061 @REQ-API_BASIC-062 @spec(api_basic_operations.md#744-readheader-example-usage)
 Feature: ReadHeader Example Usage
 
-  @REQ-API_BASIC-063 @happy
+  @REQ-API_BASIC-061 @REQ-API_BASIC-062 @happy
   Scenario: ReadHeader example demonstrates basic header reading
     Given a valid context
     And a file or reader with package header
@@ -10,7 +10,7 @@ Feature: ReadHeader Example Usage
     And Header structure is returned
     And no error is returned
 
-  @REQ-API_BASIC-063 @happy
+  @REQ-API_BASIC-061 @REQ-API_BASIC-062 @happy
   Scenario: ReadHeader example includes error handling pattern
     Given a valid context
     And a reader for package header
@@ -19,7 +19,7 @@ Feature: ReadHeader Example Usage
     And error handling follows standard Go pattern
     And function returns early on error
 
-  @REQ-API_BASIC-063 @happy
+  @REQ-API_BASIC-061 @REQ-API_BASIC-062 @happy
   Scenario: ReadHeader example follows standard Go error handling
     Given a code example demonstrating ReadHeader usage
     When example code is examined
@@ -27,7 +27,7 @@ Feature: ReadHeader Example Usage
     And error is handled with if err != nil pattern
     And function returns error on failure
 
-  @REQ-API_BASIC-063 @happy
+  @REQ-API_BASIC-061 @REQ-API_BASIC-062 @happy
   Scenario: ReadHeader example uses context parameter correctly
     Given a code example demonstrating ReadHeader usage
     When example code is examined
@@ -35,7 +35,7 @@ Feature: ReadHeader Example Usage
     And context is used from calling function
     And context supports standard Go patterns
 
-  @REQ-API_BASIC-063 @happy
+  @REQ-API_BASIC-061 @REQ-API_BASIC-062 @happy
   Scenario: ReadHeader example supports header-only inspection
     Given a valid context
     And a package file
@@ -44,7 +44,7 @@ Feature: ReadHeader Example Usage
     And header metadata is accessible
     And package data is not loaded
 
-  @REQ-API_BASIC-063 @error
+  @REQ-API_BASIC-061 @REQ-API_BASIC-062 @error
   Scenario: ReadHeader example handles invalid header format errors
     Given a valid context
     And a reader with invalid header format
@@ -53,7 +53,7 @@ Feature: ReadHeader Example Usage
     And error indicates invalid header format
     And error follows structured error format
 
-  @REQ-API_BASIC-063 @error
+  @REQ-API_BASIC-061 @REQ-API_BASIC-062 @error
   Scenario: ReadHeader example handles unsupported version errors
     Given a valid context
     And a reader with unsupported package version

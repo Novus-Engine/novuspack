@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-123 @spec(api_file_management.md#125-generic-fileentry-operations)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-123 @spec(api_file_mgmt_file_entry.md#4-data-management)
 Feature: Generic FileEntry Operations
 
   @REQ-FILEMGMT-123 @happy

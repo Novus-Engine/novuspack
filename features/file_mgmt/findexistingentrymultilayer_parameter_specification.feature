@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-198 @spec(api_file_management.md#913-findexistingentrymultilayer-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-198 @spec(api_deduplication.md#313-findexistingentrymultilayer-parameters)
 Feature: FindExistingEntryMultiLayer Parameter Specification
 
   @REQ-FILEMGMT-198 @happy

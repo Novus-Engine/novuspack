@@ -1,7 +1,7 @@
-@domain:basic_ops @m2 @REQ-API_BASIC-049 @spec(api_basic_operations.md#613-close-example-usage)
+@domain:basic_ops @m2 @REQ-API_BASIC-003 @REQ-API_BASIC-046 @spec(api_basic_operations.md#613-close-example-usage)
 Feature: Close Example Usage
 
-  @REQ-API_BASIC-049 @happy
+  @REQ-API_BASIC-003 @REQ-API_BASIC-046 @happy
   Scenario: Close is used with error checking
     Given a NovusPack package operation
     When Close is called after operations
@@ -9,7 +9,7 @@ Feature: Close Example Usage
     And error is handled appropriately
     And package cleanup is verified
 
-  @REQ-API_BASIC-049 @happy
+  @REQ-API_BASIC-003 @REQ-API_BASIC-046 @happy
   Scenario: Close is used with defer for guaranteed cleanup
     Given a NovusPack package operation
     When defer Close is used at function start
@@ -18,7 +18,7 @@ Feature: Close Example Usage
     And cleanup happens even on errors
     And resource leaks are prevented
 
-  @REQ-API_BASIC-049 @happy
+  @REQ-API_BASIC-003 @REQ-API_BASIC-046 @happy
   Scenario: Close example demonstrates proper usage pattern
     Given a package is opened or created
     When package operations are performed

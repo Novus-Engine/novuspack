@@ -1,4 +1,4 @@
-@domain:file_format @m1 @REQ-FILEFMT-019 @spec(package_file_format.md#5-file-index-section)
+@domain:file_format @m1 @REQ-FILEFMT-019 @REQ-FILEFMT-076 @spec(package_file_format.md#5-file-index-section)
 Feature: File index section complete specification
 
   @happy

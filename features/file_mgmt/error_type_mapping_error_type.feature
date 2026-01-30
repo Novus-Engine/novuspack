@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-114 @spec(api_file_management.md#1222-error-type-mapping)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-114 @spec(api_file_mgmt_errors.md#1222-error-type-mapping) @spec(api_file_mgmt_file_entry.md#1221-error-type-categories)
 Feature: Error Type Mapping
 
   @REQ-FILEMGMT-114 @happy

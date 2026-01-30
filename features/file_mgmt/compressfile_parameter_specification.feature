@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-180 @spec(api_file_management.md#711-compressfile-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-180 @spec(api_file_mgmt_compression.md#711-compressfile-parameters) @spec(api_file_mgmt_file_entry.md#712-compressfile-parameters)
 Feature: CompressFile Parameter Specification
 
   @REQ-FILEMGMT-180 @happy

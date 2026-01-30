@@ -4,32 +4,32 @@ Feature: Example 2 Priority-Based Override
   @REQ-META-033 @happy
   Scenario: Priority-based override example demonstrates override behavior
     Given a NovusPack package
-    And directory metadata with priority-based inheritance
+    And path metadata with priority-based inheritance
     When priority-based override example is examined
-    Then directories with higher priority override lower priority directories
-    And child directory tags override parent directory tags
+    Then paths with higher priority override lower priority paths
+    And child path tags override parent path tags via ParentPath
     And category tag demonstrates priority-based override
 
   @REQ-META-033 @happy
   Scenario: Priority-based override handles category tag override
     Given a NovusPack package
-    And directory "/assets/" with category="texture" and priority=1
-    And directory "/assets/textures/" with category="image" and priority=2
-    And directory "/assets/textures/ui/" with category="ui" and priority=3
-    And file "/assets/textures/ui/button.png"
-    When tag inheritance is resolved
-    Then file inherits category="ui" from highest priority directory
-    And file inherits compression="lossless" from parent directories
-    And file inherits format="png" from parent directories
+    And path "/assets/" with category="texture" and priority=1
+    And path "/assets/textures/" with category="image" and priority=2
+    And path "/assets/textures/ui/" with category="ui" and priority=3
+    And file "/assets/textures/ui/button.png" with associated PathMetadataEntry
+    When GetEffectiveTags is called on PathMetadataEntry
+    Then effective tags include category="ui" from highest priority path
+    And effective tags include compression="lossless" from parent paths via ParentPath
+    And effective tags include format="png" from parent paths via ParentPath
     And priority-based override demonstrates tag precedence
 
   @REQ-META-033 @happy
-  Scenario: Priority-based override combines tags from multiple directories
+  Scenario: Priority-based override combines tags from multiple paths
     Given a NovusPack package
-    And directory hierarchy with priorities
-    When file inherits tags from multiple directories
+    And path hierarchy with priorities
+    When GetEffectiveTags is called on PathMetadataEntry
     Then highest priority category tag is used
-    And other tags from lower priority directories are also inherited
+    And other tags from lower priority paths are also inherited via ParentPath
     And tag combination demonstrates priority-based inheritance
 
   @REQ-META-033 @error

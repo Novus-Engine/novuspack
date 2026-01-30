@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-056 @spec(api_signatures.md#531-creating-signature-errors)
+@domain:signatures @m2 @v2 @REQ-SIG-056 @spec(api_signatures.md#531-creating-signature-errors)
 Feature: Creating Signature Errors
 
   @REQ-SIG-056 @happy

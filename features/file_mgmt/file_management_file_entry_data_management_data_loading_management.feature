@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-186 @spec(api_file_management.md#113-file-entry-data-management)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-186 @spec(api_file_mgmt_file_entry.md#9-fileentry-data-management)
 Feature: File Management: File Entry Data Management (Data Loading)
 
   @REQ-FILEMGMT-186 @happy

@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-129 @spec(api_file_management.md#1321-choose-appropriate-encryption-types)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-129 @spec(api_file_mgmt_best_practices.md#1321-choose-appropriate-encryption-types)
 Feature: Choose Appropriate Encryption Types
 
   @REQ-FILEMGMT-129 @happy

@@ -1,4 +1,4 @@
-@domain:core @m1 @REQ-CORE-008 @spec(api_core.md#61-package-compression-types)
+@domain:core @m1 @REQ-CORE-008 @spec(api_core.md#61-package-compression-types) @spec(api_package_compression.md#12-compression-types)
 Feature: Package compression type identification
 
   @happy

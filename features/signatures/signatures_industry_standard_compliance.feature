@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-043 @spec(api_signatures.md#33-industry-standard-compliance)
+@domain:signatures @m2 @v2 @REQ-SIG-043 @spec(api_signatures.md#33-industry-standard-compliance)
 Feature: Signatures: Industry Standard Compliance
 
   @REQ-SIG-043 @happy

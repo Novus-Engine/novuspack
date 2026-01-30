@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-128 @spec(api_file_management.md#132-encryption-management)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-128 @spec(api_file_mgmt_best_practices.md#132-encryption-management)
 Feature: Encryption Management Best Practices
 
   @REQ-FILEMGMT-128 @happy

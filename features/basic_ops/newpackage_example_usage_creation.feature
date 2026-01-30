@@ -6,13 +6,13 @@ Feature: NewPackage Example Usage
     Given a context for package operations
     When NewPackage is called
     Then Package instance is created
-    And instance is ready for Create or Open
+    And instance is ready for Create or OpenPackage
     And example demonstrates constructor usage
 
   @REQ-API_BASIC-028 @happy
   Scenario: NewPackage example shows typical workflow
     Given NewPackage creates package instance
-    When Create or Open is called next
+    When Create or OpenPackage is called next
     Then package workflow is demonstrated
     And example shows proper initialization pattern
     And usage pattern is clear

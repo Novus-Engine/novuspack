@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-015 @REQ-SEC-048 @spec(security.md#211-key-security-features)
+@domain:security @m2 @v2 @REQ-SEC-015 @REQ-SEC-048 @spec(security.md#211-key-security-features) @spec(api_security.md#5-ml-kem-key-structure-and-operations)
 Feature: Key Security Features and Management
 
   @REQ-SEC-015 @happy

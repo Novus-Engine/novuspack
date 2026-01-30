@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-055 @spec(api_signatures.md#53-structured-error-examples)
+@domain:signatures @m2 @v2 @REQ-SIG-055 @spec(api_signatures.md#53-structured-error-examples)
 Feature: Signature Structured Error Examples
 
   @REQ-SIG-055 @happy

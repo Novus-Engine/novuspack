@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-022 @spec(api_file_management.md#111-file-entry-properties)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-022 @spec(api_file_mgmt_file_entry.md#111-file-entry-properties)
 Feature: FileEntry construction and parsing
 
   @happy

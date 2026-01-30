@@ -12,7 +12,7 @@ Feature: Write protection and immutability enforcement
   @error
   Scenario: Write operations are refused on signed packages
     Given a signed NovusPack package with SignatureOffset > 0
-    When WriteFile is called
+    When AddFileFromMemory is called
     Then write operation is refused
     And a structured immutability error is returned
     And error type is ErrTypeValidation

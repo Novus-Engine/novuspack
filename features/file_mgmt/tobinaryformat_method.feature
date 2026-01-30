@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-098 @spec(api_file_management.md#1116-tobinaryformat-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-098 @spec(api_file_mgmt_file_entry.md#6-marshaling)
 Feature: ToBinaryFormat Method
 
   @REQ-FILEMGMT-098 @happy

@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-204 @spec(api_file_management.md#9211-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-064 @spec(api_file_mgmt_queries.md#233-getfilebyfileid-parameters)
 Feature: GetFileByFileID Parameter Specification
 
-  @REQ-FILEMGMT-204 @happy
+  @REQ-FILEMGMT-064 @happy
   Scenario: GetFileByFileID parameters include context and fileID
     Given an open NovusPack package
     And a valid context
@@ -11,7 +11,7 @@ Feature: GetFileByFileID Parameter Specification
     And fileID parameter is accepted as unique 64-bit identifier
     And parameters are validated
 
-  @REQ-FILEMGMT-204 @happy
+  @REQ-FILEMGMT-064 @happy
   Scenario: GetFileByFileID context supports cancellation
     Given an open NovusPack package
     And a context that can be cancelled
@@ -21,7 +21,7 @@ Feature: GetFileByFileID Parameter Specification
     Then operation respects context cancellation
     And structured context error is returned
 
-  @REQ-FILEMGMT-204 @happy
+  @REQ-FILEMGMT-064 @happy
   Scenario: GetFileByFileID context supports timeout handling
     Given an open NovusPack package
     And a context with timeout
@@ -31,7 +31,7 @@ Feature: GetFileByFileID Parameter Specification
     Then operation respects context timeout
     And structured context timeout error is returned
 
-  @REQ-FILEMGMT-204 @error
+  @REQ-FILEMGMT-064 @error
   Scenario: GetFileByFileID handles package not open errors
     Given a closed NovusPack package
     And a valid context
@@ -41,7 +41,7 @@ Feature: GetFileByFileID Parameter Specification
     And error indicates package is not open
     And error follows structured error format
 
-  @REQ-FILEMGMT-204 @error
+  @REQ-FILEMGMT-064 @error
   Scenario: GetFileByFileID handles invalid fileID
     Given an open NovusPack package
     And a valid context

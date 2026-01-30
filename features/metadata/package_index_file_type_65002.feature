@@ -1,4 +1,4 @@
-@domain:metadata @m2 @REQ-META-065 @spec(api_metadata.md#53-package-index-file-type-65002)
+@domain:metadata @m2 @REQ-META-065 @spec(api_metadata.md#53-package-index-file-type-65002) @spec(api_metadata.md#535-packagehasindexfile-method)
 Feature: Package Index File Type 65002
 
   @REQ-META-065 @happy

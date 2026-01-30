@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-079 @spec(api_security.md#23-signaturevalidationresult-struct)
+@domain:security @m2 @v2 @REQ-SEC-079 @spec(api_security.md#23-signaturevalidationresult-struct)
 Feature: Security: SignatureValidationResult Structure
 
   @REQ-SEC-079 @happy

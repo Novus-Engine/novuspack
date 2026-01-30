@@ -1,4 +1,4 @@
-@domain:metadata @m2 @REQ-META-064 @spec(api_metadata.md#52-package-manifest-file-type-65001)
+@domain:metadata @m2 @REQ-META-064 @spec(api_metadata.md#52-package-manifest-file-type-65001) @spec(api_metadata.md#525-packagehasmanifestfile-method)
 Feature: Package Manifest File Type 65001
 
   @REQ-META-064 @happy

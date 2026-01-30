@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-052 @spec(api_file_management.md#213-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-052 @spec(api_file_mgmt_addition.md#213-returns)
 Feature: AddFile Return Values
 
   @REQ-FILEMGMT-052 @happy

@@ -1,7 +1,7 @@
-@domain:basic_ops @m2 @REQ-API_BASIC-059 @spec(api_basic_operations.md#732-getinfo-example-usage)
+@domain:basic_ops @m2 @REQ-API_BASIC-058 @spec(api_basic_operations.md#732-getinfo-example-usage)
 Feature: GetInfo example usage
 
-  @REQ-API_BASIC-059 @happy
+  @REQ-API_BASIC-058 @happy
   Scenario: GetInfo example demonstrates package information retrieval
     Given an open NovusPack package
     When GetInfo is called
@@ -10,7 +10,7 @@ Feature: GetInfo example usage
     And package version information is available
     And comprehensive package information is retrieved
 
-  @REQ-API_BASIC-059 @happy
+  @REQ-API_BASIC-058 @happy
   Scenario: GetInfo example shows accessing package information
     Given GetInfo returns PackageInfo
     When package information is accessed
@@ -21,7 +21,7 @@ Feature: GetInfo example usage
     And signature information is accessible
     And security and compression status is available
 
-  @REQ-API_BASIC-059 @happy
+  @REQ-API_BASIC-058 @happy
   Scenario: GetInfo example demonstrates information display
     Given PackageInfo from GetInfo
     When information is formatted for display

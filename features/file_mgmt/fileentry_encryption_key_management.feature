@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-022 @spec(api_file_management.md#112-file-entry-encryption)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-022 @spec(api_file_mgmt_file_entry.md#112-file-entry-encryption)
 Feature: FileEntry encryption key management
 
   @happy

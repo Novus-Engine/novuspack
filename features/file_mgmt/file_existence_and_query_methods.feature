@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-028 @spec(api_file_management.md#101-file-existence-and-properties)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-028 @spec(api_file_mgmt_queries.md#1-file-existence-and-listing)
 Feature: File existence and query methods
 
   @happy

@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-195 @spec(api_file_management.md#9-deduplication-operations)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-195 @spec(api_deduplication.md#31-file-deduplication)
 Feature: File Deduplication Operations
 
   @REQ-FILEMGMT-195 @happy

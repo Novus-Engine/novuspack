@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-022 @spec(api_core.md#114-error-handling-patterns)
+@domain:core @m2 @REQ-CORE-022 @spec(api_core.md#104-error-handling-patterns)
 Feature: Core: Error Handling Patterns
 
   @REQ-CORE-022 @happy

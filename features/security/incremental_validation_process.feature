@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-076 @spec(api_security.md#12-incremental-validation-process)
+@domain:security @m2 @v2 @REQ-SEC-076 @spec(api_security.md#12-incremental-validation-process)
 Feature: Incremental Validation Process
 
   @REQ-SEC-076 @happy

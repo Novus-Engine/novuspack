@@ -7,7 +7,7 @@ Feature: FileEntry Special File Requirements
     And a special metadata file entry
     When FileEntry Type field is examined
     Then Type is set to appropriate special file type
-    And Type is 65001 for directory metadata
+    And Type is 65001 for path metadata
     And Type is 65000 for package metadata
 
   @REQ-META-095 @happy
@@ -36,33 +36,34 @@ Feature: FileEntry Special File Requirements
     And tags identify special file purpose
 
   @REQ-META-099 @happy
-  Scenario: FileEntry directory properties link to DirectoryEntry
+  Scenario: FileEntry path properties link to PathMetadataEntry
     Given an open NovusPack package
-    And a file entry with directory association
-    When FileEntry directory properties are examined
-    Then DirectoryEntry pointer references immediate directory
-    And ParentDirectory pointer references parent directory
-    And directory hierarchy is accessible
+    And a file entry with path metadata association
+    When FileEntry path properties are examined
+    Then PathMetadataEntries map contains path to PathMetadataEntry mappings
+    And GetPathMetadataForPath retrieves PathMetadataEntry for specific paths
+    And path hierarchy is accessible via PathMetadataEntry.ParentPath
 
   @REQ-META-099 @happy
-  Scenario: FileEntry inherits tags from directory hierarchy
+  Scenario: PathMetadataEntry inherits tags from path hierarchy
     Given an open NovusPack package
-    And a file entry with directory association
-    And directory hierarchy with tags
-    When FileEntry InheritedTags are examined
-    Then InheritedTags contain tags from directory hierarchy
+    And a file entry with path metadata association
+    And path hierarchy with tags
+    When GetInheritedTags is called on PathMetadataEntry
+    Then inherited tags contain tags from path hierarchy
     And tags are inherited based on priority
-    And inheritance follows directory path
+    And inheritance follows path hierarchy via ParentPath
 
   @REQ-META-099 @happy
-  Scenario: FileEntry effective tags combine file and inherited tags
+  Scenario: PathMetadataEntry effective tags combine path and inherited tags
     Given an open NovusPack package
     And a file entry with own tags
-    And directory hierarchy with tags
-    When FileEntry effective tags are computed
-    Then effective tags include file tags
-    And effective tags include inherited tags
-    And file tags override inherited tags
+    And path hierarchy with tags
+    When GetEffectiveTags is called on PathMetadataEntry
+    Then effective tags include PathMetadataEntry tags
+    And effective tags include inherited tags from path hierarchy
+    And effective tags include associated FileEntry tags
+    And path-specific tags override inherited tags
 
   @REQ-META-011 @error
   Scenario: Special file entry validation fails with invalid Type

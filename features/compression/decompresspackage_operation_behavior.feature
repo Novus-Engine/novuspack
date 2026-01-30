@@ -1,16 +1,18 @@
 @domain:compression @m2 @REQ-COMPR-114 @spec(api_package_compression.md#423-decompresspackage-behavior)
 Feature: DecompressPackage Operation Behavior
 
-  @REQ-COMPR-114 @happy
+  @REQ-COMPR-114 @REQ-COMPR-165 @happy
   Scenario: DecompressPackage decompresses all compressed content
     Given an open NovusPack package
     And package is compressed
+    And metadata index exists
     And a valid context
     When DecompressPackage is called
     Then all compressed content is decompressed
-    And file entries are decompressed
+    And file entry metadata is decompressed
     And file data is decompressed
-    And package index is decompressed
+    And file index is decompressed
+    And metadata index is removed
 
   @REQ-COMPR-114 @happy
   Scenario: DecompressPackage updates package compression state in memory

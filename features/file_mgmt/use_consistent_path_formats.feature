@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-126 @spec(api_file_management.md#1311-use-consistent-path-formats)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-126 @spec(api_file_mgmt_best_practices.md#1311-use-consistent-path-formats) @spec(api_file_mgmt_file_entry.md#1311-use-consistent-path-formats)
 Feature: Use Consistent Path Formats
 
   @REQ-FILEMGMT-126 @happy
@@ -11,19 +11,21 @@ Feature: Use Consistent Path Formats
     And path format is standardized
 
   @REQ-FILEMGMT-126 @happy
-  Scenario: Consistent path formats avoid leading slashes
+  Scenario: Consistent path formats require leading slashes for storage
     Given an open NovusPack package
     And a valid context
-    When file paths are used
-    Then paths do not start with leading slash
-    And relative paths are preferred
-    And path format follows best practices
+    When file paths are stored internally
+    Then all stored paths start with leading slash
+    And leading slash indicates package root
+    And storage format follows best practices
+    But when paths are displayed to users
+    Then leading slash is stripped from displayed paths
 
   @REQ-FILEMGMT-126 @error
   Scenario: Inconsistent path formats are rejected
     Given an open NovusPack package
     And a valid context
-    And a path with mixed separators or leading slash
+    And a path with mixed separators
     When path operations are attempted with inconsistent format
     Then path validation fails
     And appropriate error is returned

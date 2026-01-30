@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-046 @REQ-SIG-048 @REQ-SIG-049 @spec(api_signatures.md#4-generic-signature-patterns)
+@domain:signatures @m2 @v2 @REQ-SIG-046 @REQ-SIG-048 @REQ-SIG-049 @spec(api_signatures.md#4-generic-signature-patterns)
 Feature: Generic Signature Patterns
 
   @REQ-SIG-046 @happy

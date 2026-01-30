@@ -1,4 +1,4 @@
-@domain:file_format @m2 @REQ-FILEFMT-068 @spec(package_file_format.md#723-signaturetimestamp-field)
+@domain:file_format @m2 @v2 @REQ-FILEFMT-068 @spec(package_file_format.md#723-signaturetimestamp-field)
 Feature: SignatureTimestamp Field
 
   @REQ-FILEFMT-068 @happy

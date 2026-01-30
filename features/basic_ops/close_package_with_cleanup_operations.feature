@@ -1,4 +1,4 @@
-@domain:basic_ops @m1 @REQ-API_BASIC-009 @spec(api_basic_operations.md#62-close-with-cleanup)
+@domain:basic_ops @m1 @REQ-API_BASIC-010 @spec(api_basic_operations.md#62-close-with-cleanup)
 Feature: Close package with cleanup operations
 
   @happy

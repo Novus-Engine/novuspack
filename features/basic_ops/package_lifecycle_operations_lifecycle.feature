@@ -13,7 +13,7 @@ Feature: Package Lifecycle Operations
     Given an existing package file
     And a valid context
     When package lifecycle is initiated
-    Then Open step loads existing package
+    Then OpenPackage step loads existing package
     And package is ready for operations
 
   @REQ-API_BASIC-025 @happy
@@ -39,7 +39,7 @@ Feature: Package Lifecycle Operations
     Given the NovusPack system
     When lifecycle pattern is examined
     Then pattern consists of four main steps
-    And Create, Open, Operations, and Close are distinct phases
+    And Create, OpenPackage, Operations, and Close are distinct phases
     And pattern supports both new and existing packages
 
   @REQ-API_BASIC-025 @error

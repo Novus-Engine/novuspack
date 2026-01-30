@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-037 @spec(api_signatures.md#2822-when-to-use-signpackage-functions-high-level)
+@domain:signatures @m2 @v2 @REQ-SIG-037 @spec(api_signatures.md#2822-when-to-use-signpackage-functions-high-level)
 Feature: When to Use SignPackage Functions High-Level
 
   @REQ-SIG-037 @happy

@@ -1,7 +1,7 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-205 @spec(api_file_management.md#9212-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-065 @spec(api_file_mgmt_queries.md#234-getfilebyfileid-returns)
 Feature: GetFileByFileID Return Values
 
-  @REQ-FILEMGMT-205 @happy
+  @REQ-FILEMGMT-065 @happy
   Scenario: GetFileByFileID returns FileEntry and boolean when found
     Given an open NovusPack package
     And a valid context
@@ -11,7 +11,7 @@ Feature: GetFileByFileID Return Values
     And boolean true is returned indicating found
     And FileEntry contains complete file information
 
-  @REQ-FILEMGMT-205 @happy
+  @REQ-FILEMGMT-065 @happy
   Scenario: GetFileByFileID returns nil and false when not found
     Given an open NovusPack package
     And a valid context
@@ -21,7 +21,7 @@ Feature: GetFileByFileID Return Values
     And boolean false is returned indicating not found
     And no error is returned for not found case
 
-  @REQ-FILEMGMT-205 @happy
+  @REQ-FILEMGMT-065 @happy
   Scenario: GetFileByFileID returns stable file references
     Given an open NovusPack package
     And a valid context
@@ -31,7 +31,7 @@ Feature: GetFileByFileID Return Values
     And FileID persists across package modifications
     And FileID can be used for database-style lookups
 
-  @REQ-FILEMGMT-205 @happy
+  @REQ-FILEMGMT-065 @happy
   Scenario: GetFileByFileID returns complete FileEntry information
     Given an open NovusPack package
     And a valid context
@@ -42,7 +42,7 @@ Feature: GetFileByFileID Return Values
     And FileEntry contains encryption details
     And FileEntry contains checksums and timestamps
 
-  @REQ-FILEMGMT-205 @error
+  @REQ-FILEMGMT-065 @error
   Scenario: GetFileByFileID handles context cancellation errors
     Given an open NovusPack package
     And a context that is cancelled
@@ -52,7 +52,7 @@ Feature: GetFileByFileID Return Values
     Then structured context error is returned
     And error follows structured error format
 
-  @REQ-FILEMGMT-205 @error
+  @REQ-FILEMGMT-065 @error
   Scenario: GetFileByFileID handles context timeout errors
     Given an open NovusPack package
     And a context with timeout

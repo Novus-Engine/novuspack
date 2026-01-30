@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-209 @spec(api_file_management.md#9222-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-209 @spec(api_file_mgmt_queries.md#243-getfilebyhash-parameters)
 Feature: GetFileByHash Parameter Specification
 
   @REQ-FILEMGMT-209 @happy

@@ -2,17 +2,18 @@
 Feature: PackageWriter interface methods
 
   @happy
-  Scenario: WriteFile adds file to package
+  Scenario: AddFileFromMemory adds file to package from memory
     Given an open writable NovusPack package
-    When WriteFile is called with path and data
-    Then file is added to package
+    When AddFileFromMemory is called with path and data
+    Then file is added to in-memory package
     And file is accessible via ReadFile
-    And file index is updated
+    And file index is updated in memory
+    And changes are not written to disk until Write is called
 
   @happy
-  Scenario: WriteFile respects AddFileOptions
+  Scenario: AddFileFromMemory respects AddFileOptions
     Given an open writable NovusPack package
-    When WriteFile is called with AddFileOptions
+    When AddFileFromMemory is called with AddFileOptions
     Then file is added with specified options
     And compression settings are applied
     And encryption settings are applied
@@ -28,32 +29,91 @@ Feature: PackageWriter interface methods
   @happy
   Scenario: Write performs general write operation
     Given an open writable NovusPack package
-    When Write is called with path and options
+    When Write is called with context only
     Then appropriate write strategy is selected
     And write operation completes successfully
+    And changes are written to the Package's configured target path
 
   @happy
   Scenario: SafeWrite performs atomic write
     Given an open writable NovusPack package
-    When SafeWrite is called
+    When SafeWrite is called with overwrite flag
     Then atomic write operation is performed
-    And temp file strategy is used
+    And temp file is created in same directory as target
+    And temp file is atomically renamed to target
     And package integrity is maintained
+    And all in-memory changes are made durable on disk
+
+  @happy
+  Scenario: SafeWrite rejects overwrite when overwrite flag is false
+    Given an open writable NovusPack package
+    And target file already exists
+    When SafeWrite is called with overwrite=false
+    Then a structured validation error is returned
+    And error type is ErrTypeValidation
+
+  @error
+  Scenario: SafeWrite fails for cross-filesystem operation
+    Given an open writable NovusPack package
+    And target is on different filesystem than temp directory
+    When SafeWrite is called
+    Then a structured error is returned
+    And error indicates cross-filesystem operation not supported
 
   @happy
   Scenario: FastWrite performs in-place updates
     Given an open writable NovusPack package
+    And target path matches opened package path
     When FastWrite is called
     Then in-place update is performed
     And write performance is optimized
     And package is updated efficiently
+    And all in-memory changes are made durable on disk
 
   @error
-  Scenario: WriteFile fails if package is read-only
+  Scenario: FastWrite fails when target path differs from opened path
+    Given an open writable NovusPack package
+    And target path differs from opened package path
+    When FastWrite is called
+    Then a structured validation error is returned
+    And error indicates target path must match opened path
+
+  @error
+  Scenario: FastWrite fails when target file does not exist
+    Given an open writable NovusPack package
+    And target file does not exist
+    When FastWrite is called
+    Then a structured validation error is returned
+    And error indicates target file must exist for in-place updates
+
+  @error
+  Scenario: FastWrite can corrupt file on interruption
+    Given an open writable NovusPack package
+    When FastWrite is interrupted during write phase
+    Then package file may be corrupted
+    And recovery file is created if possible
+
+  @error
+  Scenario: AddFileFromMemory fails if package is read-only
     Given a read-only open NovusPack package
-    When WriteFile is called
+    When AddFileFromMemory is called
+    Then a structured security error is returned
+    And error type is ErrTypeSecurity
+
+  @error
+  Scenario: AddFileFromMemory fails for invalid package path
+    Given an open writable NovusPack package
+    When AddFileFromMemory is called with empty path
     Then a structured validation error is returned
     And error type is ErrTypeValidation
+
+  @error
+  Scenario: SafeWrite fails when attempting to overwrite signed package
+    Given an open writable NovusPack package
+    And package is signed
+    When SafeWrite is called with overwrite=true
+    Then a structured security error is returned
+    And error type is ErrTypeSecurity
 
   @error
   Scenario: RemoveFile fails for non-existent file

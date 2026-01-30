@@ -1,4 +1,4 @@
-@domain:file_format @m1 @signing @REQ-FILEFMT-024 @spec(package_file_format.md#7-digital-signatures-section-optional)
+@domain:file_format @m1 @signing @v2 @REQ-FILEFMT-024 @spec(package_file_format.md#7-digital-signatures-section-optional)
 Feature: Multiple signature blocks and incremental signing
 
   @happy

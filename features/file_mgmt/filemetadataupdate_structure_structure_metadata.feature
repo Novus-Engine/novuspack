@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-156 @spec(api_file_management.md#533-filemetadataupdate-structure)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-156 @spec(api_file_mgmt_updates.md#133-filemetadataupdate-structure) @spec(api_file_mgmt_file_entry.md#633-filemetadataupdate-structure)
 Feature: FileMetadataUpdate Structure
 
   @REQ-FILEMGMT-156 @happy

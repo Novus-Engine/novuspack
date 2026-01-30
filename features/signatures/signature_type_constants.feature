@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-025 @REQ-SIG-044 @spec(api_signatures.md#21-signature-type-constants)
+@domain:signatures @m2 @v2 @REQ-SIG-025 @REQ-SIG-044 @spec(api_signatures.md#21-signature-type-constants)
 Feature: Signature Type Constants
 
   @REQ-SIG-025 @happy

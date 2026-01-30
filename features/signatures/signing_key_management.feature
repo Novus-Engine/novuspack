@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-039 @spec(api_signatures.md#29-signing-key-management)
+@domain:signatures @m2 @v2 @REQ-SIG-039 @spec(api_signatures.md#29-signing-key-management)
 Feature: Signing Key Management
 
   @REQ-SIG-039 @happy

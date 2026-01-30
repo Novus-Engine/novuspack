@@ -1,4 +1,4 @@
-@domain:core @m1 @REQ-CORE-006 @spec(api_core.md#13-package-interface)
+@domain:core @m1 @REQ-CORE-006 @spec(api_basic_operations.md#11-package-structure)
 Feature: Package interface combines reader and writer
 
   @happy
@@ -17,10 +17,9 @@ Feature: Package interface combines reader and writer
     Given a Package instance
     When interface is checked
     Then Package implements PackageWriter interface
-    And WriteFile method is available
-    And RemoveFile method is available
     And Write method is available
     And SafeWrite method is available
+    And FastWrite method is available
     And FastWrite method is available
 
   @happy

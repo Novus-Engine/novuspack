@@ -1,4 +1,4 @@
-@domain:signatures @security @m2 @REQ-SIG-010 @spec(api_signatures.md#27-signature-validation)
+@domain:signatures @security @m2 @v2 @REQ-SIG-010 @spec(api_signatures.md#27-signature-validation)
 Feature: Signature validation methods
 
   @happy

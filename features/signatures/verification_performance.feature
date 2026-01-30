@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-045 @spec(api_signatures.md#35-verification-performance)
+@domain:signatures @m2 @v2 @REQ-SIG-045 @spec(api_signatures.md#35-verification-performance)
 Feature: Verification Performance
 
   @REQ-SIG-045 @happy

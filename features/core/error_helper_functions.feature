@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-021 @spec(api_core.md#113-error-helper-functions)
+@domain:core @m2 @REQ-CORE-021 @spec(api_core.md#103-error-helper-functions)
 Feature: Error Helper Functions
 
   @REQ-CORE-021 @happy

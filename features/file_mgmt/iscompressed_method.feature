@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-095 @spec(api_file_management.md#1112-iscompressed-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-095 @spec(api_file_mgmt_compression.md#1112-iscompressed-returns) @spec(api_file_mgmt_file_entry.md#1112-iscompressed-returns)
 Feature: IsCompressed Method
 
   @REQ-FILEMGMT-095 @happy

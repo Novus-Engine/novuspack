@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-175 @spec(api_file_management.md#563-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-175 @spec(api_file_mgmt_addition.md#563-returns) @spec(api_file_mgmt_file_entry.md#663-returns) @spec(api_file_mgmt_updates.md#163-addfilehash-returns)
 Feature: AddFileHash Returns Updated FileEntry
 
   @REQ-FILEMGMT-175 @happy

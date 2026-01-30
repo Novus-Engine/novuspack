@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-027 @REQ-SIG-028 @spec(api_signatures.md#221-signatureinfo-struct)
+@domain:signatures @m2 @v2 @REQ-SIG-027 @REQ-SIG-028 @spec(api_signatures.md#221-signatureinfo-struct)
 Feature: Signature Structures
 
   @REQ-SIG-027 @happy
@@ -13,7 +13,7 @@ Feature: Signature Structures
     And structure contains Timestamp field with Unix timestamp
     And structure contains Data field with raw signature data
     And structure contains Algorithm field with algorithm name
-    And structure contains SecurityLevel field with security level (1-5)
+    And structure contains SecurityLevel field with algorithm security level
     And structure contains Valid field indicating validation status
     And structure contains Error field with error message if validation failed
 
@@ -36,7 +36,7 @@ Feature: Signature Structures
     When SignatureInfo structure is retrieved
     Then Valid field indicates signature is valid
     And Error field is empty when signature is valid
-    And SecurityLevel indicates signature security level
+    And SecurityLevel indicates signature algorithm security level
 
   @REQ-SIG-027 @error
   Scenario: SignatureInfo indicates invalid signature

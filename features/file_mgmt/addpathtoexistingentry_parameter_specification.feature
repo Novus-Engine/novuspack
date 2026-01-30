@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-199 @spec(api_file_management.md#914-addpathtoexistingentry-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-199 @spec(api_deduplication.md#314-addpathtoexistingentry-parameters)
 Feature: AddPathToExistingEntry Parameter Specification
 
   @REQ-FILEMGMT-199 @happy

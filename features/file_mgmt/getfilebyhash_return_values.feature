@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-210 @spec(api_file_management.md#9223-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-210 @spec(api_file_mgmt_queries.md#244-getfilebyhash-returns)
 Feature: GetFileByHash Return Values
 
   @REQ-FILEMGMT-210 @happy

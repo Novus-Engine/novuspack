@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-124 @spec(api_file_management.md#13-best-practices)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-124 @spec(api_file_mgmt_best_practices.md#13-best-practices)
 Feature: File Management Best Practices
 
   @REQ-FILEMGMT-124 @happy

@@ -1,10 +1,19 @@
 @skip @domain:security @m2 @spec(api_security.md#322-example-usage)
 Feature: Security Usage Examples
 
-# This file previously contained placeholder scenarios for security usage examples.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios:
-#
-# - REQ-SEC-100 (ML-KEM key generation example): tested in features/security/ml_kem_key_generation_example_usage.feature
-# - REQ-SEC-085, 106, 109 (encryption/key examples): tested in dedicated example usage feature files
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures usage-oriented security scenarios derived from the security specs.
+# Detailed runnable scenarios live in the dedicated security feature files.
+
+  @documentation
+  Scenario: Security status reporting summarizes checksums and validation errors
+    Given an open package
+    When the caller requests a security status report
+    Then the report indicates whether checksums are present and valid
+    And the report includes any validation errors as descriptive strings
+
+  @documentation
+  Scenario: Security status reporting is v1-compatible when signature validation is deferred
+    Given signature validation is deferred to v2
+    When the caller requests a security validation result in v1
+    Then signature-related fields are returned as zero values
+    And checksum-related fields are still populated when available

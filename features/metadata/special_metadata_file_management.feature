@@ -32,11 +32,11 @@ Feature: Special Metadata File Management
     And Tags include file_type=special_metadata
 
   @REQ-META-090 @happy
-  Scenario: SaveDirectoryMetadataFile creates special metadata file
+  Scenario: SavePathMetadataFile creates special metadata file
     Given a NovusPack package
     And a valid context
-    And directory metadata entries
-    When SaveDirectoryMetadataFile is called
+    And path metadata entries
+    When SavePathMetadataFile is called
     Then special metadata file is created
     And file meets all special file requirements
     And package header flags are updated

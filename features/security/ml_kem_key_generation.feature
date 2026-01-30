@@ -53,11 +53,11 @@ Feature: ML-KEM Key Generation with Security Levels
   @REQ-SEC-099 @REQ-SEC-011 @error
   Scenario: GenerateMLKEMKey fails with invalid security level
     Given an open NovusPack package
-    And invalid security level (not 1-5)
+    And invalid security level (not 1, 3, or 5)
     And a valid context
     When GenerateMLKEMKey is called with invalid level
     Then ErrInvalidSecurityLevel error is returned
-    And error indicates security level must be 1-5
+    And error indicates security level must be 1, 3, or 5
 
   @REQ-SEC-099 @error
   Scenario: GenerateMLKEMKey fails if key generation fails

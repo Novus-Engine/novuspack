@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-121 @spec(api_file_management.md#1244-use-context-for-cancellation-with-structured-errors)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-121 @spec(api_file_mgmt_errors.md#1244-use-context-for-cancellation-with-structured-errors)
 Feature: Use Context for Cancellation with Structured Errors
 
   @REQ-FILEMGMT-121 @happy

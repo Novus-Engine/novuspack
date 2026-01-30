@@ -1,4 +1,4 @@
-@domain:file_format @m1 @signing @REQ-FILEFMT-003 @REQ-FILEFMT-021 @spec(package_file_format.md#71-signature-structure)
+@domain:file_format @m1 @signing @v2 @REQ-FILEFMT-003 @REQ-FILEFMT-021 @spec(package_file_format.md#71-signature-structure)
 Feature: Signature structure and parsing
 
   @happy

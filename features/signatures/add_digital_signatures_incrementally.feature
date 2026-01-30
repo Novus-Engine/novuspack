@@ -1,4 +1,4 @@
-@domain:signatures @security @m2 @REQ-SIG-001 @spec(api_signatures.md#11-multiple-signature-management-incremental-signing)
+@domain:signatures @security @m2 @v2 @REQ-SIG-001 @spec(api_signatures.md#11-multiple-signature-management-incremental-signing)
 Feature: Add digital signatures incrementally
 
   @happy

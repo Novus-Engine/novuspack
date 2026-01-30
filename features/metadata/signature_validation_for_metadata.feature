@@ -1,4 +1,4 @@
-@domain:metadata @m2 @REQ-META-077 @spec(api_metadata.md#631-signature-validation)
+@domain:metadata @m2 @v2 @REQ-META-077 @spec(api_metadata.md#631-signature-validation)
 Feature: Signature Validation for Metadata
 
   @REQ-META-077 @happy

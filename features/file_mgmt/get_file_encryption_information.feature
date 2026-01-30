@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-034 @spec(api_file_management.md#8-file-encryption-operations)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-034 @spec(api_file_mgmt_file_entry.md#9-fileentry-encryption)
 Feature: Get file encryption information
 
   @happy

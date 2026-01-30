@@ -49,3 +49,21 @@ Feature: Deduplication Implementation Strategy and Encryption Interaction
     When deduplication is attempted at encrypted level
     Then files can potentially be deduplicated
     And deduplication may occur if encrypted content is identical
+
+  @REQ-DEDUP-017 @happy
+  Scenario: PathHandling integration with deduplication
+    Given a NovusPack package
+    And an existing file entry with path "/data/file.txt"
+    And PathHandling is set to PathHandlingSymlinks
+    When I add a duplicate file
+    Then deduplication should integrate with PathHandling option
+    And symlink should be created instead of adding path to FileEntry
+
+  @REQ-DEDUP-017 @happy
+  Scenario: PathHandlingHardLinks adds paths during deduplication
+    Given a NovusPack package
+    And an existing file entry with path "/data/file.txt"
+    And PathHandling is set to PathHandlingHardLinks
+    When I add a duplicate file
+    Then deduplication should add path to existing FileEntry
+    And no symlink should be created

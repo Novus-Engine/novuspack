@@ -1,19 +1,20 @@
-@skip @domain:file_mgmt @m2 @spec(api_file_management.md#214-behavior)
+@skip @domain:file_mgmt @m2 @spec(api_file_mgmt_addition.md#215-addfile-behavior) @spec(api_file_mgmt_removal.md#1-file-removal-semantics-and-multi-path-files) @spec(api_file_mgmt_removal.md#21-removefile-purpose)
 Feature: File Management System Behavior
 
-# This file previously contained placeholder scenarios for file management system behavior.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios:
-#
-# - REQ-FILEMGMT-053, 058, 069, 070, 074, 080, 083, 087 (AddFile/AddFilePattern behavior): tested in features/file_mgmt/addfile_operations.feature and dedicated pattern files
-# - REQ-FILEMGMT-106, 107 (RemoveFile behavior): tested in features/file_mgmt/removefile.feature
-# - REQ-FILEMGMT-139, 141 (LoadData/ProcessData behavior): tested in dedicated processing feature files
-# - REQ-FILEMGMT-145, 147 (ExtractFile behavior): tested in dedicated extraction feature files
-# - REQ-FILEMGMT-151, 153 (UpdateFile behavior): tested in features/file_mgmt/updatefile_metadata.feature and dedicated update files
-# - REQ-FILEMGMT-158, 160 (UpdateFilePattern behavior): tested in dedicated pattern update files
-# - REQ-FILEMGMT-164, 166 (UpdateFileMetadata behavior): tested in features/file_mgmt/updatefile_metadata.feature
-# - REQ-FILEMGMT-170, 172 (path/hash management): tested in dedicated management feature files
-# - REQ-FILEMGMT-176, 178 (Processing order): tested in dedicated flow feature files
-# - REQ-FILEMGMT-182, 184 (Compression operations): tested in dedicated compression feature files
-# - REQ-FILEMGMT-194, 201 (Deduplication): tested in dedicated deduplication feature files
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures high-level file management behaviors from the file management index spec.
+# Detailed runnable scenarios live in the dedicated file_mgmt feature files.
+
+  @REQ-FILEMGMT-072 @behavior
+  Scenario: AddFile updates in-memory package state without writing to disk
+    Given a package configured for writing
+    When the caller adds a file via AddFile
+    Then a new FileEntry is created in the in-memory package state
+    And file metadata is captured according to the configured options
+    And the package is not written to disk until a write operation is invoked
+
+  @REQ-FILEMGMT-136 @behavior
+  Scenario: RemoveFile updates in-memory state and associated metadata
+    Given a package that contains a file entry at a path
+    When the caller removes that file via RemoveFile
+    Then the file entry is removed from the in-memory package state
+    And path metadata is cleaned up according to the removal rules

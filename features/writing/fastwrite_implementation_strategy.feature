@@ -1,7 +1,7 @@
-@domain:writing @m2 @REQ-WRITE-018 @spec(api_writing.md#22-fastwrite-implementation-strategy)
+@domain:writing @m2 @REQ-WRITE-018 @REQ-WRITE-058 @REQ-WRITE-059 @REQ-WRITE-060 @REQ-WRITE-061 @spec(api_writing.md#22-fastwrite-implementation-strategy)
 Feature: FastWrite Implementation Strategy
 
-  @REQ-WRITE-018 @happy
+  @REQ-WRITE-018 @REQ-WRITE-061 @happy
   Scenario: FastWrite implementation compares existing vs new file entries
     Given an open NovusPack package
     And an existing package file exists
@@ -70,7 +70,18 @@ Feature: FastWrite Implementation Strategy
     And entry offsets are updated
     And metadata reflects changes
 
-  @REQ-WRITE-018 @error
+  @REQ-WRITE-018 @happy
+  Scenario: FastWrite implementation handles metadata-only packages
+    Given an open NovusPack package
+    And package has FileCount 0
+    And an existing package file exists
+    When FastWrite is called with the target path
+    Then metadata-only flag (Bit 7) is set in header
+    And package is updated successfully
+    And FileCount remains 0
+    And metadata-only package is valid
+
+  @REQ-WRITE-018 @REQ-WRITE-058 @REQ-WRITE-059 @REQ-WRITE-060 @error
   Scenario: FastWrite implementation falls back to SafeWrite on failure
     Given an open NovusPack package
     And an existing package file exists

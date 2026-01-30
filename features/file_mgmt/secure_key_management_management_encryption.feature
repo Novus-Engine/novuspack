@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-130 @spec(api_file_management.md#1322-secure-key-management)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-130 @spec(api_file_mgmt_best_practices.md#1322-secure-key-management)
 Feature: Secure Key Management
 
   @REQ-FILEMGMT-130 @happy

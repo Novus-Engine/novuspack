@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-021 @spec(api_file_management.md#10-file-information-and-queries)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-021 @spec(api_file_mgmt_queries.md#1-file-existence-and-listing)
 Feature: File information and query operations
 
   @happy

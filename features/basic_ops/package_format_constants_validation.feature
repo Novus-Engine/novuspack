@@ -2,18 +2,18 @@
 Feature: Package format constants validation
 
   @happy
-  Scenario: NPKMagic constant equals expected value
+  Scenario: NVPKMagic constant equals expected value
     Given package format constants
-    When NPKMagic is examined
-    Then NPKMagic equals 0x4E56504B
-    And NPKMagic represents "NVPK" in hex
+    When NVPKMagic is examined
+    Then NVPKMagic equals 0x4E56504B
+    And NVPKMagic represents "NVPK" in hex
 
   @happy
-  Scenario: NPKVersion constant equals expected value
+  Scenario: NVPKVersion constant equals expected value
     Given package format constants
-    When NPKVersion is examined
-    Then NPKVersion equals 1
-    And NPKVersion is the current format version
+    When NVPKVersion is examined
+    Then NVPKVersion equals 1
+    And NVPKVersion is the current format version
 
   @happy
   Scenario: HeaderSize constant equals expected value
@@ -26,15 +26,15 @@ Feature: Package format constants validation
   Scenario: Constants validate package header correctly
     Given a NovusPack package file
     When header magic number is read
-    Then magic number equals NPKMagic
+    Then magic number equals NVPKMagic
     When header format version is read
-    Then format version equals NPKVersion
+    Then format version equals NVPKVersion
     When header size is measured
     Then header size equals HeaderSize
 
   @error
-  Scenario: Invalid magic number is detected using NPKMagic
-    Given a file with magic number not equal to NPKMagic
+  Scenario: Invalid magic number is detected using NVPKMagic
+    Given a file with magic number not equal to NVPKMagic
     When header validation is performed
     Then a structured invalid format error is returned
     And error indicates magic number mismatch

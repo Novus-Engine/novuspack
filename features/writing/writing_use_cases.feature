@@ -1,4 +1,4 @@
-@domain:writing @m2 @REQ-WRITE-028 @REQ-WRITE-052 @spec(api_writing.md#45-use-cases)
+@domain:writing @m2 @REQ-WRITE-028 @REQ-WRITE-052 @spec(api_writing.md#45-signed-package-use-cases)
 Feature: Writing Use Cases
 
   @REQ-WRITE-028 @happy

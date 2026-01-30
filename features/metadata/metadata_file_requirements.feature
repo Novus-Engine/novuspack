@@ -14,7 +14,7 @@ Feature: Metadata File Requirements
     Given an open NovusPack package
     And a metadata file
     When metadata file name is examined
-    Then file name is "__NPK_META_65000__.npkmeta"
+    Then file name is "__NVPK_META_65000__.nvpkmeta"
     And file name is case-sensitive
     And reserved name follows naming convention
 

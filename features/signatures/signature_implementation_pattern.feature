@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-038 @spec(api_signatures.md#2823-implementation-pattern)
+@domain:signatures @m2 @v2 @REQ-SIG-038 @spec(api_signatures.md#2823-implementation-pattern)
 Feature: Signature Implementation Pattern
 
   @REQ-SIG-038 @happy

@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-163 @spec(api_file_management.md#543-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-163 @spec(api_file_mgmt_addition.md#543-returns) @spec(api_file_mgmt_file_entry.md#643-addfilepath-returns) @spec(api_file_mgmt_updates.md#143-addfilepath-returns)
 Feature: AddFilePath Returns Updated FileEntry
 
   @REQ-FILEMGMT-163 @happy

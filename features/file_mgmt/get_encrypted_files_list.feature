@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-025 @spec(api_file_management.md#8-file-encryption-operations)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-025 @spec(api_file_mgmt_queries.md#43-listencryptedfiles) @spec(api_file_mgmt_file_entry.md#9-fileentry-encryption)
 Feature: Get encrypted files list
 
   @happy

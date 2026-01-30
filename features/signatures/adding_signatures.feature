@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-022 @spec(api_signatures.md#121-adding-subsequent-signatures)
+@domain:signatures @m2 @v2 @REQ-SIG-022 @spec(api_signatures.md#121-adding-subsequent-signatures)
 Feature: Adding Signatures
 
   @REQ-SIG-022 @happy

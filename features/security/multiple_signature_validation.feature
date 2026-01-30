@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-075 @spec(api_security.md#11-multiple-signature-validation-incremental)
+@domain:security @m2 @v2 @REQ-SEC-075 @spec(api_security.md#11-multiple-signature-validation-incremental)
 Feature: Multiple Signature Validation
 
   @REQ-SEC-075 @happy

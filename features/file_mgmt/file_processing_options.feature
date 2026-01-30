@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-068 @spec(api_file_management.md#2521-file-processing-options)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-068 @spec(api_file_mgmt_addition.md#285-file-processing-options)
 Feature: File Processing Options
 
   @REQ-FILEMGMT-068 @happy

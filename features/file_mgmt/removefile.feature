@@ -1,25 +1,25 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-188 @REQ-FILEMGMT-077 @spec(api_file_management.md#3121-removefile)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-136 @spec(api_file_mgmt_removal.md#41-removefile)
 Feature: RemoveFile
 
-  @REQ-FILEMGMT-188 @REQ-FILEMGMT-077 @happy
-  Scenario: Removefile method removes files from package
+  @REQ-FILEMGMT-136 @happy
+  Scenario: RemoveFile method removes files from package
     Given an open writable package
-    And file entry exists
-    When RemoveFile is called with file entry reference
+    And file exists in package
+    When RemoveFile is called
     Then file is removed from package
     And file entry is removed from package index
     And removal operation completes successfully
 
-  @REQ-FILEMGMT-188 @REQ-FILEMGMT-077 @happy
-  Scenario: RemoveFile removes file by FileEntry identifier
+  @REQ-FILEMGMT-136 @happy
+  Scenario: RemoveFile removes file by path
     Given an open writable package
-    And file entry with FileID 123 exists
-    When RemoveFile is called with the file entry
-    Then file with FileID 123 is removed
+    And file exists at path "data.bin"
+    When RemoveFile is called with path
+    Then file at path "data.bin" is removed
     And file entry is removed from index
     And package metadata reflects removal
 
-  @REQ-FILEMGMT-188 @REQ-FILEMGMT-080 @happy
+  @REQ-FILEMGMT-139 @happy
   Scenario: RemoveFile updates index and directory state
     Given an open writable package
     And file exists in directory structure
@@ -28,7 +28,7 @@ Feature: RemoveFile
     And directory state reflects removal
     And file count is decremented
 
-  @REQ-FILEMGMT-188 @happy
+  @REQ-FILEMGMT-136 @happy
   Scenario: RemoveFile marks file data as deleted
     Given an open writable package
     And file with data exists
@@ -37,17 +37,17 @@ Feature: RemoveFile
     And space is reclaimed during defragmentation
     And file entry is removed immediately
 
-  @REQ-FILEMGMT-188 @REQ-FILEMGMT-078 @happy
-  Scenario: RemoveFile accepts context and file identifier parameters
+  @REQ-FILEMGMT-137 @happy
+  Scenario: RemoveFile accepts context and path parameters
     Given an open writable package
     And valid context
-    And file entry reference
-    When RemoveFile is called with context and entry
+    And file path "data.bin"
+    When RemoveFile is called with path
     Then operation uses context for cancellation
-    And operation uses entry for file identification
+    And operation uses path for file identification
     And operation completes successfully
 
-  @REQ-FILEMGMT-188 @REQ-FILEMGMT-081 @error
+  @REQ-FILEMGMT-140 @error
   Scenario: RemoveFile handles missing file errors
     Given an open writable package
     And invalid or non-existent file entry
@@ -56,7 +56,7 @@ Feature: RemoveFile
     And error indicates missing file
     And error follows structured error format
 
-  @REQ-FILEMGMT-188 @REQ-FILEMGMT-081 @error
+  @REQ-FILEMGMT-140 @error
   Scenario: RemoveFile handles package state errors
     Given a package that is not open
     When RemoveFile is called
@@ -64,7 +64,7 @@ Feature: RemoveFile
     And error indicates package state issue
     And error follows structured error format
 
-  @REQ-FILEMGMT-188 @error
+  @REQ-FILEMGMT-037 @REQ-FILEMGMT-041 @error
   Scenario: RemoveFile respects context cancellation
     Given an open writable package
     And a cancelled context

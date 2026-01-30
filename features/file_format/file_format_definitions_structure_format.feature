@@ -1,9 +1,19 @@
-@skip @domain:file_format @m2 @spec(package_file_format.md#21-header-structure)
+@skip @domain:file_format @m2 @REQ-FILEFMT-025 @spec(package_file_format.md#21-header-structure)
 Feature: File Format Definitions
 
-# This file previously contained placeholder scenarios for file format definitions.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios or are documentation-only:
-#
-# File format structure definitions are tested in dedicated feature files or are documentation-only requirements that don't require test coverage.
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures a small set of header layout and validation expectations from the file format spec.
+# More detailed runnable scenarios live in the dedicated file_format feature files.
+
+  @REQ-FILEFMT-025 @format
+  Scenario: Package header uses the defined field layout
+    Given a NovusPack package header is serialized
+    When a reader parses the header
+    Then the header fields are present in the specified order
+    And the header includes offsets and sizes for the index, comment, and signatures sections
+
+  @REQ-FILEFMT-025 @constraint
+  Scenario: Reserved header field is zero
+    Given a NovusPack package header is created with default values
+    When the header is serialized
+    Then the Reserved field is set to 0
+    And non-zero Reserved values are treated as invalid during validation

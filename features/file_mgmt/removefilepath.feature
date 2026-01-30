@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-169 @REQ-FILEMGMT-016 @spec(api_file_management.md#553-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-169 @REQ-FILEMGMT-016 @spec(api_file_mgmt_updates.md#15-packageremovefilepath-method) @spec(api_file_mgmt_updates.md#153-removefilepath-returns)
 Feature: RemoveFilePath
 
   @REQ-FILEMGMT-169 @REQ-FILEMGMT-016 @happy

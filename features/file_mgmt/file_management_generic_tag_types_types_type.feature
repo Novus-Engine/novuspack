@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-043 @REQ-FILEMGMT-044 @REQ-FILEMGMT-123 @spec(api_file_management.md#1211-generic-tag-types)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-043 @REQ-FILEMGMT-044 @REQ-FILEMGMT-123 @spec(api_file_mgmt_file_entry.md#32-tag-type)
 Feature: File Management Generic Tag Types
 
   @REQ-FILEMGMT-043 @happy
@@ -20,25 +20,27 @@ Feature: File Management Generic Tag Types
     And TypedTag value type is specified
     And type safety is enforced
 
-  @REQ-FILEMGMT-044 @happy
-  Scenario: Generic tag operations support type-safe tag manipulation
+  @REQ-FILEMGMT-044 @REQ-FILEMGMT-239 @REQ-FILEMGMT-240 @happy
+  Scenario: Generic tag operations support type-safe tag manipulation using standalone functions
     Given an open NovusPack package
     And a valid context
     And a FileEntry with tags
-    When GetTypedTag and SetTypedTag are used
+    When GetFileEntryTag[string] and AddFileEntryTag[string] are used
     Then type-safe tag retrieval is supported
     And type-safe tag setting is supported
     And tag value types are enforced
+    And standalone functions provide type safety
 
-  @REQ-FILEMGMT-044 @happy
-  Scenario: GetTagAs supports tag conversion with converter function
+  @REQ-FILEMGMT-044 @REQ-FILEMGMT-239 @happy
+  Scenario: GetFileEntryTag[any] supports tag inspection when type is unknown
     Given an open NovusPack package
     And a valid context
     And a FileEntry with tags
-    When GetTagAs is called with converter function
-    Then tag is converted to specified type
-    And converter function enables flexible type conversion
-    And type-safe conversion is supported
+    When GetFileEntryTag[any] is called with key
+    Then tag is retrieved as *Tag[any]
+    And tag Type field can be inspected
+    And tag Value can be type-asserted based on Type field
+    And flexible type handling is supported
 
   @REQ-FILEMGMT-123 @happy
   Scenario: Generic FileEntry operations define reusable operation patterns

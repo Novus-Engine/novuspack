@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-020 @spec(api_file_management.md#91-file-deduplication)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-020 @spec(api_deduplication.md#31-file-deduplication)
 Feature: File Management: File Deduplication Operations (CRC32 Detection)
 
   @happy

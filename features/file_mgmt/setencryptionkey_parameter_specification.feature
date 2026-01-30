@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-101 @spec(api_file_management.md#1122-setencryptionkey-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-101 @spec(api_file_mgmt_file_entry.md#82-setencryptionkey-parameters)
 Feature: SetEncryptionKey Parameter Specification
 
   @REQ-FILEMGMT-101 @happy

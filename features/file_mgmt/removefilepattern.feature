@@ -1,8 +1,8 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-086 @REQ-FILEMGMT-011 @spec(api_file_management.md#323-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-325 @REQ-FILEMGMT-327 @spec(api_file_mgmt_removal.md#42-removefilepattern) @spec(api_file_mgmt_removal.md#partial-failure-handling)
 Feature: RemoveFilePattern
 
-  @REQ-FILEMGMT-086 @REQ-FILEMGMT-011 @happy
-  Scenario: Removefilepattern returns count of removed files
+  @REQ-FILEMGMT-327 @happy
+  Scenario: RemoveFilePattern returns count of removed files
     Given an open writable package
     And multiple files matching pattern "*.txt" exist
     When RemoveFilePattern is called with pattern "*.txt"
@@ -10,8 +10,8 @@ Feature: RemoveFilePattern
     And count matches number of removed files
     And removal operation completes successfully
 
-  @REQ-FILEMGMT-086 @REQ-FILEMGMT-011 @happy
-  Scenario: RemoveFilePattern removes files matching pattern
+  @REQ-FILEMGMT-328 @happy
+  Scenario: RemoveFilePattern unstages files matching pattern
     Given an open writable package
     And files "doc1.txt", "doc2.txt", "data.bin" exist
     When RemoveFilePattern is called with pattern "*.txt"
@@ -20,7 +20,7 @@ Feature: RemoveFilePattern
     And "data.bin" remains
     And pattern matching works correctly
 
-  @REQ-FILEMGMT-086 @REQ-FILEMGMT-011 @happy
+  @REQ-FILEMGMT-328 @happy
   Scenario: RemoveFilePattern scans package for matching files
     Given an open writable package
     And files exist in various directories
@@ -29,7 +29,7 @@ Feature: RemoveFilePattern
     And files matching pattern are identified
     And matching files are removed
 
-  @REQ-FILEMGMT-086 @REQ-FILEMGMT-011 @happy
+  @REQ-FILEMGMT-328 @happy
   Scenario: RemoveFilePattern marks file data as deleted
     Given an open writable package
     And matching files with data exist
@@ -38,7 +38,7 @@ Feature: RemoveFilePattern
     And space is reclaimed during defragmentation
     And package metadata is updated
 
-  @REQ-FILEMGMT-086 @REQ-FILEMGMT-011 @happy
+  @REQ-FILEMGMT-328 @happy
   Scenario: RemoveFilePattern updates package metadata and file count
     Given an open writable package
     And 10 files matching pattern exist
@@ -47,7 +47,7 @@ Feature: RemoveFilePattern
     And file count is decremented by 10
     And package integrity is preserved
 
-  @REQ-FILEMGMT-086 @REQ-FILEMGMT-011 @happy
+  @REQ-FILEMGMT-328 @happy
   Scenario: RemoveFilePattern preserves package integrity and signatures
     Given a signed writable package
     And matching files exist
@@ -56,7 +56,7 @@ Feature: RemoveFilePattern
     And signatures remain valid
     And package structure is maintained
 
-  @REQ-FILEMGMT-086 @REQ-FILEMGMT-152 @error
+  @REQ-FILEMGMT-329 @error
   Scenario: RemoveFilePattern returns error for invalid pattern
     Given an open writable package
     When RemoveFilePattern is called with invalid pattern
@@ -64,7 +64,7 @@ Feature: RemoveFilePattern
     And error indicates invalid pattern
     And error follows structured error format
 
-  @REQ-FILEMGMT-086 @error
+  @REQ-FILEMGMT-329 @error
   Scenario: RemoveFilePattern returns error when no files match
     Given an open writable package
     And no files match the pattern
@@ -73,7 +73,7 @@ Feature: RemoveFilePattern
     And error indicates no matches
     And error follows structured error format
 
-  @REQ-FILEMGMT-086 @error
+  @REQ-FILEMGMT-327 @REQ-FILEMGMT-329 @error
   Scenario: RemoveFilePattern handles partial removal on error
     Given an open writable package
     And some files fail to remove
@@ -82,7 +82,7 @@ Feature: RemoveFilePattern
     And error indicates partial completion
     And removed entries are returned in result
 
-  @REQ-FILEMGMT-086 @error
+  @REQ-FILEMGMT-037 @REQ-FILEMGMT-041 @error
   Scenario: RemoveFilePattern respects context cancellation
     Given an open writable package
     And a cancelled context

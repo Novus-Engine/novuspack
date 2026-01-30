@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-131 @spec(api_file_management.md#133-performance-considerations)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-131 @spec(api_file_mgmt_best_practices.md#13-performance-considerations)
 Feature: File Management Performance Considerations
 
   @REQ-FILEMGMT-131 @happy

@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-097 @spec(api_file_management.md#1115-isencrypted-returns)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-097 @spec(api_file_mgmt_file_entry.md#75-isencrypted-returns)
 Feature: IsEncrypted Method
 
   @REQ-FILEMGMT-097 @happy

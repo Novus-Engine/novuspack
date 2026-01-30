@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-045 @spec(api_file_management.md#122-data-management)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-045 @spec(api_file_mgmt_file_entry.md#4-data-management)
 Feature: File Management: File Entry Data Management (Content Processing)
 
   @REQ-FILEMGMT-045 @happy

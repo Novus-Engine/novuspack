@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-024 @spec(api_signatures.md#123-key-implementation-points)
+@domain:signatures @m2 @v2 @REQ-SIG-024 @spec(api_signatures.md#123-key-implementation-points)
 Feature: Signature Key Implementation Points
 
   @REQ-SIG-024 @happy

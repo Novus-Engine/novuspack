@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-051 @spec(security.md#721-signature-performance)
+@domain:security @m2 @v2 @REQ-SEC-051 @spec(security.md#721-signature-performance)
 Feature: Signature Performance
 
   @REQ-SEC-051 @happy

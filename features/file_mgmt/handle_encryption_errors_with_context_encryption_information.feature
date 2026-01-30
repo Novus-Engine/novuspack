@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-122 @spec(api_file_management.md#1245-handle-encryption-errors-with-context)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-122 @spec(api_file_mgmt_errors.md#1245-handle-encryption-errors-with-context)
 Feature: Handle Encryption Errors with Context
 
   @REQ-FILEMGMT-122 @happy

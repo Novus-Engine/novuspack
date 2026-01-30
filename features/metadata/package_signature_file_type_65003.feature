@@ -1,4 +1,4 @@
-@domain:metadata @m2 @REQ-META-066 @spec(api_metadata.md#54-package-signature-file-type-65003)
+@domain:metadata @m2 @v2 @REQ-META-066 @spec(api_metadata.md#54-package-signature-file-type-65003) @spec(api_metadata.md#545-packagehassignaturefile-method)
 Feature: Package Signature File Type 65003
 
   @REQ-META-066 @happy

@@ -1,4 +1,4 @@
-@domain:writing @m2 @REQ-WRITE-027 @REQ-WRITE-050 @REQ-WRITE-051 @spec(api_writing.md#44-error-conditions)
+@domain:writing @m2 @REQ-WRITE-027 @REQ-WRITE-050 @REQ-WRITE-051 @spec(api_writing.md#44-signed-package-writing-error-conditions)
 Feature: Writing Error Handling
 
   @REQ-WRITE-027 @error

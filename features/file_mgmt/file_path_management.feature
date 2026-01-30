@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-125 @spec(api_file_management.md#131-file-path-management)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-125 @spec(api_file_mgmt_file_entry.md#5-path-management)
 Feature: File Path Management
 
   @REQ-FILEMGMT-125 @happy

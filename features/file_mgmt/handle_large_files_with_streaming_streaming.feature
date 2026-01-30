@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-133 @spec(api_file_management.md#1332-handle-large-files-with-streaming)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-133 @spec(api_file_mgmt_best_practices.md#1332-handle-large-files-with-streaming)
 Feature: Handle Large Files with Streaming
 
   @REQ-FILEMGMT-133 @happy
@@ -22,11 +22,11 @@ Feature: Handle Large Files with Streaming
     And processing completes efficiently
 
   @REQ-FILEMGMT-133 @happy
-  Scenario: Streaming works with FileSource implementations
+  Scenario: Streaming works when reading from filesystem paths
     Given an open NovusPack package
     And a valid context
-    And a large file from FilePathSource
-    When AddFile is called with large file
-    Then FilePathSource supports streaming
-    And streaming is used automatically
+    And a filesystem file path
+    And a large file to process
+    When AddFile is called
+    Then streaming is used for large files when needed
     And memory usage remains reasonable

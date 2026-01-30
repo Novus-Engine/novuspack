@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-023 @spec(api_core.md#1141-creating-structured-errors)
+@domain:core @m2 @REQ-CORE-023 @spec(api_core.md#1041-creating-structured-errors)
 Feature: Core: Creating Structured Errors
 
   @REQ-CORE-023 @happy

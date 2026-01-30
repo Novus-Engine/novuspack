@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-116 @spec(api_file_management.md#123-structured-error-examples)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-116 @spec(api_file_mgmt_errors.md#123-structured-error-examples)
 Feature: File Management: Structured Error Examples
 
   @REQ-FILEMGMT-116 @happy

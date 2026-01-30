@@ -1,4 +1,4 @@
-@domain:security @m2 @REQ-SEC-049 @spec(security.md#712-signature-validation)
+@domain:security @m2 @v2 @REQ-SEC-049 @spec(security.md#712-signature-validation)
 Feature: Signature Validation
 
   @REQ-SEC-049 @happy

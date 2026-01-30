@@ -1,13 +1,19 @@
-@skip @domain:core @m2 @spec(api_core.md#112-packageerror-structure)
+@skip @domain:core @m2 @spec(api_core.md#102-packageerror-structure)
 Feature: Core Error Handling
 
-# This file previously contained placeholder scenarios for core error handling.
-# All requirements in this file have been moved to dedicated feature files with real testable scenarios:
-#
-# - REQ-CORE-020, 021 (PackageError structure, error helper functions): tested in features/core/comprehensive_structured_error_system.feature
-# - REQ-CORE-022 (error handling patterns): tested in features/core/core_error_handling_patterns.feature
-# - REQ-CORE-023, 024 (creating structured errors, error inspection): tested in features/core/comprehensive_structured_error_system.feature
-# - REQ-CORE-026, 027, 028 (sentinel error compatibility, error logging, migration): tested in features/core/migration_from_sentinel_errors.feature and related files
-# - REQ-CORE-045, 046 (additional error handling): tested in dedicated error handling feature files
-#
-# This file is kept for reference but contains no test scenarios. All testable scenarios have been moved to appropriate feature files.
+# This feature captures the core PackageError structure and helper expectations.
+# Detailed runnable scenarios for structured errors are covered in dedicated core error feature files.
+
+  @REQ-CORE-020 @error
+  Scenario: PackageError provides a typed category and a human-readable message
+    Given an operation fails with a structured error
+    When the returned error is inspected as a PackageError
+    Then the error has an ErrorType category
+    And the error has a human-readable Message describing the failure
+
+  @REQ-CORE-020 @REQ-CORE-021 @error
+  Scenario: PackageError supports unwrapping and error matching via the cause chain
+    Given a PackageError with an underlying cause error
+    When a caller unwraps the error
+    Then the underlying cause error is available for inspection
+    And callers can match errors using standard error matching semantics

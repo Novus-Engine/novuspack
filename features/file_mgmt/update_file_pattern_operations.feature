@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-013 @spec(api_file_management.md#62-update-file-pattern)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-013 @spec(api_file_mgmt_updates.md#62-update-file-pattern)
 Feature: Update file pattern operations
 
   @happy

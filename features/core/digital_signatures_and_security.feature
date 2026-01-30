@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-040 @spec(api_core.md#7-digital-signatures-and-security)
+@domain:core @m2 @v2 @REQ-CORE-040 @spec(api_core.md#7-digital-signatures-and-security)
 Feature: Digital signatures and security
 
   @REQ-CORE-040 @happy

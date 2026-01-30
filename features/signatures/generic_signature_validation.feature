@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-049 @spec(api_signatures.md#43-generic-signature-validation)
+@domain:signatures @m2 @v2 @REQ-SIG-049 @spec(api_signatures.md#43-generic-signature-validation)
 Feature: Generic Signature Validation
 
   @REQ-SIG-049 @happy

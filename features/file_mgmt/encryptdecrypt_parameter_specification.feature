@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-102 @spec(api_file_management.md#1123-encryptdecrypt-parameters)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-102 @spec(api_file_mgmt_file_entry.md#83-encryptdecrypt-parameters)
 Feature: Encrypt/Decrypt Parameter Specification
 
   @REQ-FILEMGMT-102 @happy

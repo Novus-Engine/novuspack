@@ -46,3 +46,13 @@ Feature: Valid Use Cases for Metadata Packages
     Then build configurations are stored
     And development metadata is stored
     And testing configurations are stored
+
+  @REQ-META-071 @happy
+  Scenario: Empty and placeholder packages use metadata-only packages
+    Given a NovusPack package
+    And a metadata-only package with no special metadata files
+    When empty or placeholder package is created
+    Then package has FileCount 0
+    And package has no special metadata files
+    And package serves as placeholder or namespace reservation
+    And package is valid for future expansion

@@ -1,7 +1,7 @@
-@domain:metadata @m2 @REQ-META-005 @spec(api_metadata.md#11-packagecomment-methods)
+@domain:metadata @m2 @REQ-META-005 @REQ-META-113 @REQ-META-147 @spec(api_metadata.md#12-packagecomment-structure) @spec(api_metadata.md#13-packagecomment-methods) @spec(api_metadata.md#134-packagecommentvalidate-method) @spec(api_metadata.md#135-newpackagecomment-function)
 Feature: PackageComment methods
 
-  @happy
+  @REQ-META-113 @REQ-META-147 @happy
   Scenario: NewPackageComment creates empty package comment
     Given NewPackageComment is called
     Then a PackageComment is returned

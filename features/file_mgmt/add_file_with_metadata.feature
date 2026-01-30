@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @spec(api_file_management.md#21-add-file)
+@domain:file_mgmt @m2 @spec(api_file_mgmt_addition.md#21-add-file) @spec(api_file_mgmt_file_entry.md#9-fileentry-encryption)
 Feature: Add file with metadata
 
   @REQ-FILEMGMT-001 @happy

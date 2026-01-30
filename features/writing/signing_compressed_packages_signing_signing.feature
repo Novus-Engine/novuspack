@@ -1,4 +1,4 @@
-@domain:writing @m2 @REQ-WRITE-041 @spec(api_writing.md#541-signing-compressed-packages)
+@domain:writing @m2 @v2 @REQ-WRITE-041 @spec(api_writing.md#541-signing-compressed-packages)
 Feature: Writing: Signing Compressed Packages
 
   @REQ-WRITE-041 @happy

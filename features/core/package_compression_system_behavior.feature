@@ -1,4 +1,4 @@
-@domain:core @m2 @REQ-CORE-039 @spec(api_core.md#63-package-compression-behavior)
+@domain:core @m2 @REQ-CORE-039 @spec(api_core.md#63-package-compression-behavior) @spec(api_package_compression.md#1-package-compression-overview)
 Feature: Package Compression System Behavior
 
   @REQ-CORE-039 @happy

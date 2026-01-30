@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-036 @spec(api_signatures.md#2821-when-to-use-addsignature-low-level)
+@domain:signatures @m2 @v2 @REQ-SIG-036 @spec(api_signatures.md#2821-when-to-use-addsignature-low-level)
 Feature: When to Use AddSignature Low-Level
 
   @REQ-SIG-036 @happy

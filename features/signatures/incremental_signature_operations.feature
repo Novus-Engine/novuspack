@@ -1,4 +1,4 @@
-@domain:signatures @m2 @REQ-SIG-021 @spec(api_signatures.md#12-incremental-signing-implementation)
+@domain:signatures @m2 @v2 @REQ-SIG-021 @spec(api_signatures.md#12-incremental-signing-implementation)
 Feature: Incremental Signature Operations
 
   @REQ-SIG-021 @happy

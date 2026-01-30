@@ -1,4 +1,4 @@
-@domain:file_mgmt @m2 @REQ-FILEMGMT-179 @spec(api_file_management.md#71-purpose)
+@domain:file_mgmt @m2 @REQ-FILEMGMT-179 @spec(api_file_mgmt_compression.md#71-purpose) @spec(api_file_mgmt_file_entry.md#711-file-compression-purpose)
 Feature: CompressFile Purpose and Usage
 
   @REQ-FILEMGMT-179 @happy

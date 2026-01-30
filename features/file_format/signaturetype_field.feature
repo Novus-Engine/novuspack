@@ -1,4 +1,4 @@
-@domain:file_format @m2 @REQ-FILEFMT-066 @spec(package_file_format.md#721-signaturetype-field)
+@domain:file_format @m2 @v2 @REQ-FILEFMT-066 @spec(package_file_format.md#721-signaturetype-field)
 Feature: SignatureType Field
 
   @REQ-FILEFMT-066 @happy

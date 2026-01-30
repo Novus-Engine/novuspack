@@ -12,39 +12,39 @@ Feature: Unique File Extensions
   Scenario: Package metadata files use unique extension
     Given a NovusPack package
     When special file naming strategy is examined
-    Then ".npkmeta" extension is used for package metadata files
-    And ".npkmeta" extension is unique to metadata files
+    Then ".nvpkmeta" extension is used for package metadata files
+    And ".nvpkmeta" extension is unique to metadata files
     And metadata files contain YAML content
 
   @REQ-FILETYPES-007 @happy
   Scenario: Package manifest files use unique extension
     Given a NovusPack package
     When special file naming strategy is examined
-    Then ".npkman" extension is used for package manifest files
-    And ".npkman" extension is unique to manifest files
+    Then ".nvpkman" extension is used for package manifest files
+    And ".nvpkman" extension is unique to manifest files
     And manifest files contain YAML content
 
   @REQ-FILETYPES-007 @happy
   Scenario: Package index files use unique extension
     Given a NovusPack package
     When special file naming strategy is examined
-    Then ".npkidx" extension is used for package index files
-    And ".npkidx" extension is unique to index files
+    Then ".nvpkidx" extension is used for package index files
+    And ".nvpkidx" extension is unique to index files
     And index files contain YAML content
 
   @REQ-FILETYPES-007 @happy
   Scenario: Digital signature files use unique extension
     Given a NovusPack package
     When special file naming strategy is examined
-    Then ".npksig" extension is used for digital signature files
-    And ".npksig" extension is unique to signature files
+    Then ".nvpksig" extension is used for digital signature files
+    And ".nvpksig" extension is unique to signature files
     And signature files contain binary content
 
   @REQ-FILETYPES-007 @error
   Scenario: Unique extensions prevent conflicts with regular file extensions
     Given a NovusPack package
     When special file extensions are examined
-    Then ".npkmeta" does not conflict with regular file extensions
-    And ".npkman" does not conflict with regular file extensions
-    And ".npkidx" does not conflict with regular file extensions
-    And ".npksig" does not conflict with regular file extensions
+    Then ".nvpkmeta" does not conflict with regular file extensions
+    And ".nvpkman" does not conflict with regular file extensions
+    And ".nvpkidx" does not conflict with regular file extensions
+    And ".nvpksig" does not conflict with regular file extensions

@@ -16,15 +16,30 @@ Feature: PackageReader interface methods
     When ListFiles is called
     Then a slice of FileInfo is returned
     And all files in package are included
-    And file information includes paths and metadata
+    And file information includes PrimaryPath, Paths, FileID, and metadata fields
+    And results are sorted by PrimaryPath alphabetically
+    And results are stable across calls when package state has not changed
 
   @happy
-  Scenario: GetMetadata returns package metadata
+  Scenario: GetInfo returns lightweight package information
+    Given an open NovusPack package
+    When GetInfo is called
+    Then PackageInfo structure is returned
+    And package information includes header-derived fields
+    And package information includes computed package-level stats
+    And package information includes signature summary
+    And package information does not include individual FileEntry metadata
+    And package information does not include special metadata file contents
+
+  @happy
+  Scenario: GetMetadata returns comprehensive package metadata
     Given an open NovusPack package
     When GetMetadata is called
-    Then PackageInfo structure is returned
-    And package metadata is complete
-    And metadata includes comment, VendorID, AppID
+    Then PackageMetadata structure is returned
+    And metadata includes all fields from GetInfo
+    And metadata includes FileEntry metadata for all files
+    And metadata includes special metadata files contents
+    And metadata includes path metadata entries with inheritance chains
 
   @happy
   Scenario: Validate performs package validation
@@ -53,3 +68,35 @@ Feature: PackageReader interface methods
     And a cancelled context
     When ReadFile is called
     Then a structured context error is returned
+
+  @happy
+  Scenario: ListFiles does not require context parameter
+    Given an open NovusPack package
+    When ListFiles is called without context
+    Then file information is returned successfully
+
+  @happy
+  Scenario: GetInfo does not require context parameter
+    Given an open NovusPack package
+    When GetInfo is called without context
+    Then package information is returned successfully
+
+  @happy
+  Scenario: GetMetadata does not require context parameter
+    Given an open NovusPack package
+    When GetMetadata is called without context
+    Then comprehensive metadata is returned successfully
+
+  @error
+  Scenario: ReadFile fails for invalid package path
+    Given an open NovusPack package
+    When ReadFile is called with empty path
+    Then a structured validation error is returned
+    And error type is ErrTypeValidation
+
+  @error
+  Scenario: ReadFile fails for path that escapes package root
+    Given an open NovusPack package
+    When ReadFile is called with path "../../etc/passwd"
+    Then a structured validation error is returned
+    And error type is ErrTypeValidation
