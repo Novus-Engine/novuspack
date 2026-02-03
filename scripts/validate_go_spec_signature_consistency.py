@@ -45,108 +45,29 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
-scripts_dir = Path(__file__).parent
-lib_dir = scripts_dir / "lib"
-
-# Import shared utilities
-for module_path in (str(scripts_dir), str(lib_dir)):
-    if module_path not in sys.path:
-        sys.path.insert(0, module_path)
-
-from lib._validation_utils import (  # noqa: E402
-    OutputBuilder, parse_no_color_flag,
-    find_markdown_files, parse_paths, get_workspace_root,
+from lib._validation_utils import (
+    OutputBuilder, find_markdown_files, parse_paths, get_workspace_root,
     get_validation_exit_code, HeadingContext, find_heading_before_line,
     ValidationIssue,
     DOCS_DIR, TECH_SPECS_DIR
 )
-from lib._go_code_utils import (  # noqa: E402
-    parse_go_def_signature,
-    is_example_code, is_example_signature_name,
-    find_go_code_blocks, Signature, is_public_name,
+from lib._go_code_utils import (
+    is_example_signature_name,
+    find_go_code_blocks, Signature,
     extract_interfaces_from_markdown,
-    InterfaceParser, normalize_go_signature
+    normalize_go_signature
 )
-
-# Compiled regex patterns for performance (module level)
-_RE_INTERFACE_PATTERN = re.compile(r'^\s*type\s+\w+(?:\s*\[[^\]]+\])?\s+interface\s*\{')
-_RE_STRUCT_PATTERN = re.compile(r'^\s*type\s+(\w+)(?:\s*(\[[^\]]+\]))?\s+struct\s*\{')
-
-
-def count_interface_methods(content: str, start_line: int, end_line: int) -> int:
-    """
-    Count methods in an interface definition within a specific line range.
-
-    This is a specialized lightweight utility that uses the shared InterfaceParser
-    class for brace depth tracking. It's simpler than the full extraction helpers
-    since it only needs to count methods, not extract full signatures.
-
-    Note: This function is currently not called but kept for potential future use.
-    If needed, it could be refactored to use extract_interfaces_from_markdown(),
-    but the current implementation is acceptable as it uses shared utilities.
-    """
-    lines = content.split('\n')
-    method_count = 0
-    interface_parser = InterfaceParser()
-
-    for i in range(start_line - 1, min(end_line, len(lines))):
-        line = lines[i]
-
-        # Check for interface start using InterfaceParser
-        interface_name = interface_parser.check_interface_start(line)
-        if interface_name:
-            continue
-
-        if interface_parser.is_in_interface():
-            still_in_interface = interface_parser.update_brace_depth(line)
-            # Check for method signature if still in interface body
-            if still_in_interface and interface_parser.brace_depth > 0:
-                sig = parse_go_def_signature(line, location="")
-                if sig and sig.kind in ('func', 'method'):
-                    method_count += 1
-
-            if not still_in_interface:
-                break
-
-    return method_count
-
-
-def count_struct_fields(content: str, start_line: int, end_line: int) -> int:
-    """Count fields in a struct definition."""
-    lines = content.split('\n')
-    field_count = 0
-    in_struct = False
-    brace_depth = 0
-
-    for i in range(start_line - 1, min(end_line, len(lines))):
-        line = lines[i]
-        stripped = line.strip()
-
-        # Check for struct start
-        if re.match(r'^\s*type\s+\w+\s+struct\s*\{', line):
-            in_struct = True
-            brace_depth = stripped.count('{') - stripped.count('}')
-            continue
-
-        if in_struct:
-            brace_depth += stripped.count('{') - stripped.count('}')
-            # Check for field (not a comment, not empty, not a method)
-            if brace_depth > 0 and stripped and not stripped.startswith('//'):
-                # Simple heuristic: if it looks like a field (has identifier and type)
-                if re.match(r'^\s*\w+\s+\w+', stripped):
-                    # Make sure it's not a method
-                    if not re.match(r'^\s*func\s+', stripped):
-                        field_count += 1
-
-            if brace_depth <= 0:
-                break
-
-    return field_count
-
-
-# is_example_signature_name now imported from _go_code_utils
+from lib._validate_go_spec_signature_consistency_helpers import (
+    extract_signatures_from_block as _extract_signatures_from_block,
+    parse_cli_args,
+    build_output,
+    split_issues,
+    emit_issues,
+    emit_summary,
+    emit_final_message,
+)
 
 
 def extract_signatures_from_markdown_file(file_path: Path, repo_root: Path) -> List[Signature]:
@@ -154,122 +75,23 @@ def extract_signatures_from_markdown_file(file_path: Path, repo_root: Path) -> L
     signatures = []
 
     try:
-        # Get relative path from repo root
         try:
             relative_path = file_path.resolve().relative_to(repo_root.resolve())
         except ValueError:
-            # If path is not under repo_root, use absolute path as fallback
             relative_path = file_path.resolve()
         content = file_path.read_text(encoding='utf-8')
         lines = content.split('\n')
-
-        # Use shared helper to extract interfaces and their methods
         interface_signatures = extract_interfaces_from_markdown(
             content, file_path, start_line=1, parse_methods=True,
             skip_examples=True, lines=lines
         )
         signatures.extend(interface_signatures)
-
-        # Extract other signatures (structs, functions, methods, types) that aren't interfaces
         go_blocks = find_go_code_blocks(content)
-
-        for start_line, end_line, code_content in go_blocks:
+        for start_line, _end_line, code_content in go_blocks:
             block_lines = code_content.split('\n')
-
-            for i, line in enumerate(block_lines):
-                line_num = start_line + i
-                stripped = line.strip()
-
-                # Skip empty lines and comments
-                if not stripped or stripped.startswith('//'):
-                    continue
-
-                # Skip interface definitions (already handled by helper)
-                if _RE_INTERFACE_PATTERN.match(stripped):
-                    continue
-
-                # Check if this is an example signature using the library function
-                is_example = is_example_code(
-                    code_content, start_line,
-                    lines=lines,
-                    check_single_line=i
-                )
-
-                # Check for struct start
-                struct_match = _RE_STRUCT_PATTERN.match(stripped)
-                if struct_match:
-                    # Skip if this is an example
-                    if is_example:
-                        continue
-
-                    name = struct_match.group(1)
-                    generic_params = struct_match.group(2)  # e.g., "[T any]"
-                    is_public = is_public_name(name) if name else False
-                    brace_depth = stripped.count('{') - stripped.count('}')
-                    has_full_body = brace_depth > 0
-
-                    # Count fields if it's a full struct
-                    field_count = 0
-                    if has_full_body:
-                        # Count fields within this code block
-                        temp_brace_depth = brace_depth
-                        for j in range(i + 1, len(block_lines)):
-                            temp_line = block_lines[j]
-                            temp_stripped = temp_line.strip()
-                            if not temp_stripped or temp_stripped.startswith('//'):
-                                continue
-                            temp_brace_depth += temp_stripped.count('{') - temp_stripped.count('}')
-                            if temp_brace_depth > 0 and temp_stripped:
-                                # Simple heuristic: if it looks like a field
-                                # (has identifier and type)
-                                if re.match(r'^\s*\w+\s+\w+', temp_stripped):
-                                    # Make sure it's not a method
-                                    if not re.match(r'^\s*func\s+', temp_stripped):
-                                        field_count += 1
-                            if temp_brace_depth <= 0:
-                                break
-
-                    signatures.append(Signature(
-                        name=name,
-                        kind='type',
-                        location=f"{relative_path}:{line_num}",
-                        is_public=is_public,
-                        has_body=has_full_body,
-                        field_count=field_count,
-                        generic_params=generic_params
-                    ))
-                    continue
-
-                # Check for any Go definition (function, method, or type)
-                sig = parse_go_def_signature(line, location=f"{relative_path}:{line_num}")
-                if sig:
-                    if sig.kind in ('func', 'method'):
-                        # Standalone method/function definitions are full
-                        signatures.append(Signature(
-                            name=sig.name,
-                            kind=sig.kind,
-                            receiver=sig.receiver,
-                            params=sig.params,
-                            returns=sig.returns,
-                            location=f"{relative_path}:{line_num}",
-                            is_public=sig.is_public,
-                            has_body=True
-                        ))
-                    else:
-                        # Type definition (not interface/struct, already handled)
-                        # Skip if this is an example
-                        if is_example:
-                            continue
-
-                        if sig.kind != 'interface':  # Interfaces already handled
-                            signatures.append(Signature(
-                                name=sig.name,
-                                kind=sig.kind,
-                                location=f"{relative_path}:{line_num}",
-                                is_public=sig.is_public,
-                                has_body=False,  # Type aliases don't have bodies
-                                generic_params=sig.generic_params
-                            ))
+            signatures.extend(_extract_signatures_from_block(
+                block_lines, start_line, relative_path, code_content, lines
+            ))
 
     except (IOError, OSError) as e:
         # File read errors - log to stderr
@@ -277,7 +99,7 @@ def extract_signatures_from_markdown_file(file_path: Path, repo_root: Path) -> L
     except UnicodeDecodeError as e:
         # Encoding errors - log to stderr
         print(f"Warning: Could not decode {file_path} (encoding issue): {e}", file=sys.stderr)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError, RuntimeError) as e:
         # Unexpected errors - log to stderr
         print(f"Warning: Unexpected error reading {file_path}: {e}", file=sys.stderr)
 
@@ -308,10 +130,9 @@ def extract_heading_context(file_path: Path, line_num: int) -> Optional[HeadingC
     except (ValueError, IndexError, KeyError):
         # Data structure errors - return None silently
         pass
-    except Exception as e:
+    except (TypeError, AttributeError, RuntimeError) as e:
         # Unexpected errors - log but don't fail
         print(f"Warning: Unexpected error reading {file_path}: {e}", file=sys.stderr)
-        pass
 
     return None
 
@@ -330,6 +151,89 @@ def get_signature_heading_context(sig: Signature, repo_root: Path) -> Optional[H
         return None
 
 
+def _canonical_score_heading(heading_ctx: Optional[HeadingContext]) -> Tuple[float, List[str]]:
+    """Return (score_delta, reasons) for heading level."""
+    if not heading_ctx:
+        return (0.0, [])
+    heading_score = max(0.1, 1.0 - (heading_ctx.heading_level - 1) * 0.2)
+    return (heading_score * 0.4, [f"heading level {heading_ctx.heading_level}"])
+
+
+def _canonical_score_body(sig: Signature) -> Tuple[float, List[str]]:
+    """Return (score_delta, reasons) for has_body."""
+    if sig.has_body:
+        return (0.2, ["has body"])
+    return (0.0, [])
+
+
+def _canonical_score_first_occurrence(
+    sig: Signature, all_sigs: List[Signature]
+) -> Tuple[float, List[str]]:
+    """Return (score_delta, reasons) for first occurrence in file."""
+    file_path = sig.location.split(':', 1)[0]
+    same_file_sigs = [s for s in all_sigs if s.location.startswith(file_path)]
+    line_nums = []
+    for s in same_file_sigs:
+        try:
+            line_nums.append(int(s.location.split(':', 1)[1]))
+        except (ValueError, IndexError):
+            pass
+    if not line_nums:
+        return (0.0, [])
+    try:
+        sig_line = int(sig.location.split(':', 1)[1])
+        if sig_line == min(line_nums):
+            return (0.15, ["first occurrence in file"])
+    except (ValueError, IndexError):
+        pass
+    return (0.0, [])
+
+
+def _canonical_score_file_name(file_path: str) -> Tuple[float, List[str]]:
+    """Return (score_delta, reasons) for file name (core/basic vs advanced)."""
+    file_name = file_path.lower()
+    if 'core' in file_name or 'basic' in file_name:
+        return (0.1, ["core/basic file"])
+    if 'advanced' in file_name or 'extended' in file_name:
+        return (-0.05, ["advanced/extended file"])
+    return (0.0, [])
+
+
+def _canonical_score_heading_keywords(
+    sig: Signature, heading_ctx: Optional[HeadingContext]
+) -> Tuple[float, List[str]]:
+    """Return (score_delta, reasons) for heading keywords and name match."""
+    if not heading_ctx:
+        return (0.0, [])
+    heading_lower = heading_ctx.heading_text.lower()
+    sig_name_lower = sig.name.lower()
+    score = 0.0
+    reasons = []
+    if sig_name_lower in heading_lower:
+        score += 0.15
+        reasons.append("signature name in heading")
+    if 'definition' in heading_lower or 'definitions' in heading_lower:
+        score += 0.1
+        reasons.append("definition keyword in heading")
+    if sig.kind in ('type', 'interface'):
+        if any(kw in heading_lower for kw in ['type', 'struct', 'types', 'interfaces']):
+            score += 0.1
+            reasons.append("type-related keyword in heading")
+    elif sig.kind == 'func':
+        func_kw = ['function', 'functions', 'func', 'operation', 'operations']
+        if any(kw in heading_lower for kw in func_kw):
+            score += 0.1
+            reasons.append("function-related keyword in heading")
+    elif sig.kind == 'method' and sig.receiver:
+        if any(kw in heading_lower for kw in ['method', 'methods']):
+            score += 0.1
+            reasons.append("method-related keyword in heading")
+        if sig.receiver.lower() in heading_lower:
+            score += 0.1
+            reasons.append("receiver type in heading")
+    return (score, reasons)
+
+
 def score_canonical_signature(
     sig: Signature,
     heading_ctx: Optional[HeadingContext],
@@ -343,90 +247,22 @@ def score_canonical_signature(
         Score ranges from 0.0 to 1.0.
     """
     score = 0.0
-    reasons = []
-
-    # Prefer less deeply nested headings (lower level = higher score)
-    if heading_ctx:
-        # H1 = 1.0, H2 = 0.8, H3 = 0.6, H4 = 0.4, H5 = 0.2, H6 = 0.1
-        heading_score = max(0.1, 1.0 - (heading_ctx.heading_level - 1) * 0.2)
-        score += heading_score * 0.4  # 40% weight
-        reasons.append(f"heading level {heading_ctx.heading_level}")
-
-    # Prefer signatures with bodies (more complete definitions)
-    if sig.has_body:
-        score += 0.2  # 20% weight
-        reasons.append("has body")
-
-    # Prefer earlier line numbers (first occurrence)
-    file_path = sig.location.split(':', 1)[0]
-    same_file_sigs = [s for s in all_sigs if s.location.startswith(file_path)]
-    if same_file_sigs:
-        line_nums = []
-        for s in same_file_sigs:
-            try:
-                line_nums.append(int(s.location.split(':', 1)[1]))
-            except (ValueError, IndexError):
-                pass
-        if line_nums:
-            try:
-                sig_line = int(sig.location.split(':', 1)[1])
-                if sig_line == min(line_nums):
-                    score += 0.15  # 15% weight
-                    reasons.append("first occurrence in file")
-            except (ValueError, IndexError):
-                pass
-
-    # Prefer files with more general names (e.g., api_core.md over api_core_advanced.md)
-    file_name = file_path.lower()
-    if 'core' in file_name or 'basic' in file_name:
-        score += 0.1  # 10% weight
-        reasons.append("core/basic file")
-    elif 'advanced' in file_name or 'extended' in file_name:
-        score -= 0.05  # Penalty
-        reasons.append("advanced/extended file")
-
-    # Prefer signatures in sections with relevant keywords and signature name
-    if heading_ctx:
-        heading_lower = heading_ctx.heading_text.lower()
-        sig_name_lower = sig.name.lower()
-
-        # Check for signature name in heading
-        if sig_name_lower in heading_lower:
-            score += 0.15  # 15% weight
-            reasons.append("signature name in heading")
-
-        # "definition" or "definitions" applies to all signature types
-        if 'definition' in heading_lower or 'definitions' in heading_lower:
-            score += 0.1  # 10% weight
-            reasons.append("definition keyword in heading")
-
-        # For type/interface/struct definitions: look for type-related keywords
-        if sig.kind in ('type', 'interface'):
-            type_keywords = ['type', 'struct', 'types', 'interfaces']
-            if any(keyword in heading_lower for keyword in type_keywords):
-                score += 0.1  # 10% weight
-                reasons.append("type-related keyword in heading")
-
-        # For functions: look for function-related keywords
-        elif sig.kind == 'func':
-            func_keywords = ['function', 'functions', 'func', 'operation', 'operations']
-            if any(keyword in heading_lower for keyword in func_keywords):
-                score += 0.1  # 10% weight
-                reasons.append("function-related keyword in heading")
-
-        # For methods: look for method-related keywords and receiver type
-        elif sig.kind == 'method' and sig.receiver:
-            method_keywords = ['method', 'methods']
-            if any(keyword in heading_lower for keyword in method_keywords):
-                score += 0.1  # 10% weight
-                reasons.append("method-related keyword in heading")
-
-            # Also check if receiver type name is in heading
-            receiver_lower = sig.receiver.lower()
-            if receiver_lower in heading_lower:
-                score += 0.1  # 10% weight
-                reasons.append("receiver type in heading")
-
+    reasons: List[str] = []
+    s, r = _canonical_score_heading(heading_ctx)
+    score += s
+    reasons.extend(r)
+    s, r = _canonical_score_body(sig)
+    score += s
+    reasons.extend(r)
+    s, r = _canonical_score_first_occurrence(sig, all_sigs)
+    score += s
+    reasons.extend(r)
+    s, r = _canonical_score_file_name(sig.location.split(':', 1)[0])
+    score += s
+    reasons.extend(r)
+    s, r = _canonical_score_heading_keywords(sig, heading_ctx)
+    score += s
+    reasons.extend(r)
     return (min(1.0, max(0.0, score)), ", ".join(reasons) if reasons else "no specific indicators")
 
 
@@ -517,10 +353,361 @@ def find_canonical_definition(signatures: List[Signature]) -> Optional[Signature
     return signatures[0]
 
 
+def _group_types_by_name(all_types: List[Signature]) -> Dict[str, List[Signature]]:
+    """Group type/interface signatures by base name."""
+    by_name: Dict[str, List[Signature]] = {}
+    for sig in all_types:
+        if sig.name not in by_name:
+            by_name[sig.name] = []
+        by_name[sig.name].append(sig)
+    return by_name
+
+
+def _append_duplicate_type_issue(
+    name: str,
+    sigs: List[Signature],
+    get_first_location: Callable[[List[str]], Tuple[Path, int]],
+    issues: List[ValidationIssue],
+) -> None:
+    """Append one duplicate_type issue for identical type/interface."""
+    locations = [sig.location for sig in sigs]
+    file_path, line_num = get_first_location(locations)
+    message_parts = [f"Duplicate identical type/interface for '{name}':"]
+    for sig in sigs:
+        message_parts.append(f"  Location: {sig.location}")
+    issues.append(ValidationIssue.create(
+        "duplicate_type",
+        file_path,
+        line_num,
+        line_num,
+        message="\n".join(message_parts),
+        severity='warning',
+        type_name=name,
+        locations=locations
+    ))
+
+
+def _append_type_conflict_issue(
+    name: str,
+    normalized_sigs: Dict[str, List[Signature]],
+    get_first_location: Callable[[List[str]], Tuple[Path, int]],
+    issues: List[ValidationIssue],
+) -> None:
+    """Append one conflicting_type_definitions issue."""
+    locations = [
+        sig.location
+        for sig_list in normalized_sigs.values()
+        for sig in sig_list
+    ]
+    file_path, line_num = get_first_location(locations)
+    message_parts = [f"Conflicting type definitions for '{name}':"]
+    for norm_sig, sig_list in normalized_sigs.items():
+        message_parts.append(f"  {norm_sig}:")
+        for sig in sig_list:
+            message_parts.append(f"    Location: {sig.location}")
+    issues.append(ValidationIssue.create(
+        "conflicting_type_definitions",
+        file_path,
+        line_num,
+        line_num,
+        message="\n".join(message_parts),
+        severity='error',
+        type_name=name,
+        locations=locations
+    ))
+
+
+def _build_normalized_type_sigs(sigs: List[Signature]) -> Dict[str, List[Signature]]:
+    """Build dict of normalized signature string -> list of signatures (for types)."""
+    normalized_sigs: Dict[str, List[Signature]] = {}
+    for sig in sigs:
+        sig_str = sig.name + (sig.generic_params or '')
+        if sig_str not in normalized_sigs:
+            normalized_sigs[sig_str] = []
+        normalized_sigs[sig_str].append(sig)
+    return normalized_sigs
+
+
+def _append_stub_issues(
+    stubs: List[Signature],
+    canonical: Signature,
+    name: str,
+    parse_location: Callable[[str], Tuple[Path, int]],
+    issues: List[ValidationIssue],
+) -> None:
+    """Append type_stub validation issues for stubs vs canonical."""
+    for stub in stubs:
+        if not stub.has_body or (
+            canonical.has_body and canonical.method_count > stub.method_count
+        ):
+            canonical_count = (
+                canonical.method_count
+                if canonical.kind == 'interface'
+                else canonical.field_count
+            )
+            stub_count = (
+                stub.method_count
+                if stub.kind == 'interface'
+                else stub.field_count
+            )
+            count_type = (
+                'method_count' if canonical.kind == 'interface' else 'field_count'
+            )
+            stub_file, stub_line = parse_location(stub.location)
+            message = (
+                f"Type/interface stub detected for '{name}':"
+                f"  Canonical: {canonical.location} "
+                f"(has_body={canonical.has_body}, "
+                f"{count_type}={canonical_count})\n"
+                f"  Stub: {stub.location} "
+                f"(has_body={stub.has_body}, "
+                f"{count_type}={stub_count})"
+            )
+            issues.append(ValidationIssue.create(
+                "type_stub",
+                stub_file,
+                stub_line,
+                stub_line,
+                message=message,
+                severity='warning',
+                type_name=name,
+                canonical_location=canonical.location,
+                stub_location=stub.location
+            ))
+
+
+def _append_method_inconsistency_if_stubs_differ(
+    method_key: str,
+    method_sigs: List[Signature],
+    canonical: Signature,
+    get_first_location: Callable[[List[str]], Tuple[Path, int]],
+    issues: List[ValidationIssue],
+) -> None:
+    """If all stubs have different normalized signatures, append one issue."""
+    normalized_methods: Dict[str, List[Signature]] = {}
+    for method_sig in method_sigs:
+        norm_sig = normalize_go_signature(method_sig.normalized_signature())
+        if norm_sig not in normalized_methods:
+            normalized_methods[norm_sig] = []
+        normalized_methods[norm_sig].append(method_sig)
+    if len(normalized_methods) <= 1:
+        return
+    locations = [
+        msig.location
+        for msigs in normalized_methods.values()
+        for msig in msigs
+    ]
+    file_path, line_num = get_first_location(locations)
+    message_parts = [
+        f"Method signature inconsistency for "
+        f"'{method_key}' in interface '{canonical.name}':"
+    ]
+    for norm_sig, msigs in normalized_methods.items():
+        message_parts.append(f"  Signature: {norm_sig}")
+        for msig in msigs:
+            message_parts.append(f"    Location: {msig.location}")
+    issues.append(ValidationIssue.create(
+        "method_signature_inconsistency",
+        file_path,
+        line_num,
+        line_num,
+        message="\n".join(message_parts),
+        severity='error',
+        method_name=method_key,
+        interface_name=canonical.name,
+        locations=locations
+    ))
+
+
+def _check_one_interface_method_consistency(
+    method_key: str,
+    method_sigs: List[Signature],
+    canonical: Signature,
+    *,
+    get_first_location: Callable[[List[str]], Tuple[Path, int]],
+    parse_location: Callable[[str], Tuple[Path, int]],
+    issues: List[ValidationIssue],
+) -> None:
+    """Check one interface method's consistency (all stubs or canonical vs stubs)."""
+    canonical_method = None
+    stub_methods = []
+    for method_sig in method_sigs:
+        if method_sig.has_body:
+            canonical_method = method_sig
+        else:
+            stub_methods.append(method_sig)
+    if not canonical_method:
+        _append_method_inconsistency_if_stubs_differ(
+            method_key, method_sigs, canonical, get_first_location, issues
+        )
+        return
+    for stub_method in stub_methods:
+        canonical_norm = normalize_go_signature(canonical_method.normalized_signature())
+        stub_norm = normalize_go_signature(stub_method.normalized_signature())
+        if canonical_norm != stub_norm:
+            stub_file, stub_line = parse_location(stub_method.location)
+            message = (
+                f"Interface stub method "
+                f"'{method_key}' differs from canonical:"
+                f"  Canonical: {canonical_norm}\n"
+                f"    Location: {canonical_method.location}\n"
+                f"  Stub: {stub_norm}\n"
+                f"    Location: {stub_method.location}"
+            )
+            issues.append(ValidationIssue.create(
+                "interface_stub_method_differs",
+                stub_file,
+                stub_line,
+                stub_line,
+                message=message,
+                severity='error',
+                method_name=method_key,
+                canonical_location=canonical_method.location,
+                stub_location=stub_method.location
+            ))
+
+
+def _collect_canonical_interface_method_names(
+    canonical: Signature, signatures: Dict[str, List[Signature]]
+) -> set:
+    """Return set of method names defined in canonical interface block (same file, ~100 lines)."""
+    canonical_file, canonical_line_str = canonical.location.split(':', 1)
+    try:
+        canonical_line = int(canonical_line_str)
+    except ValueError:
+        canonical_line = 0
+    names = set()
+    for sig_list in signatures.values():
+        for sig in sig_list:
+            if not (sig.kind == 'method' and sig.receiver == canonical.name and not sig.has_body):
+                continue
+            sig_file, sig_line_str = sig.location.split(':', 1)
+            try:
+                sig_line = int(sig_line_str)
+                line_ok = canonical_line <= sig_line <= canonical_line + 100
+                if sig_file == canonical_file and line_ok:
+                    names.add(sig.name)
+            except ValueError:
+                pass
+    return names
+
+
+def _build_interface_methods_map(
+    canonical: Signature, signatures: Dict[str, List[Signature]]
+) -> Dict[str, List[Signature]]:
+    """Return map method_name -> list of Signature for methods on canonical.name."""
+    out: Dict[str, List[Signature]] = {}
+    for sig_list in signatures.values():
+        for sig in sig_list:
+            if sig.kind == 'method' and sig.receiver == canonical.name:
+                out.setdefault(sig.name, []).append(sig)
+    return out
+
+
+def _check_interface_method_consistency(
+    canonical: Signature,
+    signatures: Dict[str, List[Signature]],
+    get_first_location: Callable[[List[str]], Tuple[Path, int]],
+    parse_location: Callable[[str], Tuple[Path, int]],
+    issues: List[ValidationIssue],
+) -> None:
+    """Check interface method consistency (canonical vs stubs, method not in canonical)."""
+    canonical_method_names = _collect_canonical_interface_method_names(canonical, signatures)
+    interface_methods = _build_interface_methods_map(canonical, signatures)
+    if canonical_method_names and canonical.has_body:
+        for method_key, method_sigs in interface_methods.items():
+            if method_key not in canonical_method_names:
+                locations = [msig.location for msig in method_sigs]
+                file_path, line_num = get_first_location(locations)
+                message_parts = [
+                    f"Method '{method_key}' is defined for interface '{canonical.name}' "
+                    "but is not in the canonical interface definition:",
+                    f"  Canonical interface: {canonical.location}",
+                    f"  Methods in canonical: {sorted(canonical_method_names)}",
+                ]
+                for method_sig in method_sigs:
+                    message_parts.append(f"  Method location: {method_sig.location}")
+                issues.append(ValidationIssue.create(
+                    "method_not_in_canonical_interface",
+                    file_path, line_num, line_num,
+                    message="\n".join(message_parts),
+                    severity='error',
+                    method_name=method_key,
+                    interface_name=canonical.name,
+                    canonical_location=canonical.location,
+                    locations=locations,
+                ))
+    for method_key, method_sigs in interface_methods.items():
+        if len(method_sigs) <= 1:
+            continue
+        _check_one_interface_method_consistency(
+            method_key, method_sigs, canonical,
+            get_first_location=get_first_location,
+            parse_location=parse_location,
+            issues=issues,
+        )
+
+
+def _process_method_group(
+    key: str,
+    sig_list: List[Signature],
+    get_first_location: Callable[[List[str]], Tuple[Path, int]],
+    issues: List[ValidationIssue],
+) -> None:
+    """Check one method/function group for inconsistency or duplicate."""
+    methods = [s for s in sig_list if s.kind in ('method', 'func')]
+    if not methods:
+        return
+    normalized_sigs: Dict[str, List[Signature]] = {}
+    for sig in methods:
+        norm_sig = normalize_go_signature(sig.normalized_signature())
+        if norm_sig not in normalized_sigs:
+            normalized_sigs[norm_sig] = []
+        normalized_sigs[norm_sig].append(sig)
+    if len(normalized_sigs) > 1:
+        locations = [
+            sig.location
+            for sigs in normalized_sigs.values()
+            for sig in sigs
+        ]
+        file_path, line_num = get_first_location(locations)
+        message_parts = [f"Signature inconsistency for '{key}':"]
+        for norm_sig, sigs in normalized_sigs.items():
+            message_parts.append(f"  Signature: {norm_sig}")
+            for sig in sigs:
+                message_parts.append(f"    Location: {sig.location}")
+        issues.append(ValidationIssue.create(
+            "signature_inconsistency",
+            file_path,
+            line_num,
+            line_num,
+            message="\n".join(message_parts),
+            severity='error',
+            signature_key=key,
+            locations=locations
+        ))
+    elif len(methods) > 1:
+        locations = [sig.location for sig in methods]
+        file_path, line_num = get_first_location(locations)
+        message_parts = [f"Duplicate identical signature for '{key}':"]
+        for sig in methods:
+            message_parts.append(f"  Location: {sig.location}")
+        issues.append(ValidationIssue.create(
+            "duplicate_signature",
+            file_path,
+            line_num,
+            line_num,
+            message="\n".join(message_parts),
+            severity='error',
+            signature_key=key,
+            locations=locations
+        ))
+
+
 def check_signature_consistency(
     signatures: Dict[str, List[Signature]],
-    verbose: bool = False,
-    repo_root: Optional[Path] = None
+    _verbose: bool = False,
+    _repo_root: Optional[Path] = None
 ) -> List[ValidationIssue]:
     """
     Check for signature inconsistencies.
@@ -554,56 +741,17 @@ def check_signature_consistency(
             if sig.kind in ('type', 'interface'):
                 all_types.append(sig)
 
-    # Check types/interfaces for conflicts (grouped by base name)
     if all_types:
-        # Group by base name
-        by_name = {}
-        for sig in all_types:
-            if sig.name not in by_name:
-                by_name[sig.name] = []
-            by_name[sig.name].append(sig)
-
-        # Check each name group for conflicts
+        by_name = _group_types_by_name(all_types)
         for name, sigs in by_name.items():
             if len(sigs) <= 1:
                 continue
-
-            # Create normalized signatures including generics
-            normalized_sigs = {}
-            for sig in sigs:
-                # Include generics in signature
-                sig_str = sig.name
-                if sig.generic_params:
-                    sig_str += sig.generic_params
-
-                if sig_str not in normalized_sigs:
-                    normalized_sigs[sig_str] = []
-                normalized_sigs[sig_str].append(sig)
-
-            # If different normalized signatures, it's a conflict
+            normalized_sigs = _build_normalized_type_sigs(sigs)
             if len(normalized_sigs) > 1:
-                locations = [
-                    sig.location
-                    for sig_list in normalized_sigs.values()
-                    for sig in sig_list
-                ]
-                file_path, line_num = get_first_location(locations)
-                message_parts = [f"Conflicting type definitions for '{name}':"]
-                for norm_sig, sig_list in normalized_sigs.items():
-                    message_parts.append(f"  {norm_sig}:")
-                    for sig in sig_list:
-                        message_parts.append(f"    Location: {sig.location}")
-                issues.append(ValidationIssue(
-                    "conflicting_type_definitions",
-                    file_path,
-                    line_num,
-                    line_num,
-                    "\n".join(message_parts),
-                    severity='error',
-                    type_name=name,
-                    locations=locations
-                ))
-                continue  # Skip stub detection for this group
+                _append_type_conflict_issue(
+                    name, normalized_sigs, get_first_location, issues
+                )
+                continue
 
             # If same normalized signature, check for duplicates or stubs
             canonical = find_canonical_definition(sigs)
@@ -614,280 +762,147 @@ def check_signature_consistency(
 
             stubs = [s for s in sigs if s != canonical]
 
-            # If there are no stubs (all are identical and canonical), it's still a duplicate
             if not stubs and len(sigs) > 1:
-                locations = [sig.location for sig in sigs]
-                file_path, line_num = get_first_location(locations)
-                message_parts = [f"Duplicate identical type/interface for '{name}':"]
-                for sig in sigs:
-                    message_parts.append(f"  Location: {sig.location}")
-                issues.append(ValidationIssue(
-                    "duplicate_type",
-                    file_path,
-                    line_num,
-                    line_num,
-                    "\n".join(message_parts),
-                    severity='warning',
-                    type_name=name,
-                    locations=locations
-                ))
+                _append_duplicate_type_issue(name, sigs, get_first_location, issues)
+            _append_stub_issues(stubs, canonical, name, parse_location, issues)
 
-            # Warn about stubs
-            for stub in stubs:
-                if not stub.has_body or (
-                    canonical.has_body and
-                    canonical.method_count > stub.method_count
-                ):
-                    canonical_count = (
-                        canonical.method_count
-                        if canonical.kind == 'interface'
-                        else canonical.field_count
-                    )
-                    stub_count = (
-                        stub.method_count
-                        if stub.kind == 'interface'
-                        else stub.field_count
-                    )
-                    count_type = (
-                        'method_count'
-                        if canonical.kind == 'interface'
-                        else 'field_count'
-                    )
-                    canonical_file, canonical_line = parse_location(canonical.location)
-                    stub_file, stub_line = parse_location(stub.location)
-                    message = (
-                        f"Type/interface stub detected for '{name}':"
-                        f"  Canonical: {canonical.location} "
-                        f"(has_body={canonical.has_body}, "
-                        f"{count_type}={canonical_count})\n"
-                        f"  Stub: {stub.location} "
-                        f"(has_body={stub.has_body}, "
-                        f"{count_type}={stub_count})"
-                    )
-                    issues.append(ValidationIssue(
-                        "type_stub",
-                        stub_file,
-                        stub_line,
-                        stub_line,
-                        message,
-                        severity='warning',
-                        type_name=name,
-                        canonical_location=canonical.location,
-                        stub_location=stub.location
-                    ))
-
-            # For interfaces, check method signatures in stubs vs canonical
             if canonical.kind == 'interface':
-                # First, collect methods that are in the canonical interface definition
-                # (methods inside the interface body have has_body=False and are in the same file
-                #  and within a reasonable line range of the canonical definition)
-                canonical_method_names = set()
-                canonical_file, canonical_line_str = canonical.location.split(':', 1)
-                try:
-                    canonical_line = int(canonical_line_str)
-                except ValueError:
-                    canonical_line = 0
+                _check_interface_method_consistency(
+                    canonical, signatures, get_first_location, parse_location, issues
+                )
 
-                # Methods in the canonical interface should be in the same file,
-                # have has_body=False (inside interface body), and be within ~100 lines
-                # of the interface definition (reasonable range for interface body)
-                for sig_list in signatures.values():
-                    for sig in sig_list:
-                        if (sig.kind == 'method' and
-                                sig.receiver == canonical.name and
-                                not sig.has_body):
-                            sig_file, sig_line_str = sig.location.split(':', 1)
-                            try:
-                                sig_line = int(sig_line_str)
-                                # Check if method is in same file and within reasonable range
-                                if (sig_file == canonical_file and
-                                        canonical_line <= sig_line <= canonical_line + 100):
-                                    canonical_method_names.add(sig.name)
-                            except ValueError:
-                                pass
-
-                # Get all methods for this interface from all signatures
-                interface_methods = {}
-                for sig_list in signatures.values():
-                    for sig in sig_list:
-                        if sig.kind == 'method' and sig.receiver == canonical.name:
-                            method_key = sig.name
-                            if method_key not in interface_methods:
-                                interface_methods[method_key] = []
-                            interface_methods[method_key].append(sig)
-
-                # Check if any methods are defined that are NOT in the canonical definition
-                if canonical_method_names and canonical.has_body:
-                    for method_key, method_sigs in interface_methods.items():
-                        if method_key not in canonical_method_names:
-                            # Method is defined but not in canonical interface definition
-                            locations = [msig.location for msig in method_sigs]
-                            file_path, line_num = get_first_location(locations)
-                            message_parts = [
-                                f"Method '{method_key}' is defined for interface "
-                                f"'{canonical.name}' but is not in the canonical "
-                                f"interface definition:",
-                                f"  Canonical interface: {canonical.location}",
-                                f"  Methods in canonical: {sorted(canonical_method_names)}"
-                            ]
-                            for method_sig in method_sigs:
-                                message_parts.append(f"  Method location: {method_sig.location}")
-                            issues.append(ValidationIssue(
-                                "method_not_in_canonical_interface",
-                                file_path,
-                                line_num,
-                                line_num,
-                                "\n".join(message_parts),
-                                severity='error',
-                                method_name=method_key,
-                                interface_name=canonical.name,
-                                canonical_location=canonical.location,
-                                locations=locations
-                            ))
-
-                # Check each method for consistency
-                for method_key, method_sigs in interface_methods.items():
-                    if len(method_sigs) <= 1:
-                        continue
-
-                    # Find canonical method (prefer has_body=True)
-                    canonical_method = None
-                    stub_methods = []
-                    for method_sig in method_sigs:
-                        if method_sig.has_body:
-                            canonical_method = method_sig
-                        else:
-                            stub_methods.append(method_sig)
-
-                    if not canonical_method:
-                        # All are stubs, compare them
-                        normalized_methods = {}
-                        for method_sig in method_sigs:
-                            norm_sig = normalize_go_signature(method_sig.normalized_signature())
-                            if norm_sig not in normalized_methods:
-                                normalized_methods[norm_sig] = []
-                            normalized_methods[norm_sig].append(method_sig)
-
-                        if len(normalized_methods) > 1:
-                            locations = [
-                                msig.location
-                                for msigs in normalized_methods.values()
-                                for msig in msigs
-                            ]
-                            file_path, line_num = get_first_location(locations)
-                            message_parts = [
-                                f"Method signature inconsistency for "
-                                f"'{method_key}' in interface '{canonical.name}':"
-                            ]
-                            for norm_sig, msigs in normalized_methods.items():
-                                message_parts.append(f"  Signature: {norm_sig}")
-                                for msig in msigs:
-                                    message_parts.append(f"    Location: {msig.location}")
-                            issues.append(ValidationIssue(
-                                "method_signature_inconsistency",
-                                file_path,
-                                line_num,
-                                line_num,
-                                "\n".join(message_parts),
-                                severity='error',
-                                method_name=method_key,
-                                interface_name=canonical.name,
-                                locations=locations
-                            ))
-                    else:
-                        # Compare stubs against canonical
-                        for stub_method in stub_methods:
-                            canonical_norm = normalize_go_signature(
-                                canonical_method.normalized_signature()
-                            )
-                            stub_norm = normalize_go_signature(
-                                stub_method.normalized_signature()
-                            )
-
-                            if canonical_norm != stub_norm:
-                                stub_file, stub_line = parse_location(stub_method.location)
-                                message = (
-                                    f"Interface stub method "
-                                    f"'{method_key}' differs from canonical:"
-                                    f"  Canonical: {canonical_norm}\n"
-                                    f"    Location: {canonical_method.location}\n"
-                                    f"  Stub: {stub_norm}\n"
-                                    f"    Location: {stub_method.location}"
-                                )
-                                issues.append(ValidationIssue(
-                                    "interface_stub_method_differs",
-                                    stub_file,
-                                    stub_line,
-                                    stub_line,
-                                    message,
-                                    severity='error',
-                                    method_name=method_key,
-                                    canonical_location=canonical_method.location,
-                                    stub_location=stub_method.location
-                                ))
-
-        # Check methods/functions (grouped by normalized_key)
         for key, sig_list in signatures.items():
             if len(sig_list) <= 1:
                 continue
-
-            # Group by kind - skip types/interfaces as they're handled above
-            methods = [s for s in sig_list if s.kind in ('method', 'func')]
-
-            # Check methods/functions
-            if methods:
-                # Normalize signatures for comparison
-                normalized_sigs = {}
-                for sig in methods:
-                    norm_sig = normalize_go_signature(sig.normalized_signature())
-                    if norm_sig not in normalized_sigs:
-                        normalized_sigs[norm_sig] = []
-                    normalized_sigs[norm_sig].append(sig)
-
-                # Check for different signatures
-                if len(normalized_sigs) > 1:
-                    # Different signatures found - ERROR
-                    locations = [
-                        sig.location
-                        for sigs in normalized_sigs.values()
-                        for sig in sigs
-                    ]
-                    file_path, line_num = get_first_location(locations)
-                    message_parts = [f"Signature inconsistency for '{key}':"]
-                    for norm_sig, sigs in normalized_sigs.items():
-                        message_parts.append(f"  Signature: {norm_sig}")
-                        for sig in sigs:
-                            message_parts.append(f"    Location: {sig.location}")
-                    issues.append(ValidationIssue(
-                        "signature_inconsistency",
-                        file_path,
-                        line_num,
-                        line_num,
-                        "\n".join(message_parts),
-                        severity='error',
-                        signature_key=key,
-                        locations=locations
-                    ))
-                elif len(methods) > 1:
-                    # Same signature, multiple locations - ERROR
-                    # This will be handled in main() with canonical detection
-                    locations = [sig.location for sig in methods]
-                    file_path, line_num = get_first_location(locations)
-                    message_parts = [f"Duplicate identical signature for '{key}':"]
-                    for sig in methods:
-                        message_parts.append(f"  Location: {sig.location}")
-                    issues.append(ValidationIssue(
-                        "duplicate_signature",
-                        file_path,
-                        line_num,
-                        line_num,
-                        "\n".join(message_parts),
-                        severity='error',
-                        signature_key=key,
-                        locations=locations
-                    ))
+            _process_method_group(key, sig_list, get_first_location, issues)
 
     return issues
+
+
+def _reported_keys_from_issues(issues: List[ValidationIssue]) -> Set[str]:
+    """Extract signature/type/method keys already reported in issues."""
+    reported = set()
+    for issue in issues:
+        if not isinstance(issue, ValidationIssue):
+            continue
+        key = (
+            issue.extra_fields.get('signature_key') or
+            issue.extra_fields.get('type_name') or
+            issue.extra_fields.get('method_name')
+        )
+        if key:
+            reported.add(key)
+        else:
+            match = re.search(r"for '([^']+)'|'([^']+)'", issue.message)
+            if match:
+                reported.add(match.group(1) or match.group(2))
+    return reported
+
+
+def _append_unreported_duplicate_issue(
+    key: str,
+    sig_list: List[Signature],
+    repo_root: Path,
+    issues: List[ValidationIssue],
+) -> None:
+    """Append one duplicate_signature issue for key/sig_list if unreported."""
+    canonical_sig, _ctx, confidence, reason = find_canonical_signature(
+        sig_list, repo_root
+    )
+    locations = [sig.location for sig in sig_list]
+    if locations:
+        location_str = locations[0]
+        if ':' in location_str:
+            file_str, line_str = location_str.split(':', 1)
+            try:
+                line_num = int(line_str)
+            except ValueError:
+                line_num = 1
+            file_path = Path(file_str)
+        else:
+            file_path = Path(location_str)
+            line_num = 1
+    else:
+        file_path = Path("unknown")
+        line_num = 1
+    if canonical_sig and confidence >= 0.7:
+        message_parts = [
+            f"Duplicate identical signature for '{key}':",
+            f"  Suggested canonical (confidence: {confidence:.0%}): "
+            f"{canonical_sig.location} (reason: {reason})",
+            "  Other locations:"
+        ]
+        other_locations = [
+            f"    {sig.location}" for sig in sig_list if sig != canonical_sig
+        ]
+        message_parts.extend(other_locations)
+        suggestion = f"Use canonical: {canonical_sig.location}"
+    else:
+        message_parts = [f"Duplicate identical signature for '{key}':"]
+        all_locations = [f"  Location: {sig.location}" for sig in sig_list]
+        message_parts.extend(all_locations)
+        if canonical_sig:
+            message_parts.append(
+                f"  Note: {canonical_sig.location} may be canonical "
+                f"(low confidence: {confidence:.0%}, reason: {reason})"
+            )
+        suggestion = None
+    issues.append(ValidationIssue.create(
+        "duplicate_signature",
+        file_path,
+        line_num,
+        line_num,
+        message="\n".join(message_parts),
+        severity='error',
+        suggestion=suggestion,
+        signature_key=key,
+        locations=locations,
+        canonical_location=canonical_sig.location if canonical_sig else None
+    ))
+
+
+def _collect_signatures(
+    md_files: List[Path],
+    repo_root: Path,
+    output: OutputBuilder,
+    verbose: bool,
+) -> List[Signature]:
+    all_signatures: List[Signature] = []
+    for md_file in md_files:
+        if verbose:
+            output.add_verbose_line(f'Extracting signatures from {md_file.name}...')
+        file_sigs = extract_signatures_from_markdown_file(md_file, repo_root)
+        all_signatures.extend(file_sigs)
+    return all_signatures
+
+
+def _group_signatures(
+    all_signatures: List[Signature],
+) -> Dict[str, List[Signature]]:
+    signatures_by_key: Dict[str, List[Signature]] = defaultdict(list)
+    for sig in all_signatures:
+        if is_example_signature_name(sig.name):
+            continue
+        key = sig.normalized_key()
+        signatures_by_key[key].append(sig)
+    return signatures_by_key
+
+
+def _collect_unreported_duplicates(
+    all_signatures: List[Signature],
+    signatures_by_key: Dict[str, List[Signature]],
+    repo_root: Path,
+    issues: List[ValidationIssue],
+) -> None:
+    duplicate_count = len(all_signatures) - len(signatures_by_key)
+    if duplicate_count <= 0:
+        return
+    reported_keys = _reported_keys_from_issues(issues)
+    for key, sig_list in signatures_by_key.items():
+        sig_list = [sig for sig in sig_list if not is_example_signature_name(sig.name)]
+        if len(sig_list) < 2 or key in reported_keys:
+            continue
+        _append_unreported_duplicate_issue(key, sig_list, repo_root, issues)
 
 
 def main():
@@ -897,30 +912,15 @@ def main():
         print(__doc__)
         return 0
 
-    # Parse command line arguments
-    verbose = '--verbose' in sys.argv or '-v' in sys.argv
-    no_color = parse_no_color_flag(sys.argv)
-    no_fail = '--no-fail' in sys.argv
-    output_file = None
-    target_paths_str = None
-
-    for i, arg in enumerate(sys.argv):
-        if arg in ('--output', '-o') and i + 1 < len(sys.argv):
-            output_file = sys.argv[i + 1]
-        elif arg in ('--path', '-p') and i + 1 < len(sys.argv):
-            target_paths_str = sys.argv[i + 1]
+    verbose, no_color, no_fail, output_file, target_paths_str = parse_cli_args(
+        sys.argv
+    )
 
     # Parse comma-separated paths
     target_paths = parse_paths(target_paths_str)
 
     # Create output builder (header streams immediately if verbose)
-    output = OutputBuilder(
-        "Go Signature Consistency",
-        "Validates signature consistency within tech specs",
-        no_color=no_color,
-        verbose=verbose,
-        output_file=output_file
-    )
+    output = build_output(verbose, no_color, output_file)
 
     # Find repository root
     repo_root = get_workspace_root()
@@ -943,25 +943,14 @@ def main():
         output.add_blank_line("working_verbose")
 
     # Collect all signatures
-    all_signatures = []
-    for md_file in md_files:
-        if verbose:
-            output.add_verbose_line(f'Extracting signatures from {md_file.name}...')
-        file_sigs = extract_signatures_from_markdown_file(md_file, repo_root)
-        all_signatures.extend(file_sigs)
+    all_signatures = _collect_signatures(md_files, repo_root, output, verbose)
 
     if verbose:
         output.add_verbose_line(f'Found {len(all_signatures)} total signatures')
         output.add_blank_line("working_verbose")
 
     # Group signatures by normalized key, filtering out examples
-    signatures_by_key = defaultdict(list)
-    for sig in all_signatures:
-        # Skip example signatures
-        if is_example_signature_name(sig.name):
-            continue
-        key = sig.normalized_key()
-        signatures_by_key[key].append(sig)
+    signatures_by_key = _group_signatures(all_signatures)
 
     # Check for inconsistencies
     if verbose:
@@ -969,141 +958,25 @@ def main():
         output.add_blank_line("working_verbose")
 
     issues = check_signature_consistency(
-        signatures_by_key, verbose, repo_root=repo_root
+        signatures_by_key, verbose, _repo_root=repo_root
     )
 
     # Check if signature counts don't match (indicates duplicates that weren't caught)
-    # Find all duplicate keys and generate specific warnings for any that weren't reported
-    duplicate_count = len(all_signatures) - len(signatures_by_key)
-    if duplicate_count > 0:
-        # Track which keys were already reported in issues
-        reported_keys = set()
-        import re
-        for issue in issues:
-            # issue is a ValidationIssue
-            if isinstance(issue, ValidationIssue):
-                # Try to extract key from extra_fields
-                key = (
-                    issue.extra_fields.get('signature_key') or
-                    issue.extra_fields.get('type_name') or
-                    issue.extra_fields.get('method_name')
-                )
-                if key:
-                    reported_keys.add(key)
-                else:
-                    # Fallback: try to extract from message
-                    match = re.search(r"for '([^']+)'|'([^']+)'", issue.message)
-                    if match:
-                        reported_keys.add(match.group(1) or match.group(2))
-
-        # Find which keys have duplicates that weren't already reported
-        for key, sig_list in signatures_by_key.items():
-            # Filter out any example signatures that might have slipped through
-            sig_list = [sig for sig in sig_list if not is_example_signature_name(sig.name)]
-            if len(sig_list) < 2:
-                continue  # Not enough non-example signatures to be a duplicate
-            if key not in reported_keys:
-                # Find canonical signature
-                canonical_sig, canonical_ctx, confidence, reason = find_canonical_signature(
-                    sig_list, repo_root
-                )
-
-                # Build error message with canonical suggestion
-                locations = [sig.location for sig in sig_list]
-                # Get first location from list
-                if locations:
-                    location_str = locations[0]
-                    if ':' in location_str:
-                        file_str, line_str = location_str.split(':', 1)
-                        try:
-                            line_num = int(line_str)
-                        except ValueError:
-                            line_num = 1
-                        file_path = Path(file_str)
-                    else:
-                        file_path = Path(location_str)
-                        line_num = 1
-                else:
-                    file_path = Path("unknown")
-                    line_num = 1
-                # Build message parts in a single pass through sig_list
-                if canonical_sig and confidence >= 0.7:
-                    # High confidence - suggest canonical
-                    message_parts = [
-                        f"Duplicate identical signature for '{key}':",
-                        f"  Suggested canonical (confidence: {confidence:.0%}): "
-                        f"{canonical_sig.location} (reason: {reason})",
-                        "  Other locations:"
-                    ]
-                    # Single loop: collect non-canonical locations
-                    other_locations = [
-                        f"    {sig.location}" for sig in sig_list if sig != canonical_sig
-                    ]
-                    message_parts.extend(other_locations)
-                    suggestion = f"Use canonical: {canonical_sig.location}"
-                else:
-                    # Low confidence - show all locations without suggestion
-                    message_parts = [f"Duplicate identical signature for '{key}':"]
-                    # Single loop: collect all locations
-                    all_locations = [f"  Location: {sig.location}" for sig in sig_list]
-                    message_parts.extend(all_locations)
-                    if canonical_sig:
-                        message_parts.append(
-                            f"  Note: {canonical_sig.location} may be canonical "
-                            f"(low confidence: {confidence:.0%}, reason: {reason})"
-                        )
-                    suggestion = None
-                issues.append(ValidationIssue(
-                    "duplicate_signature",
-                    file_path,
-                    line_num,
-                    line_num,
-                    "\n".join(message_parts),
-                    severity='error',
-                    suggestion=suggestion,
-                    signature_key=key,
-                    locations=locations,
-                    canonical_location=canonical_sig.location if canonical_sig else None
-                ))
+    _collect_unreported_duplicates(
+        all_signatures, signatures_by_key, repo_root, issues
+    )
 
     # Report results (headers will be added automatically by add_error_line/add_warning_line)
     # Filter issues by severity in a single loop
-    errors = []
-    warnings = []
-    for issue in issues:
-        if issue.matches(severity='error'):
-            errors.append(issue)
-        if issue.matches(severity='warning'):
-            warnings.append(issue)
+    errors, warnings = split_issues(issues)
 
-    for error in errors:
-        output.add_error_line(error.format_message(no_color=no_color))
-
-    for warning in warnings:
-        output.add_warning_line(warning.format_message(no_color=no_color))
+    emit_issues(output, errors, warnings, no_color)
 
     # Always add summary section
-    summary_items = [
-        ("Signatures checked:", len(all_signatures)),
-        ("Unique definitions:", len(signatures_by_key)),
-    ]
-    if errors:
-        summary_items.append(("Errors found:", len(errors)))
-    if warnings:
-        summary_items.append(("Warnings found:", len(warnings)))
-    output.add_summary_header()
-    output.add_summary_section(summary_items)
+    emit_summary(output, all_signatures, signatures_by_key, errors, warnings)
 
     # Final message: success if no errors, but mention warnings if present
-    if not errors:
-        if warnings:
-            output.add_success_message(
-                'All signatures are consistent! (Some warnings were found - see above)'
-            )
-        else:
-            output.add_success_message('All signatures are consistent!')
-    else:
-        output.add_failure_message("Validation failed. Please fix the errors above.")
+    emit_final_message(output, errors, warnings)
 
     output.print()
     # Only treat actual errors as failures, not warnings

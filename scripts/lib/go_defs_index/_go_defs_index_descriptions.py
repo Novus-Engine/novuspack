@@ -69,12 +69,12 @@ def check_entry_descriptions(
                 )
 
             output.add_error_line(
-                ValidationIssue(
+                ValidationIssue.create(
                     error_type,
                     index_file,
                     entry.line_number,
                     entry.line_number,
-                    error_msg_text,
+                    message=error_msg_text,
                     severity="error",
                     suggestion=suggestion,
                 ).format_message(no_color=output.no_color)
@@ -92,12 +92,12 @@ def check_entry_descriptions(
         entries_list = ", ".join(f"`{name}`" for name in entry_names)
         first_entry = index_entries[entry_names[0]]
         output.add_error_line(
-            ValidationIssue(
+            ValidationIssue.create(
                 "Duplicate description",
                 index_file,
                 first_entry.line_number,
                 first_entry.line_number,
-                f"Multiple entries share the same description: {entries_list}",
+                message=f"Multiple entries share the same description: {entries_list}",
                 severity="error",
                 suggestion="Each entry should have a unique description",
             ).format_message(no_color=output.no_color)

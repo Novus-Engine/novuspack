@@ -328,12 +328,12 @@ def check_anchor_in_text_missing_href_anchor(
             if req_id:
                 extra_fields['requirement_id'] = req_id
 
-            issues.append(ValidationIssue(
+            issues.append(ValidationIssue.create(
                 "anchor_in_text_missing_href_anchor",
                 Path(rel_path),
                 line_num,
                 line_num,
-                (
+                message=(
                     f"{prefix}link text includes '{spec_basename}#{anchor}' "
                     f"but href has no '#{anchor}'"
                 ),
@@ -390,12 +390,12 @@ def check_requirement_tech_spec_link_thresholds(
             except ValueError:
                 rel_path = req_file
 
-            issues.append(ValidationIssue(
+            issues.append(ValidationIssue.create(
                 "too_many_tech_spec_links",
                 Path(rel_path),
                 start_line,
                 start_line,
-                (
+                message=(
                     f"{req_id}: has {count} tech spec link(s) "
                     f"(warning >= {warn_threshold}, error >= {error_threshold})"
                 ),

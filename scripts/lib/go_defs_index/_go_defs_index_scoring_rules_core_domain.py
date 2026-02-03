@@ -124,7 +124,7 @@ def _score_domain_creation(ctx: ScoringContext) -> Tuple[float, List[str]]:
 
 
 def _score_domain_extraction(ctx: ScoringContext) -> Tuple[float, List[str]]:
-    keywords = ["extract", "fileentry", "packagereader"]
+    keywords = ["extract", "fileentry"]
     if not _section_contains_any(ctx.section_lower, keywords):
         return 0.0, []
     msg = "Domain match: extraction-related => Extraction/FileEntry section: +20%"
@@ -159,9 +159,12 @@ def _score_domain_streaming(ctx: ScoringContext) -> Tuple[float, List[str]]:
 
 
 def _score_domain_deduplication(ctx: ScoringContext) -> Tuple[float, List[str]]:
-    if "deduplication" not in ctx.section_lower:
+    keywords = ["file management", "information and queries", "package file management"]
+    if not _section_contains_any(ctx.section_lower, keywords):
         return 0.0, []
-    return 0.30, ["Domain match: deduplication-related => Deduplication Types: +30%"]
+    return 0.20, [
+        "Domain match: deduplication-related => Package file management/queries: +20%"
+    ]
 
 
 def _score_domain_filetype(ctx: ScoringContext) -> Tuple[float, List[str]]:
@@ -171,9 +174,9 @@ def _score_domain_filetype(ctx: ScoringContext) -> Tuple[float, List[str]]:
 
 
 def _score_domain_writing(ctx: ScoringContext) -> Tuple[float, List[str]]:
-    if not _section_contains_any(ctx.section_lower, ["packagewriter", "writing"]):
+    if not _section_contains_any(ctx.section_lower, ["package write methods", "writing"]):
         return 0.0, []
-    return 0.20, ["Domain match: writing-related => PackageWriter section: +20%"]
+    return 0.20, ["Domain match: writing-related => Package Write Methods: +20%"]
 
 
 def score_domain_match(ctx: ScoringContext) -> Tuple[float, List[str]]:
@@ -200,6 +203,36 @@ def score_domain_match(ctx: ScoringContext) -> Tuple[float, List[str]]:
     return scorer(ctx)
 
 
+def score_type_name_patterns(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    """Score based on type name patterns like *Config, *Builder, *Strategy."""
+    if ctx.definition.kind not in ("type", "struct", "interface"):
+        return 0.0, []
+
+    name_lower = ctx.name_lower
+    patterns = {
+        "config": (["compression", "encryption", "streaming", "signature", "package"], 0.15),
+        "builder": (["compression", "encryption", "config", "signature", "streaming"], 0.10),
+        "strategy": (["compression", "encryption", "signature", "streaming"], 0.15),
+        "validator": (["compression", "encryption", "validation", "signature"], 0.10),
+        "handler": (["encryption", "file"], 0.10),
+        "pool": (["buffer", "compression", "resource", "streaming", "worker"], 0.10),
+        "errorcontext": (["error"], 0.20),
+        "options": (["file", "package", "compression", "extraction"], 0.10),
+        "info": (["compression", "file", "package", "signature"], 0.10),
+    }
+
+    for suffix, (domain_keywords, bonus) in patterns.items():
+        if not name_lower.endswith(suffix):
+            continue
+        for keyword in domain_keywords:
+            if keyword in ctx.section_lower:
+                reason = (
+                    f"Type pattern '*{suffix}' matches section domain: +{int(bonus * 100)}%"
+                )
+                return bonus, [reason]
+    return 0.0, []
+
+
 def score_domain_type_subsection(ctx: ScoringContext) -> Tuple[float, List[str]]:
     if ctx.definition.kind not in ("type", "struct"):
         return 0.0, []
@@ -224,7 +257,7 @@ def score_domain_type_subsection(ctx: ScoringContext) -> Tuple[float, List[str]]
         "creation": ["create", "creation"],
         "generic": ["generic"],
         "filetype": ["filetype"],
-        "writing": ["write", "writing", "packagewriter"],
+        "writing": ["write", "writing"],
     }
     for keyword in domain_keywords:
         if keyword in ctx.name_lower:

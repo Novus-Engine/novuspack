@@ -51,6 +51,45 @@ def score_error_domain_match(ctx: ScoringContext) -> Tuple[float, List[str]]:
     return 0.0, []
 
 
+def score_error_context_types(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    """Score error context types to place in Error Types section."""
+    if ctx.definition.kind not in ("type", "struct"):
+        return 0.0, []
+    if not ctx.name_lower.endswith("errorcontext"):
+        return 0.0, []
+    domain_keywords = [
+        "compression",
+        "encryption",
+        "signature",
+        "security",
+        "stream",
+        "metadata",
+    ]
+    if any(keyword in ctx.name_lower for keyword in domain_keywords):
+        return 0.0, []
+    if "error" in ctx.section_lower and "type" in ctx.section_lower:
+        return 0.25, ["ErrorContext type matches Error Types section: +25%"]
+    return 0.0, []
+
+
+def score_error_context_domain_mismatch(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if not ctx.name_lower.endswith("errorcontext"):
+        return 0.0, []
+    if "error types" not in ctx.section_lower:
+        return 0.0, []
+    domain_keywords = [
+        "compression",
+        "encryption",
+        "signature",
+        "security",
+        "stream",
+        "metadata",
+    ]
+    if any(keyword in ctx.name_lower for keyword in domain_keywords):
+        return -0.40, ["Domain error context should avoid Error Types: -40%"]
+    return 0.0, []
+
+
 def _infer_penalty_domain(ctx: ScoringContext) -> Optional[str]:
     if "compression" in ctx.name_lower or "compress" in ctx.name_lower:
         return "compression"
@@ -113,6 +152,8 @@ def _penalty_error_section(ctx: ScoringContext) -> Tuple[float, List[str], bool]
         ctx.definition.kind,
     )
     if not (is_error_section and not is_error_helper):
+        return 0.0, [], False
+    if ctx.definition.kind == "method" and "error methods" in ctx.section_lower:
         return 0.0, [], False
     if ctx.definition.kind in ("method", "func"):
         score -= 0.5
@@ -185,13 +226,12 @@ def _kind_section_map_matches(ctx: ScoringContext, kind_mismatch: bool) -> Tuple
         "interface": [
             "Core Interfaces",
             "Type Definitions",
-            "Metadata Types",
+            "Package Metadata Types",
             "Generic Types",
             "Compression Types",
             "Encryption and Security Types",
             "Signature Types",
             "Streaming and Buffer Types",
-            "Deduplication Types",
             "FileType System Types",
         ],
         "method": [
@@ -199,19 +239,24 @@ def _kind_section_map_matches(ctx: ScoringContext, kind_mismatch: bool) -> Tuple
             "File Management",
             "Package Writing",
             "Package Compression",
-            "Package Metadata Methods",
-            "Metadata Methods",
+            "Package Comment Methods",
+            "Package Identity Methods",
+            "Package Special File Methods",
+            "Package Path Metadata Methods",
+            "Package Symlink Methods",
+            "Package Metadata-Only Methods",
+            "Package Info Methods",
+            "Package Metadata Validation Methods",
+            "Package Metadata Internal Methods",
             "Basic Operations",
             "Security and Encryption Operations",
             "Digital Signatures",
-            "Deduplication",
             "Streaming and Buffer Management",
         ],
-        "type": ["Type Definitions", "Metadata Types"],
+        "type": ["Type Definitions", "Package Metadata Types", "Interface Types"],
         "func": [
             "Basic Operations",
-            "Metadata Helper Functions",
-            "Package Metadata Methods",
+            "Package Metadata Helper Functions",
             "Package Helper Functions",
             "File Management",
         ],
@@ -265,3 +310,101 @@ def score_general_heuristics(ctx: ScoringContext) -> Tuple[float, List[str]]:
             score -= 0.20
             reasoning.append("Comment validation is not encryption/security: -20%")
     return score, reasoning
+
+
+def score_error_methods(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind != "method":
+        return 0.0, []
+    if "error methods" not in ctx.section_lower:
+        return 0.0, []
+    if "error" not in ctx.name_lower:
+        return 0.0, []
+    return 0.30, ["Error method matches Error Methods section: +30%"]
+
+
+def score_metadata_tag_helpers(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind != "func":
+        return 0.0, []
+    name_lower = ctx.name_lower
+    if "fileentry helper functions" in ctx.section_lower:
+        if "fileentrytag" in name_lower or name_lower == "newtag":
+            return 0.45, ["FileEntry tag helper matches FileEntry Helpers: +45%"]
+        return 0.0, []
+    if (
+        "package metadata helper functions" not in ctx.section_lower
+        and "metadata helper functions" not in ctx.section_lower
+    ):
+        return 0.0, []
+    if "pathmetatag" in name_lower:
+        return 0.45, ["Path metadata tag helper matches Metadata Helpers: +45%"]
+    return 0.0, []
+
+
+def score_error_helper_functions(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind != "func":
+        return 0.0, []
+    if "error helper functions" not in ctx.section_lower:
+        return 0.0, []
+    if ctx.name_lower == "newpackageerror":
+        return 0.0, []
+    if "error" not in ctx.name_lower and not ctx.name_lower.startswith("err"):
+        return 0.0, []
+    return 0.45, ["Error helper function matches Error Helper Functions: +45%"]
+
+
+def score_streaming_helper_functions(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind != "func":
+        return 0.0, []
+    if "streaming and buffer helper functions" not in ctx.section_lower:
+        return 0.0, []
+    if ctx.definition.file == "api_streaming.md" or "stream" in ctx.name_lower:
+        return 0.60, ["Streaming helper function matches Streaming Helper Functions: +60%"]
+    return 0.0, []
+
+
+def score_streaming_helper_mismatch(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind != "func":
+        return 0.0, []
+    if ctx.definition.file != "api_streaming.md":
+        return 0.0, []
+    if "compression helper functions" not in ctx.section_lower:
+        return 0.0, []
+    return -0.30, ["Streaming helper function should not be in Compression Helpers: -30%"]
+
+
+def score_package_config_preference(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind not in ("type", "struct"):
+        return 0.0, []
+    if ctx.name_lower != "packageconfig":
+        return 0.0, []
+    if "package metadata types" in ctx.section_lower:
+        return 0.30, ["PackageConfig prefers Package Metadata Types: +30%"]
+    if "other types" in ctx.section_lower:
+        return -0.30, ["PackageConfig avoids Other Types: -30%"]
+    if "package interface types" in ctx.section_lower:
+        return -0.30, ["PackageConfig avoids Package Interface Types: -30%"]
+    return 0.0, []
+
+
+def score_readonly_type_preference(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind not in ("type", "struct", "interface"):
+        return 0.0, []
+    if ctx.name_lower == "readonlypackage":
+        return 0.0, []
+    if "readonly" not in ctx.name_lower:
+        return 0.0, []
+    if "other types" in ctx.section_lower:
+        return 0.60, ["Read-only types prefer Other Types section: +60%"]
+    if "package interface" in ctx.section_lower:
+        return -0.80, ["Read-only types avoid Package Interface Types: -80%"]
+    return 0.0, []
+
+
+def score_readonly_package_interface(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind not in ("type", "struct", "interface"):
+        return 0.0, []
+    if ctx.name_lower != "readonlypackage":
+        return 0.0, []
+    if "package interface types" in ctx.section_lower:
+        return 0.40, ["readOnlyPackage prefers Package Interface Types: +40%"]
+    return 0.0, []

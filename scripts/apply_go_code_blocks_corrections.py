@@ -35,19 +35,9 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 
-scripts_dir = Path(__file__).parent
-lib_dir = scripts_dir / "lib"
-
-# Import shared utilities
-if str(scripts_dir) not in sys.path:
-    sys.path.insert(0, str(scripts_dir))
-
-from lib._go_code_utils import (  # noqa: E402  # pylint: disable=wrong-import-position
-    find_go_code_blocks,
-    find_first_definition,
-)
+from lib._go_code_utils import find_first_definition, find_go_code_blocks
 
 
 # Pattern to match error/warning lines with ANSI color codes stripped
@@ -66,22 +56,25 @@ def strip_ansi_codes(text: str) -> str:
     return ansi_escape.sub('', text)
 
 
+class _CorrectionData(NamedTuple):
+    """Data for a single correction (bundles args for pylint R0917)."""
+
+    filepath: str
+    line_num: int
+    issue_type: str
+    message: str
+    suggestion: Optional[str] = None
+
+
 class Correction:
     """Represents a single correction to apply."""
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
-        self,
-        filepath: str,
-        line_num: int,
-        issue_type: str,
-        message: str,
-        suggestion: Optional[str] = None,
-    ):
-        self.filepath = filepath
-        self.line_num = line_num
-        self.issue_type = issue_type
-        self.message = message
-        self.suggestion = suggestion
+    def __init__(self, data: _CorrectionData):
+        self.filepath = data.filepath
+        self.line_num = data.line_num
+        self.issue_type = data.issue_type
+        self.message = data.message
+        self.suggestion = data.suggestion
 
     def __repr__(self):
         return (f"Correction(filepath={self.filepath!r}, line={self.line_num}, "
@@ -133,13 +126,14 @@ class CorrectionParser:
             if not file_path.exists():
                 continue
 
-            correction = Correction(
+            data = _CorrectionData(
                 file_path,
                 line_num,
                 issue_type,
                 message,
-                suggestion
+                suggestion or None,
             )
+            correction = Correction(data)
             self.corrections.append(correction)
 
         return self.corrections

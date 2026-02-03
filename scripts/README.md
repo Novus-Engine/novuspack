@@ -64,12 +64,11 @@
     - [Go Code Blocks Validation Requirements](#go-code-blocks-validation-requirements)
     - [Go Code Blocks Validation Output Example](#go-code-blocks-validation-output-example)
   - [validate\_api\_go\_defs\_index.py](#validate_api_go_defs_indexpy)
-  - [apply\_missing\_go\_defs\_index.py](#apply_missing_go_defs_indexpy)
-    - [Go Definitions Index Fixer Purpose](#go-definitions-index-fixer-purpose)
-    - [Go Definitions Index Fixer Usage](#go-definitions-index-fixer-usage)
-    - [Go Definitions Index Fixer Features](#go-definitions-index-fixer-features)
-    - [Go Definitions Index Fixer Exit Codes](#go-definitions-index-fixer-exit-codes)
-    - [Go Definitions Index Fixer Requirements](#go-definitions-index-fixer-requirements)
+    - [Go Definitions Index Validation Purpose](#go-definitions-index-validation-purpose)
+    - [Go Definitions Index Validation Usage](#go-definitions-index-validation-usage)
+    - [Go Definitions Index Validation Features](#go-definitions-index-validation-features)
+    - [Go Definitions Index Validation Exit Codes](#go-definitions-index-validation-exit-codes)
+    - [Go Definitions Index Validation Requirements](#go-definitions-index-validation-requirements)
   - [validate\_go\_signature\_sync.py](#validate_go_signature_syncpy)
     - [Go Signature Sync Validation Purpose](#go-signature-sync-validation-purpose)
     - [Go Signature Sync Validation Usage](#go-signature-sync-validation-usage)
@@ -130,7 +129,7 @@ This directory contains utility scripts for the NovusPack project.
 
 ### generate_anchor.py
 
-Generates GitHub-style markdown anchors from heading text.
+Generates GitHub-style markdown anchors from markdown headings.
 
 #### Anchor Generation Purpose
 
@@ -142,29 +141,18 @@ Generates GitHub-style markdown anchors from heading text.
 #### Anchor Generation Usage
 
 ```bash
-# From command line argument
-python3 scripts/generate_anchor.py "1.2.3 AddFile Package Method"
-# Output: #123-addfile-package-method
+# Generate anchor for the heading at a specific file line
+python3 scripts/generate_anchor.py --line docs/tech_specs/api_core.md:42
+# Output: #some-heading-anchor
 
-# From stdin
-echo "File Management" | python3 scripts/generate_anchor.py
-# Output: #file-management
+# Print anchors for all headings in a file
+python3 scripts/generate_anchor.py --file docs/tech_specs/api_core.md
+# Output (one per heading):
+# docs/tech_specs/api_core.md:1: H1 Title => #title
 
-# Using --text switch
-python3 scripts/generate_anchor.py --text "File Management"
-# Output: #file-management
-
-# Via Makefile
-make generate-anchor TEXT="1.2.3 AddFile Package Method"
-# Output: #123-addfile-package-method
-
-# Headings with backticks (use single quotes to preserve backticks)
-python3 scripts/generate_anchor.py '1.2.3 AddFile with `code` example'
-# Output: #123-addfile-with-code-example
-
-# Headings with backticks via Makefile (use single quotes)
-make generate-anchor TEXT='1.2.3 AddFile with `code` example'
-# Output: #123-addfile-with-code-example
+# Via Makefile (preferred)
+make generate-anchor LINE="docs/tech_specs/api_core.md:42"
+make generate-anchor FILE="docs/tech_specs/api_core.md"
 ```
 
 #### Anchor Generation Features
@@ -182,14 +170,15 @@ make generate-anchor TEXT='1.2.3 AddFile with `code` example'
 The script is available via Makefile:
 
 ```bash
-# Generate anchor from heading text
-make generate-anchor TEXT="Heading Text"
+# Print anchors for all headings in a file
+make generate-anchor FILE="docs/tech_specs/api_core.md"
 
-# Headings with backticks (use single quotes)
-make generate-anchor TEXT='Heading with `code` example'
+# Print anchor for the heading at a specific line in a file
+make generate-anchor LINE="docs/tech_specs/api_core.md:42"
 ```
 
-**Note:** When headings contain backticks (e.g., `code`), use single quotes around the heading text to preserve the backticks. The script will automatically remove backticks and their contents when generating the anchor, as per GitHub markdown anchor generation rules.
+**Note:** This interface avoids passing heading text through the shell, which eliminates quoting issues (including backticks).
+If you must pass text containing backticks on the command line for other tooling, prefer single quotes and escape backticks as needed.
 
 #### Anchor Generation Requirements
 
@@ -215,8 +204,8 @@ python3 scripts/validate_links.py
 # With verbose output
 python3 scripts/validate_links.py --verbose
 
-# Save detailed report to file
-python3 scripts/validate_links.py --output report.txt
+# Save detailed report to file (use tmp/ for reports)
+python3 scripts/validate_links.py --output tmp/validation_report.txt
 
 # Check requirements coverage (ensures all requirements reference tech specs)
 python3 scripts/validate_links.py --check-coverage
@@ -396,16 +385,13 @@ python3 scripts/validate_heading_numbering.py --help
 - Validates sequential numbering within parent sections
 - Ensures child heading numbers match parent prefixes
 - Detects duplicate heading titles (excluding numbering) across all levels
-- Detects backticks in headings and flags them as formatting errors
-  - Headings should not contain backticks; use plain text instead
-  - Suggestions automatically remove backticks while preserving content
+- Allows backticks in headings; case inside backticks is not checked for Title Case
 - Warns about H3+ headings with numbering exceeding 20 (e.g., "### 3.25")
 - Warns about H4+ headings with single-word titles (e.g., "#### 1.2.3 Title")
 - Warns about overly-deeply nested headings (H6 and beyond)
 - Provides line numbers and detailed error messages
 - Organized reporting by error type:
   - Organizational heading errors (headings with no content)
-  - Heading formatting errors (e.g., backticks)
   - Heading numbering errors (numbering issues)
 - Sorted headings output shows only headings with numbering errors (excludes duplicate-only errors)
 - Regex patterns compiled at module level for performance
@@ -878,13 +864,16 @@ python3 scripts/validate_go_code_blocks.py --help
   - Type aliases: `type Name SomeType` (including built-in types)
 - Validates that each code block has at most one type/interface definition
 - Checks that each code block is under a different heading
+- Validates heading format: definition name and kind word (e.g. `` `Package.Write` Method ``); definition names preferred in backticks; case inside backticks ignored
+- Emits `heading_prefer_backticks` warning when a definition name in a heading is not in backticks (suggests corrected heading)
+- When only warnings (e.g. heading_prefer_backticks) are found, the script exits 0
 - Reports issues with file paths and line numbers
 - Provides summary statistics and detailed breakdown
 
 #### Go Code Blocks Validation Exit Codes
 
-- `0`: All Go code blocks comply with requirements
-- `1`: One or more code blocks violate requirements
+- `0`: All Go code blocks comply with requirements, or only warnings (e.g. heading_prefer_backticks) were found
+- `1`: One or more code blocks violate requirements (errors present)
 
 #### Go Code Blocks Validation Integration
 
@@ -925,59 +914,52 @@ Breakdown by issue type:
 
 ### validate_api_go_defs_index.py
 
+Validates that all Go API definitions in tech specs are listed in the Go definitions index.
+
 Business logic and usage are documented in [scripts/validate_api_go_defs_index.md](validate_api_go_defs_index.md).
 Use `make validate-go-defs-index` to run the check.
 
 Implementation details are in [`scripts/lib/go_defs_index/`](../scripts/lib/go_defs_index/), including the placement scoring modules used by the validator.
 
-### apply_missing_go_defs_index.py
+#### Go Definitions Index Validation Purpose
 
-Applies selected fixes to `api_go_defs_index.md` based on the validation output.
+- Ensures every discovered Go API definition in tech specs appears in the index.
+- Detects missing index entries, orphaned entries, wrong-section entries, and incorrect link targets.
+- Enforces description rules (minimum length and uniqueness).
+- Reports low-confidence placements that require manual review.
 
-#### Go Definitions Index Fixer Purpose
-
-- Adds missing definitions with high-confidence placement
-- Moves entries to the validator-suggested section
-- Updates incorrect links to canonical anchors
-- Fills missing or short descriptions when a comment-based summary is provided
-- Removes orphaned entries (in index but not found in any tech spec)
-
-#### Go Definitions Index Fixer Usage
+#### Go Definitions Index Validation Usage
 
 ```bash
-# Capture validator output (use NO_COLOR for stable parsing)
-make validate-go-defs-index VERBOSE=1 NO_COLOR=1 > tmp/go_defs_index.txt 2>&1
+# Run the validator (full scan).
+make validate-go-defs-index
 
-# Apply fixes and re-render all leaf sections (default)
-python3 scripts/apply_missing_go_defs_index.py \
-    --input tmp/go_defs_index.txt \
-    --index-file docs/tech_specs/api_go_defs_index.md
+# Verbose output and write a report file.
+make validate-go-defs-index VERBOSE=1 NO_COLOR=1 OUTPUT="tmp/go_defs_index.txt"
 
-# Only update sections that changed (skip full reflow)
-python3 scripts/apply_missing_go_defs_index.py \
-    --input tmp/go_defs_index.txt \
-    --index-file docs/tech_specs/api_go_defs_index.md --no-normalize
+# Apply high-confidence index updates (interactive confirmation required).
+make validate-go-defs-index APPLY=1
 ```
 
-#### Go Definitions Index Fixer Features
+#### Go Definitions Index Validation Features
 
-- Parses validator output for actionable fixes
-- Uses shared `IndexEntry` model from `scripts/lib` so descriptions are preserved and aligned with the validator
-- By default re-renders all leaf sections for consistent blank lines and alphabetical order
-- Use `--no-normalize` to only update sections that changed (no full reflow)
-- Sorts entries within each section alphabetically by full name
-- Removes orphaned entries reported by the validator
-- Does not add low-confidence definitions (manual review required)
+- Scans `docs/tech_specs/*.md` for ` ```go ` code blocks and extracts types, methods, and functions.
+- Builds an expected index tree using confidence-scored placement.
+- Compares expected entries with current index entries and reports discrepancies.
+- Validates index entry descriptions:
+  - Missing or too-short descriptions are errors.
+  - Duplicate description text across entries is an error.
+- Emits ordering warnings when existing entries are out of order.
 
-#### Go Definitions Index Fixer Exit Codes
+#### Go Definitions Index Validation Exit Codes
 
-- `0`: Fixes applied or no actionable fixes found
-- `1`: Input file or index file missing
+- `0`: No errors found.
+- `1`: Errors found.
+- With `NO_FAIL=1`, the validator exits with `0` even when errors are found.
 
-#### Go Definitions Index Fixer Requirements
+#### Go Definitions Index Validation Requirements
 
 - Python 3.x
-- Uses `scripts/lib` (IndexEntry, validation parsing, index section helpers)
 
 ### validate_go_signature_sync.py
 
@@ -1577,7 +1559,7 @@ This feature is useful for:
 
 **Note:** Some scripts require checking all files to validate properly and will skip when `PATHS` is specified:
 
-- `validate-api-go-defs-index` - requires all tech specs to validate the index
+- `validate-go-defs-index` - requires all tech specs to validate the index
 - `validate-req-references` - requires all feature files to validate references
 - `audit-feature-coverage` - requires all requirements and feature files to validate coverage
 - `audit-requirements-coverage` - requires all tech specs and requirements to validate coverage
@@ -1644,7 +1626,7 @@ All scripts in this directory should be:
 | `validate_req_references.py`                | `make validate-req-references`                | `validate-req-references.yml`    | ✅ Active |
 | `audit_feature_coverage.py`                 | `make audit-feature-coverage`                 | `audit-coverage.yml`             | ✅ Active |
 | `audit_requirements_coverage.py`            | `make audit-requirements-coverage`            | `audit-coverage.yml`             | ✅ Active |
-| `validate_api_go_defs_index.py`             | `make validate-api-go-defs-index`             | `docs-check` (via Makefile)      | ✅ Active |
+| `validate_api_go_defs_index.py`             | `make validate-go-defs-index`                 | `docs-check` (via Makefile)      | ✅ Active |
 | `validate_go_code_blocks.py`                | `make validate-go-code-blocks`                | `docs-check` (via Makefile)      | ✅ Active |
 | `validate_go_spec_signature_consistency.py` | `make validate-go-spec-signature-consistency` | `docs-check` (via Makefile)      | ✅ Active |
 | `validate_go_signature_sync.py`             | `make validate-go-signatures`                 | `go-ci.yml`                      | ✅ Active |
@@ -1679,8 +1661,11 @@ When adding new scripts:
 14. Update this README
 15. Ensure script has `--help` option
 16. Use proper exit codes (0 = success, 1 = failure)
-17. Use `OutputBuilder` from [`scripts/lib/_validation_utils.py`](../scripts/lib/_validation_utils.py) for consistent output formatting
-18. Ensure code passes flake8 linting: `make flake8-lint`
+17. Use `OutputBuilder` from [`scripts/lib/_validation_utils.py`](../scripts/lib/_validation_utils.py) for consistent output formatting:
+    - `add_success_message()` when validation passes with no issues.
+    - `add_failure_message()` when there are errors
+    - `add_warnings_only_message()` when there are only warnings (exit 0; optional `verbose_hint` for run-with-verbose text).
+18. Ensure code passes Python linting: `make lint-python`
 
 ## Maintenance
 
@@ -1691,7 +1676,7 @@ When modifying existing scripts:
 3. Update this README if usage changes
 4. Test locally with `make <target>` before committing
 5. Ensure backward compatibility or update all references
-6. Run `make flake8-lint` to ensure code quality standards are met
+6. Run `make lint-python` to ensure code quality standards are met
 7. Add type hints to new functions or when modifying function signatures
 8. Refactor large functions into smaller, focused helper functions when appropriate
 

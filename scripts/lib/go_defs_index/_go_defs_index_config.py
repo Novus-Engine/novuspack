@@ -102,54 +102,68 @@ KEYWORD_TO_SECTION_MAPPING = {
     ],
     # Metadata and Tags Domain
     "tag": [
+        ("Tag Methods", "strong"),
+        ("FileEntry Types", "medium"),
         ("FileEntry Helper Functions", "medium"),
-        ("Metadata Types", "medium"),
-        ("Metadata Methods", "strong"),
-        ("Metadata Helper Functions", "strong"),
     ],
     "fileentrytag": [
         ("FileEntry Helper Functions", "strong"),
-        ("Metadata Methods", "medium"),
-        ("Metadata Helper Functions", "medium"),
     ],
     "pathmetadatatag": [
-        ("Metadata Methods", "strong"),
-        ("Metadata Helper Functions", "strong"),
+        ("Package Path Metadata Methods", "strong"),
+        ("Package Metadata Type Methods", "strong"),
+        ("Package Metadata Helper Functions", "strong"),
     ],
     "metadata": [
-        ("Metadata Types", "strong"),
-        ("Metadata Methods", "strong"),
-        ("Metadata Helper Functions", "strong"),
-        ("Package Metadata Methods", "medium"),
+        ("Package Metadata Types", "strong"),
+        ("Package Comment Methods", "strong"),
+        ("Package Identity Methods", "strong"),
+        ("Package Special File Methods", "strong"),
+        ("Package Path Metadata Methods", "strong"),
+        ("Package Symlink Methods", "strong"),
+        ("Package Metadata-Only Methods", "strong"),
+        ("Package Info Methods", "strong"),
+        ("Package Metadata Validation Methods", "strong"),
+        ("Package Metadata Internal Methods", "strong"),
+        ("Package Metadata Type Methods", "strong"),
+        ("Package Metadata Helper Functions", "strong"),
     ],
     "pathmetadata": [
-        ("Metadata Types", "strong"),
-        ("Metadata Methods", "strong"),
-        ("Metadata Helper Functions", "strong"),
+        ("Package Metadata Types", "strong"),
+        ("Package Path Metadata Methods", "strong"),
+        ("Package Metadata Type Methods", "strong"),
+        ("Package Metadata Helper Functions", "strong"),
     ],
     "fileentry": [
-        ("FileEntry", "strong"),
-        ("FileEntry Methods", "strong"),
+        ("FileEntry Types", "strong"),
+        ("FileEntry Query Methods", "strong"),
+        ("FileEntry Data Methods", "strong"),
+        ("FileEntry Temp File Methods", "strong"),
+        ("FileEntry Serialization Methods", "strong"),
+        ("FileEntry Path Methods", "strong"),
+        ("FileEntry Transformation Methods", "strong"),
         ("FileEntry Helper Functions", "strong"),
     ],
     "appid": [
-        ("Package Metadata Methods", "medium"),
+        ("Package Identity Methods", "medium"),
     ],
     "vendorid": [
-        ("Package Metadata Methods", "medium"),
+        ("Package Identity Methods", "medium"),
     ],
     "comment": [
-        ("Package Metadata Methods", "strong"),
-        ("Metadata Types", "medium"),
+        ("Package Comment Methods", "strong"),
+        ("Package Metadata Type Methods", "strong"),
+        ("Package Metadata Types", "medium"),
     ],
     "packagecomment": [
-        ("Package Metadata Methods", "strong"),
-        ("Metadata Types", "medium"),
+        ("Package Comment Methods", "strong"),
+        ("Package Metadata Type Methods", "strong"),
+        ("Package Metadata Types", "medium"),
     ],
     "validatecomment": [
         ("Package Helper Functions", "strong"),
-        ("Package Metadata Methods", "medium"),
-        ("Package Metadata Methods", "medium"),
+        ("Package Metadata Helper Functions", "medium"),
+        ("Package Comment Methods", "medium"),
     ],
     "validatepathlength": [
         ("Package Helper Functions", "strong"),
@@ -214,14 +228,12 @@ KEYWORD_TO_SECTION_MAPPING = {
     ],
     # Deduplication Domain
     "deduplication": [
-        ("Deduplication Types", "strong"),
-        ("Deduplication Methods", "strong"),
-        ("Deduplication Helper Functions", "strong"),
+        ("Package File Management Methods", "strong"),
+        ("Package Information and Queries Methods", "strong"),
     ],
     "dedup": [
-        ("Deduplication Types", "medium"),
-        ("Deduplication Methods", "medium"),
-        ("Deduplication Helper Functions", "medium"),
+        ("Package File Management Methods", "medium"),
+        ("Package Information and Queries Methods", "medium"),
     ],
     # FileType System Domain
     "filetype": [
@@ -270,6 +282,9 @@ PRIORITY_PHRASES = [
 ]
 
 DOMAIN_FILE_MAP = {
+    # Deprecated: replaced by pattern-based detection in
+    # lib/go_defs_index/_go_defs_index_scoring_domain.py.
+    # Kept temporarily for reference until fully removed.
     "api_generics.md": "generic",
     "api_streaming.md": "streaming",
     "api_package_compression.md": "compression",
