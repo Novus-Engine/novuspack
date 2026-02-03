@@ -1,6 +1,6 @@
 // This file defines the core Package interface and filePackage implementation.
-// It contains Package, PackageReader, and PackageWriter interfaces as specified
-// in api_core.md, along with the filePackage struct that implements these interfaces.
+// It contains the Package interface as specified in api_core.md, along with the
+// filePackage struct that implements it.
 // This file should contain the main Package type definition, interface declarations,
 // and the NewPackage constructor function.
 //
@@ -40,46 +40,29 @@ import (
 )
 
 // =============================================================================
-// INTERFACES
+// INTERFACE
 // =============================================================================
 
-// PackageReader defines the interface for reading operations on a package.
+// Package defines the main interface for NovusPack package operations.
 //
-// PackageReader provides methods for reading files, listing files, retrieving
-// metadata, and validating package contents.
+// Package provides the unified v1 API surface for read operations, write
+// operations, lifecycle management, file management, and metadata handling.
 //
-// Specification: api_core.md: 1.1 PackageReader Interface
-type PackageReader interface {
+// Specification: api_core.md: 1.1 Package Interface
+type Package interface {
+	// Read operations
 	ReadFile(ctx context.Context, path string) ([]byte, error)
 	ListFiles() ([]FileInfo, error)
 	GetMetadata() (*metadata.PackageMetadata, error)
 	Validate(ctx context.Context) error
 	GetInfo() (*metadata.PackageInfo, error)
-}
 
-// PackageWriter defines the interface for writing operations on a package.
-//
-// PackageWriter provides methods for adding files, removing files, and writing
-// the package to disk. Compression and signing options are configured via package
-// state rather than method parameters.
-//
-// Specification: api_core.md: 1.2 PackageWriter Interface
-type PackageWriter interface {
+	// Write operations
 	Write(ctx context.Context) error
 	SafeWrite(ctx context.Context, overwrite bool) error
 	FastWrite(ctx context.Context) error
-}
 
-// Package defines the main interface for NovusPack package operations.
-//
-// Package combines PackageReader and PackageWriter interfaces, providing
-// complete package lifecycle management including opening, closing, and
-// defragmentation operations.
-//
-// Specification: api_core.md: 1.3 Package Interface
-type Package interface {
-	PackageReader
-	PackageWriter
+	// Lifecycle operations
 	Create(ctx context.Context, path string) error
 	CreateWithOptions(ctx context.Context, path string, options *CreateOptions) error
 	Close() error
@@ -90,11 +73,11 @@ type Package interface {
 	Defragment(ctx context.Context) error
 
 	// Target path management
-	// Specification: api_core.md: 1.2 PackageWriter Interface
+	// Specification: api_basic_operations.md: 8. Package.SetTargetPath Method
 	SetTargetPath(ctx context.Context, path string) error
 
 	// Session base management
-	// Specification: api_basic_operations.md: 3.1 Package Implementation Structure
+	// Specification: api_basic_operations.md: 19. Package Session Base Management
 	SetSessionBase(basePath string) error
 	GetSessionBase() string
 	ClearSessionBase()
@@ -110,8 +93,8 @@ type Package interface {
 	// File removal operations
 	// Specification: api_file_mgmt_removal.md: 2. RemoveFile Package Method
 	RemoveFile(ctx context.Context, path string) error
-	RemoveFilePattern(ctx context.Context, pattern string) error
-	RemoveDirectory(ctx context.Context, dirPath string) error
+	RemoveFilePattern(ctx context.Context, pattern string) ([]string, error)
+	RemoveDirectory(ctx context.Context, dirPath string, options *RemoveDirectoryOptions) ([]string, error)
 
 	// Comment management operations
 	// Specification: api_metadata.md: 1. Comment Management
@@ -142,7 +125,7 @@ type Package interface {
 // filePackage is the concrete implementation of the Package interface.
 //
 // filePackage provides the main implementation for interacting with NovusPack files.
-// It implements Package, PackageReader, and PackageWriter interfaces.
+// It implements the Package interface.
 //
 // Lifecycle States:
 //   - New: Created via NewPackage(), not yet associated with a file
@@ -216,7 +199,7 @@ type filePackage struct {
 //	}
 //	defer pkg.Close()
 //
-// Specification: api_basic_operations.md: 6.1 Package Constructor
+// Specification: api_basic_operations.md: 6.1 NewPackage Behavior
 func NewPackage() (Package, error) {
 	// Initialize package with default values
 	pkg := &filePackage{

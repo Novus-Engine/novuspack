@@ -34,18 +34,17 @@ import (
 // Re-export core package interfaces from novus_package
 type (
 	Package        = novus_package.Package
-	PackageReader  = novus_package.PackageReader
-	PackageWriter  = novus_package.PackageWriter
 	PackageBuilder = novus_package.PackageBuilder
 )
 
 // Re-export package operation types from novus_package
 type (
-	FileInfo        = novus_package.FileInfo
-	AddFileOptions  = novus_package.AddFileOptions
-	CreateOptions   = novus_package.CreateOptions
-	CompressionType = novus_package.CompressionType
-	EncryptionType  = novus_package.EncryptionType
+	FileInfo               = novus_package.FileInfo
+	AddFileOptions         = novus_package.AddFileOptions
+	RemoveDirectoryOptions = novus_package.RemoveDirectoryOptions
+	CreateOptions          = novus_package.CreateOptions
+	CompressionType        = novus_package.CompressionType
+	EncryptionType         = novus_package.EncryptionType
 )
 
 // Re-export types from pkgerrors
@@ -441,7 +440,7 @@ func Err[T any](err error) Result[T] {
 // Returns the normalized path with leading "/" or an error if the path is
 // invalid or would escape the package root.
 //
-// Specification: api_core.md: 1.1.2 Package Path Semantics
+// Specification: api_core.md: 12.1 NormalizePackagePath Function
 func NormalizePackagePath(path string) (string, error) {
 	return internal.NormalizePackagePath(path)
 }
@@ -449,7 +448,7 @@ func NormalizePackagePath(path string) (string, error) {
 // ToDisplayPath converts a stored package path (with leading "/") to display
 // format by stripping the leading slash. Use for user-facing path display.
 //
-// Specification: api_core.md: 1.1.2 Package Path Semantics
+// Specification: api_core.md: 12.2 ToDisplayPath Function
 func ToDisplayPath(storedPath string) string {
 	return internal.ToDisplayPath(storedPath)
 }
@@ -460,7 +459,7 @@ func ToDisplayPath(storedPath string) string {
 // Returns warnings for paths over 260 (Windows), 1024 (macOS), 4096 (Linux)
 // bytes; error only when over the absolute maximum.
 //
-// Specification: api_generics.md: 1.3.3.9 Path Length Limits and Warnings
+// Specification: api_core.md: 12.4 ValidatePathLength Function
 func ValidatePathLength(path string) ([]string, error) {
 	return internal.ValidatePathLength(path)
 }
@@ -468,7 +467,7 @@ func ValidatePathLength(path string) ([]string, error) {
 // ValidatePackagePath validates a package-internal path: non-empty, no
 // root-escape via dot segments, valid format. Delegates to NormalizePackagePath.
 //
-// Specification: api_core.md: 1.1.2.2 Path Validation
+// Specification: api_core.md: 12.3 ValidatePackagePath Function
 func ValidatePackagePath(path string) error {
 	return internal.ValidatePackagePath(path)
 }
@@ -506,7 +505,7 @@ func ValidatePackagePath(path string) error {
 //	}
 //	defer pkg.Close()
 //
-// Specification: api_basic_operations.md: 6.1 Package Constructor
+// Specification: api_basic_operations.md: 6.1 NewPackage Behavior
 func NewPackage() (Package, error) {
 	return novus_package.NewPackage()
 }
@@ -527,8 +526,6 @@ func NewPackage() (Package, error) {
 //	    WithVendorID(0x12345678).
 //	    WithAppID(0x87654321).
 //	    Build(ctx)
-//
-// Specification: api_basic_operations.md: 6.5 PackageBuilder Pattern
 func NewBuilder() PackageBuilder {
 	return novus_package.NewBuilder()
 }
@@ -567,7 +564,7 @@ func NewBuilder() PackageBuilder {
 //	}
 //	fmt.Printf("Files: %d\n", info.FileCount)
 //
-// Specification: api_basic_operations.md: 7.1 OpenPackage
+// Specification: api_basic_operations.md: 10. OpenPackage Function
 func OpenPackage(ctx context.Context, path string) (Package, error) {
 	return novus_package.OpenPackage(ctx, path)
 }
@@ -607,7 +604,7 @@ func OpenPackage(ctx context.Context, path string) (Package, error) {
 //	err = pkg.StageFile(ctx, "new.txt", []byte("data"), nil)
 //	// err is *PackageError with Type == ErrTypeSecurity
 //
-// Specification: api_basic_operations.md: 7.2 OpenPackageReadOnly
+// Specification: api_basic_operations.md: 11.2 OpenPackageReadOnly Function
 func OpenPackageReadOnly(ctx context.Context, path string) (Package, error) {
 	return novus_package.OpenPackageReadOnly(ctx, path)
 }
@@ -654,7 +651,7 @@ func OpenPackageReadOnly(ctx context.Context, path string) (Package, error) {
 //	defer pkg.Close()
 //	// Attempt to extract whatever data is accessible
 //
-// Specification: api_basic_operations.md: 7.3 OpenBrokenPackage
+// Specification: api_basic_operations.md: 12. OpenBrokenPackage Function
 func OpenBrokenPackage(ctx context.Context, path string) (Package, error) {
 	return novus_package.OpenBrokenPackage(ctx, path)
 }
@@ -697,7 +694,7 @@ func OpenBrokenPackage(ctx context.Context, path string) (Package, error) {
 //	}
 //	fmt.Printf("Format Version: %d\n", header.FormatVersion)
 //
-// Specification: api_basic_operations.md: 9.4 Header Inspection
+// Specification: api_basic_operations.md: 18. Header Inspection
 func ReadHeader(ctx context.Context, reader io.Reader) (*fileformat.PackageHeader, error) {
 	return novus_package.ReadHeader(ctx, reader)
 }
@@ -742,7 +739,7 @@ func ReadHeader(ctx context.Context, reader io.Reader) (*fileformat.PackageHeade
 //	fmt.Printf("Magic: 0x%08X\n", header.Magic)
 //	fmt.Printf("Index Start: %d\n", header.IndexStart)
 //
-// Specification: api_basic_operations.md: 9.4 Header Inspection
+// Specification: api_basic_operations.md: 18. Header Inspection
 func ReadHeaderFromPath(ctx context.Context, path string) (*fileformat.PackageHeader, error) {
 	return novus_package.ReadHeaderFromPath(ctx, path)
 }

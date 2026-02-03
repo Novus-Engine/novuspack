@@ -7,8 +7,10 @@ package novus_package
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/novus-engine/novuspack/api/go/fileformat/testutil"
 	"github.com/novus-engine/novuspack/api/go/internal"
 	"github.com/novus-engine/novuspack/api/go/internal/testhelpers"
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
@@ -28,6 +30,306 @@ func asPackageError(err error, target *pkgerrors.PackageError) bool {
 		return true
 	}
 	return false
+}
+
+// runContextCancelledTest creates a package, calls the given method with a cancelled context,
+// and asserts the error is a PackageError with ErrTypeContext.
+func runContextCancelledTest(t *testing.T, call func(*filePackage, context.Context) error) {
+	t.Helper()
+	cancelledCtx := testhelpers.CancelledContext()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage() failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	fpkg := pkg.(*filePackage)
+	err = call(fpkg, cancelledCtx)
+	if err == nil {
+		t.Fatal("expected failure with cancelled context")
+	}
+	pkgErr := &pkgerrors.PackageError{}
+	if !asPackageError(err, pkgErr) {
+		t.Fatalf("Expected PackageError, got: %T", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeContext {
+		t.Errorf("Error type = %v, want ErrTypeContext", pkgErr.Type)
+	}
+}
+
+func runReadFileExpectFail(t *testing.T, path string) {
+	t.Helper()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	ctx := context.Background()
+	_, err = pkg.ReadFile(ctx, path)
+	if err == nil {
+		t.Error("ReadFile should fail")
+	}
+}
+
+func runGetMetadataBasic(t *testing.T) {
+	t.Helper()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	metadata, err := pkg.GetMetadata()
+	if err != nil {
+		t.Logf("GetMetadata note: %v (may require initialization)", err)
+		return
+	}
+	if metadata == nil {
+		t.Error("GetMetadata returned nil")
+	}
+}
+
+// addThreeFilesFromMemory adds three files (file0.txt, file1.txt, file2.txt) via AddFileFromMemory.
+func addThreeFilesFromMemory(t *testing.T, ctx context.Context, pkg Package, pathPrefix, contentPrefix string) {
+	t.Helper()
+	for i := 0; i < 3; i++ {
+		path := pathPrefix + "file" + string(rune('0'+i)) + ".txt"
+		data := []byte(contentPrefix + string(rune('0'+i)))
+		_, err := pkg.AddFileFromMemory(ctx, path, data, nil)
+		if err != nil {
+			t.Fatalf("AddFileFromMemory failed: %v", err)
+		}
+	}
+}
+
+func runGetInfoBasic(t *testing.T, requireFormatVersion bool) {
+	t.Helper()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	info, err := pkg.GetInfo()
+	if err != nil {
+		t.Fatalf("GetInfo failed: %v", err)
+	}
+	if info == nil {
+		t.Fatal("GetInfo returned nil")
+	}
+	if requireFormatVersion && info.FormatVersion == 0 {
+		t.Error("Info.FormatVersion = 0, expected non-zero")
+	}
+}
+
+func runOpenPackageThenCloseThen(t *testing.T, fn func(t *testing.T, pkg Package)) {
+	t.Helper()
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	pkgPath := filepath.Join(tmpDir, "test.nvpk")
+	testutil.CreateTestPackageFile(t, pkgPath)
+	pkg, err := OpenPackage(ctx, pkgPath)
+	if err != nil {
+		t.Fatalf("OpenPackage() failed: %v", err)
+	}
+	if err := pkg.Close(); err != nil {
+		t.Fatalf("Close() failed: %v", err)
+	}
+	fn(t, pkg)
+}
+
+func runOpenPackageThenCloseThenSucceed(t *testing.T, methodName string, fn func(Package) (interface{}, error)) {
+	t.Helper()
+	runOpenPackageThenCloseThen(t, func(t *testing.T, pkg Package) {
+		got, err := fn(pkg)
+		if err != nil {
+			t.Fatalf("%s() should succeed on a closed package with cached metadata, got error: %v", methodName, err)
+		}
+		if got == nil {
+			t.Fatalf("%s() returned nil", methodName)
+		}
+	})
+}
+
+func runAssertGetInfoOnClosed(t *testing.T) {
+	t.Helper()
+	runOpenPackageThenCloseThenSucceed(t, "GetInfo", func(pkg Package) (interface{}, error) { return pkg.GetInfo() })
+}
+
+func runAssertListFilesOnClosed(t *testing.T) {
+	t.Helper()
+	runOpenPackageThenCloseThenSucceed(t, "ListFiles", func(pkg Package) (interface{}, error) { return pkg.ListFiles() })
+}
+
+func runOpenPackageListFilesExpectEmpty(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	pkgPath := filepath.Join(tmpDir, "test.nvpk")
+	testutil.CreateTestPackageFile(t, pkgPath)
+	pkg, err := OpenPackage(ctx, pkgPath)
+	if err != nil {
+		t.Fatalf("OpenPackage() failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	files, err := pkg.ListFiles()
+	if err != nil {
+		t.Fatalf("ListFiles() failed: %v", err)
+	}
+	if files == nil {
+		t.Fatal("ListFiles() should not return nil")
+	}
+	if len(files) != 0 {
+		t.Errorf("ListFiles() on empty package should return empty list, got %d files", len(files))
+	}
+}
+
+func runWriteWithContent(t *testing.T, content []byte, verifyFile bool) {
+	t.Helper()
+	ctx := context.Background()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", content, nil)
+	if err != nil {
+		t.Fatalf("AddFileFromMemory failed: %v", err)
+	}
+	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
+	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
+		t.Fatalf("SetTargetPath failed: %v", err)
+	}
+	if err := pkg.Write(ctx); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+	if verifyFile {
+		if _, err := os.Stat(tmpPkg); os.IsNotExist(err) {
+			t.Error("Write did not create package file")
+		}
+	}
+}
+
+func runWriteEmptyPackage(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	tmpPkg := filepath.Join(t.TempDir(), "empty.pkg")
+	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
+		t.Fatalf("SetTargetPath failed: %v", err)
+	}
+	if err := pkg.Write(ctx); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	if _, err := os.Stat(tmpPkg); os.IsNotExist(err) {
+		t.Error("Write did not create package file")
+	}
+}
+
+func runWriteContextCancelled(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("content"), nil)
+	if err != nil {
+		t.Fatalf("AddFileFromMemory failed: %v", err)
+	}
+	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
+	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
+		t.Fatalf("SetTargetPath failed: %v", err)
+	}
+	cancelledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := pkg.Write(cancelledCtx); err == nil {
+		t.Error("Write with cancelled context should fail")
+	}
+}
+
+func runAddFileOverwrite(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("v1"), nil)
+	if err != nil {
+		t.Fatalf("AddFileFromMemory(v1) failed: %v", err)
+	}
+	opts := &AddFileOptions{}
+	opts.AllowOverwrite.Set(true)
+	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("v2"), opts)
+	if err != nil {
+		t.Logf("AddFileFromMemory with AllowOverwrite: %v (may not be fully implemented)", err)
+	}
+}
+
+func runRemoveFileExpectFail(t *testing.T, path string) {
+	t.Helper()
+	ctx := context.Background()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	err = pkg.RemoveFile(ctx, path)
+	if err == nil {
+		t.Error("RemoveFile should fail")
+	}
+}
+
+func runSafeWriteWithContent(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("content"), nil)
+	if err != nil {
+		t.Fatalf("AddFileFromMemory failed: %v", err)
+	}
+	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
+	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
+		t.Fatalf("SetTargetPath failed: %v", err)
+	}
+	if err := pkg.SafeWrite(ctx, true); err != nil {
+		t.Fatalf("SafeWrite failed: %v", err)
+	}
+
+	if _, err := os.Stat(tmpPkg); os.IsNotExist(err) {
+		t.Error("SafeWrite did not create package file")
+	}
+}
+
+func runAddTwoPathsThenRemove(t *testing.T, storedPath2 string) {
+	t.Helper()
+	ctx := context.Background()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	entry1, err := pkg.AddFile(ctx, testFile, nil)
+	if err != nil {
+		t.Fatalf("AddFile failed: %v", err)
+	}
+	opts := &AddFileOptions{}
+	opts.StoredPath.Set(storedPath2)
+	entry2, err := pkg.AddFile(ctx, testFile, opts)
+	if err != nil {
+		t.Fatalf("AddFile with different path failed: %v", err)
+	}
+	if entry1.FileID != entry2.FileID {
+		t.Error("Deduplication should reuse same FileEntry")
+	}
+	err = pkg.RemoveFile(ctx, entry1.Paths[0].Path)
+	if err != nil {
+		t.Fatalf("RemoveFile failed: %v", err)
+	}
 }
 
 // =============================================================================
@@ -252,6 +554,8 @@ func TestPackageError_WithContext(t *testing.T) {
 }
 
 // TestNewPackageError tests the NewPackageError constructor.
+//
+//nolint:gocognit // table-driven error cases
 func TestNewPackageError(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -319,35 +623,44 @@ func TestCheckContext_NilContext(t *testing.T) {
 	}
 }
 
-// TestCheckContext_CancelledContext tests checkContext with cancelled context.
-func TestCheckContext_CancelledContext(t *testing.T) {
-	ctx := testhelpers.CancelledContext()
+func assertCheckContextError(t *testing.T, ctx context.Context, wantType pkgerrors.ErrorType) {
+	t.Helper()
 	err := internal.CheckContext(ctx, "test operation")
 	if err == nil {
-		t.Error("checkContext() should return error for cancelled context")
+		t.Error("checkContext() should return error")
 	}
 	pkgErr := &pkgerrors.PackageError{}
 	if !asPackageError(err, pkgErr) {
 		t.Error("checkContext() should return PackageError")
 	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeContext)
+	if pkgErr.Type != wantType {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, wantType)
 	}
+}
+
+// TestCheckContext_CancelledContext tests checkContext with cancelled context.
+func TestCheckContext_CancelledContext(t *testing.T) {
+	assertCheckContextError(t, testhelpers.CancelledContext(), pkgerrors.ErrTypeContext)
 }
 
 // TestCheckContext_TimeoutContext tests checkContext with timed out context.
 func TestCheckContext_TimeoutContext(t *testing.T) {
-	ctx := testhelpers.TimeoutContext()
-	err := internal.CheckContext(ctx, "test operation")
+	assertCheckContextError(t, testhelpers.TimeoutContext(), pkgerrors.ErrTypeContext)
+}
+
+// runWithCancelledContext runs fn with a cancelled context and asserts it returns an error.
+func runWithCancelledContext(t *testing.T, fn func(*filePackage, context.Context) (interface{}, error), opName string) {
+	t.Helper()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage() failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	cancelledCtx := testhelpers.CancelledContext()
+	fpkg := pkg.(*filePackage)
+	_, err = fn(fpkg, cancelledCtx)
 	if err == nil {
-		t.Error("checkContext() should return error for timed out context")
-	}
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Error("checkContext() should return PackageError")
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeContext)
+		t.Errorf("%s should fail with cancelled context", opName)
 	}
 }
 

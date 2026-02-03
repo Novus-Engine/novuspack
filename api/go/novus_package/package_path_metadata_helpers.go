@@ -21,14 +21,14 @@ import (
 // Returns:
 //   - *metadata.FileEntry: The found FileEntry, or nil if not found
 //   - error: *PackageError if file not found
-func (p *filePackage) findFileEntryByPath(path string) (*metadata.FileEntry, error) {
+func (p *filePackage) findFileEntryByPath(pathStr string) (*metadata.FileEntry, error) {
 	for _, fe := range p.FileEntries {
 		if fe == nil {
 			continue
 		}
 		// Check if any of FileEntry's paths match the search path
 		for _, pe := range fe.Paths {
-			if pe.Path == path {
+			if pe.Path == pathStr {
 				return fe, nil
 			}
 		}
@@ -40,7 +40,7 @@ func (p *filePackage) findFileEntryByPath(path string) (*metadata.FileEntry, err
 		nil,
 		pkgerrors.ValidationErrorContext{
 			Field:    "FilePath",
-			Value:    path,
+			Value:    pathStr,
 			Expected: "existing file path",
 		},
 	)
@@ -54,9 +54,9 @@ func (p *filePackage) findFileEntryByPath(path string) (*metadata.FileEntry, err
 // Returns:
 //   - *metadata.PathMetadataEntry: The found PathMetadataEntry, or nil if not found
 //   - error: *PackageError if path metadata not found
-func (p *filePackage) findPathMetadataByPath(path string) (*metadata.PathMetadataEntry, error) {
+func (p *filePackage) findPathMetadataByPath(pathStr string) (*metadata.PathMetadataEntry, error) {
 	for _, pme := range p.PathMetadataEntries {
-		if pme != nil && pme.Path.Path == path {
+		if pme != nil && pme.Path.Path == pathStr {
 			return pme, nil
 		}
 	}
@@ -67,7 +67,7 @@ func (p *filePackage) findPathMetadataByPath(path string) (*metadata.PathMetadat
 		nil,
 		pkgerrors.ValidationErrorContext{
 			Field:    "Path",
-			Value:    path,
+			Value:    pathStr,
 			Expected: "existing path metadata entry",
 		},
 	)
@@ -113,7 +113,7 @@ func (p *filePackage) setParentPathAssociation(pme *metadata.PathMetadataEntry) 
 
 	// Strip trailing slash for directory paths before computing parent
 	pathForDir := currentPath
-	if len(pathForDir) > 0 && pathForDir[len(pathForDir)-1] == '/' {
+	if pathForDir != "" && pathForDir[len(pathForDir)-1] == '/' {
 		pathForDir = pathForDir[:len(pathForDir)-1]
 	}
 

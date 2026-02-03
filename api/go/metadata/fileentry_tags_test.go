@@ -8,19 +8,153 @@ import (
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
+// fileEntryWithOptionalTagsRaw returns a FileEntry with OptionalDataTagsData set to data.
+func fileEntryWithOptionalTagsRaw(data []byte) *FileEntry {
+	fe := NewFileEntry()
+	fe.OptionalData = []OptionalDataEntry{
+		{DataType: OptionalDataTagsData, DataLength: uint16(len(data)), Data: data},
+	}
+	fe.updateOptionalDataLen()
+	return fe
+}
+
+// fileEntryWithEmptyTagsArray returns a FileEntry with empty JSON array as tags data.
+func fileEntryWithEmptyTagsArray() *FileEntry {
+	return fileEntryWithOptionalTagsRaw([]byte("[]"))
+}
+
+// fileEntryWithCorruptedTagsData returns a FileEntry with invalid JSON as tags data (DataLength 10).
+func fileEntryWithCorruptedTagsData() *FileEntry {
+	fe := NewFileEntry()
+	fe.OptionalData = []OptionalDataEntry{
+		{DataType: OptionalDataTagsData, DataLength: 10, Data: []byte("invalid json")},
+	}
+	fe.updateOptionalDataLen()
+	return fe
+}
+
+// fileEntryWithPartiallyCorruptedTags returns a FileEntry with one valid tag and appended invalid JSON.
+func fileEntryWithPartiallyCorruptedTags() *FileEntry {
+	validTag := generics.NewTag[any]("valid", "value", generics.TagValueTypeString)
+	tags := []*generics.Tag[any]{validTag}
+	tagData, _ := json.Marshal(tags)
+	corruptedData := append(append([]byte(nil), tagData...), []byte(`,"invalid":}`)...)
+	return fileEntryWithOptionalTagsRaw(corruptedData)
+}
+
+// fileEntryWithValidTagPlusCorruptedSuffix builds a FileEntry with one valid tag and a corrupted suffix in the tags array.
+func fileEntryWithValidTagPlusCorruptedSuffix(suffix []byte) *FileEntry {
+	fe := NewFileEntry()
+	validTag := generics.NewTag[any]("valid", "value", generics.TagValueTypeString)
+	tags := []*generics.Tag[any]{validTag}
+	tagData, _ := json.Marshal(tags)
+	arr := []byte(`[`)
+	arr = append(arr, tagData[1:len(tagData)-1]...)
+	arr = append(arr, suffix...)
+	arr = append(arr, []byte(`]`)...)
+	fe.OptionalData = []OptionalDataEntry{
+		{DataType: OptionalDataTagsData, DataLength: uint16(len(arr)), Data: arr},
+	}
+	fe.updateOptionalDataLen()
+	return fe
+}
+
+func fileEntryWithCorruptedIndividualTag() *FileEntry {
+	return fileEntryWithValidTagPlusCorruptedSuffix([]byte(`,{"invalid":}`))
+}
+
+func fileEntryWithPartialCorruptionInvalidArray() *FileEntry {
+	return fileEntryWithValidTagPlusCorruptedSuffix([]byte(`,{"invalid":}]`))
+}
+
+func fileEntryWithCorruptedArrayValidStructure() *FileEntry {
+	fe := NewFileEntry()
+	corruptedArray := []byte(`[{"Key":"tag1","ValueType":0,"Value":null},{"Key":"tag2","ValueType":0,"Value":null}]`)
+	fe.OptionalData = []OptionalDataEntry{
+		{DataType: OptionalDataTagsData, DataLength: uint16(len(corruptedArray)), Data: corruptedArray},
+	}
+	fe.updateOptionalDataLen()
+	return fe
+}
+
+func fileEntryWithAllCorruptedTags() *FileEntry {
+	fe := NewFileEntry()
+	allCorrupted := []byte(`[{"invalid":},{"bad":}]`)
+	fe.OptionalData = []OptionalDataEntry{
+		{DataType: OptionalDataTagsData, DataLength: uint16(len(allCorrupted)), Data: allCorrupted},
+	}
+	fe.updateOptionalDataLen()
+	return fe
+}
+
+func fileEntryWithInvalidValueTypeTags() *FileEntry {
+	fe := NewFileEntry()
+	invalidValueType := []byte(`[{"Key":"tag1","ValueType":17,"Value":"value1"},{"Key":"tag2","ValueType":255,"Value":"value2"}]`)
+	fe.OptionalData = []OptionalDataEntry{
+		{DataType: OptionalDataTagsData, DataLength: uint16(len(invalidValueType)), Data: invalidValueType},
+	}
+	fe.updateOptionalDataLen()
+	return fe
+}
+
+// tagErrorCase is a single case for tag error-handling table tests.
+type tagErrorCase struct {
+	name    string
+	setup   func() *FileEntry
+	run     func(*FileEntry) error
+	wantErr bool
+}
+
+// runTagErrorTable runs a table of tag error-handling cases.
+func runTagErrorTable(t *testing.T, cases []tagErrorCase) {
+	t.Helper()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fe := tc.setup()
+			err := tc.run(fe)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("tag op error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+type getFileEntryTagsCase struct {
+	name      string
+	setup     func() *FileEntry
+	wantCount int
+	wantErr   bool
+}
+
+func runGetFileEntryTagsTable(t *testing.T, tests []getFileEntryTagsCase) {
+	t.Helper()
+	runTagsCountTable(t, tests, GetFileEntryTags, "GetFileEntryTags")
+}
+
+// runTagsCountTable runs a table of tag-count tests for any getTags func that returns ([]*Tag[any], error).
+func runTagsCountTable(t *testing.T, tests []getFileEntryTagsCase, getTags func(*FileEntry) ([]*generics.Tag[any], error), methodName string) {
+	t.Helper()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fe := tt.setup()
+			tags, err := getTags(fe)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("%s() error = %v, wantErr %v", methodName, err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && len(tags) != tt.wantCount {
+				t.Errorf("%s() returned %d tags, want %d", methodName, len(tags), tt.wantCount)
+			}
+		})
+	}
+}
+
 // TestGetFileEntryTags tests GetFileEntryTags function
 func TestGetFileEntryTags(t *testing.T) {
-	tests := []struct {
-		name      string
-		setup     func() *FileEntry
-		wantCount int
-		wantErr   bool
-	}{
+	tests := []getFileEntryTagsCase{
 		{
-			name: "empty tags",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:      "empty tags",
+			setup:     NewFileEntry,
 			wantCount: 0,
 			wantErr:   false,
 		},
@@ -68,146 +202,92 @@ func TestGetFileEntryTags(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "corrupted tags data",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
+			name:      "corrupted tags data",
+			setup:     fileEntryWithCorruptedTagsData,
 			wantCount: 0,
 			wantErr:   true,
 		},
 		{
-			name: "partially corrupted tags",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create tags with one valid and one corrupted tag
-				validTag := generics.NewTag[any]("valid", "value", generics.TagValueTypeString)
-				tags := []*generics.Tag[any]{validTag}
-				tagData, _ := json.Marshal(tags)
-				// Append invalid JSON to create partial corruption
-				corruptedData := append(tagData, []byte(`,"invalid":}`)...)
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(corruptedData)),
-						Data:       corruptedData,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
+			name:      "partially corrupted tags",
+			setup:     fileEntryWithPartiallyCorruptedTags,
 			wantCount: 1,    // Should recover valid tag
 			wantErr:   true, // But report corruption error
 		},
 		{
-			name: "empty tags array",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				tagData := []byte("[]")
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(tagData)),
-						Data:       tagData,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
+			name:      "empty tags array",
+			setup:     fileEntryWithEmptyTagsArray,
 			wantCount: 0,
 			wantErr:   false,
 		},
 		{
-			name: "array with corrupted individual tag",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create array with one valid tag and one corrupted tag
-				validTag := generics.NewTag[any]("valid", "value", generics.TagValueTypeString)
-				tags := []*generics.Tag[any]{validTag}
-				tagData, _ := json.Marshal(tags)
-				// Create array with valid tag followed by corrupted tag
-				corruptedArray := []byte(`[`)
-				corruptedArray = append(corruptedArray, tagData[1:len(tagData)-1]...) // Remove outer brackets
-				corruptedArray = append(corruptedArray, []byte(`,{"invalid":}`)...)
-				corruptedArray = append(corruptedArray, []byte(`]`)...)
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(corruptedArray)),
-						Data:       corruptedArray,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
+			name:      "array with corrupted individual tag",
+			setup:     fileEntryWithCorruptedIndividualTag,
+			wantCount: 1,
+			wantErr:   true,
+		},
+		{
+			name:      "partially corrupted tags",
+			setup:     fileEntryWithPartiallyCorruptedTags,
 			wantCount: 1,    // Should recover valid tag
 			wantErr:   true, // But report corruption error
 		},
 		{
-			name: "partially corrupted tags",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create tags with one valid and one corrupted tag
-				validTag := generics.NewTag[any]("valid", "value", generics.TagValueTypeString)
-				tags := []*generics.Tag[any]{validTag}
-				tagData, _ := json.Marshal(tags)
-				// Append invalid JSON to create partial corruption
-				corruptedData := append(tagData, []byte(`,"invalid":}`)...)
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(corruptedData)),
-						Data:       corruptedData,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			wantCount: 1,    // Should recover valid tag
-			wantErr:   true, // But report corruption error
-		},
-		{
-			name: "empty tags array",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				tagData := []byte("[]")
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(tagData)),
-						Data:       tagData,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
+			name:      "empty tags array",
+			setup:     fileEntryWithEmptyTagsArray,
 			wantCount: 0,
 			wantErr:   false,
 		},
 	}
+	runGetFileEntryTagsTable(t, tests)
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			tags, err := GetFileEntryTags(fe)
+func fileEntryWithTagsForGetByType(t *testing.T) *FileEntry {
+	t.Helper()
+	fe := NewFileEntry()
+	_ = AddFileEntryTag(fe, "str1", "value1", generics.TagValueTypeString)
+	_ = AddFileEntryTag(fe, "str2", "value2", generics.TagValueTypeString)
+	_ = AddFileEntryTag(fe, "int1", int64(42), generics.TagValueTypeInteger)
+	_ = AddFileEntryTag(fe, "int2", int64(100), generics.TagValueTypeInteger)
+	_ = AddFileEntryTag(fe, "bool1", true, generics.TagValueTypeBoolean)
+	_ = AddFileEntryTag(fe, "float1", 3.14, generics.TagValueTypeFloat)
+	return fe
+}
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetFileEntryTags() error = %v, wantErr %v", err, tt.wantErr)
+func runGetFileEntryTagsByTypeCount(t *testing.T, fe *FileEntry, tagType generics.TagValueType, wantCount int) {
+	t.Helper()
+	allTags, err := GetFileEntryTags(fe)
+	if err != nil {
+		t.Errorf("GetFileEntryTags() error = %v", err)
+		return
+	}
+	var count int
+	for _, tag := range allTags {
+		if tag.Type == tagType {
+			count++
+		}
+	}
+	if count != wantCount {
+		t.Errorf("tag type %v count = %d, want %d", tagType, count, wantCount)
+	}
+}
+
+type getFileEntryTagsByTypeCase struct {
+	name      string
+	wantCount int
+	getLen    func(*FileEntry) (int, error)
+}
+
+func runGetFileEntryTagsByTypeTable(t *testing.T, fe *FileEntry, cases []getFileEntryTagsByTypeCase) {
+	t.Helper()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			n, err := c.getLen(fe)
+			if err != nil {
+				t.Errorf("GetFileEntryTagsByType() error = %v", err)
 				return
 			}
-
-			if !tt.wantErr {
-				if len(tags) != tt.wantCount {
-					t.Errorf("GetFileEntryTags() returned %d tags, want %d", len(tags), tt.wantCount)
-				}
+			if n != c.wantCount {
+				t.Errorf("GetFileEntryTagsByType() returned %d tags, want %d", n, c.wantCount)
 			}
 		})
 	}
@@ -215,84 +295,30 @@ func TestGetFileEntryTags(t *testing.T) {
 
 // TestGetFileEntryTagsByType tests GetFileEntryTagsByType function
 func TestGetFileEntryTagsByType(t *testing.T) {
-	fe := NewFileEntry()
-	// Add tags using AddFileEntryTag to ensure proper serialization
-	_ = AddFileEntryTag(fe, "str1", "value1", generics.TagValueTypeString)
-	_ = AddFileEntryTag(fe, "str2", "value2", generics.TagValueTypeString)
-	_ = AddFileEntryTag(fe, "int1", int64(42), generics.TagValueTypeInteger)
-	_ = AddFileEntryTag(fe, "int2", int64(100), generics.TagValueTypeInteger)
-	_ = AddFileEntryTag(fe, "bool1", true, generics.TagValueTypeBoolean)
-	_ = AddFileEntryTag(fe, "float1", 3.14, generics.TagValueTypeFloat)
-
-	tests := []struct {
-		name      string
-		wantCount int
-		wantErr   bool
-	}{
-		{"string tags", 2, false},
-		{"integer tags", 2, false},
-		{"boolean tags", 1, false},
-		{"float tags", 1, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var err error
-			var result []*generics.Tag[any]
-
-			switch tt.name {
-			case "string tags":
-				strTags, err := GetFileEntryTagsByType[string](fe)
-				if err == nil {
-					result = make([]*generics.Tag[any], len(strTags))
-					for i, t := range strTags {
-						result[i] = generics.NewTag[any](t.Key, t.Value, t.Type)
-					}
-				}
-			case "integer tags":
-				// Note: After JSON round-trip, integers may be float64, so we check by TagValueType
-				allTags, err := GetFileEntryTags(fe)
-				if err == nil {
-					for _, tag := range allTags {
-						if tag.Type == generics.TagValueTypeInteger {
-							result = append(result, tag)
-						}
-					}
-				}
-			case "boolean tags":
-				boolTags, err := GetFileEntryTagsByType[bool](fe)
-				if err == nil {
-					result = make([]*generics.Tag[any], len(boolTags))
-					for i, t := range boolTags {
-						result[i] = generics.NewTag[any](t.Key, t.Value, t.Type)
-					}
-				}
-			case "float tags":
-				// Note: After JSON round-trip, both integers and floats may be float64
-				// So we check by TagValueType to distinguish
-				allTags, err := GetFileEntryTags(fe)
-				if err == nil {
-					for _, tag := range allTags {
-						if tag.Type == generics.TagValueTypeFloat {
-							result = append(result, tag)
-						}
-					}
-				}
+	fe := fileEntryWithTagsForGetByType(t)
+	runGetFileEntryTagsByTypeTable(t, fe, []getFileEntryTagsByTypeCase{
+		{"string tags", 2, func(f *FileEntry) (int, error) {
+			tags, err := GetFileEntryTagsByType[string](f)
+			if err != nil {
+				return 0, err
 			}
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetFileEntryTagsByType() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			return len(tags), nil
+		}},
+		{"boolean tags", 1, func(f *FileEntry) (int, error) {
+			tags, err := GetFileEntryTagsByType[bool](f)
+			if err != nil {
+				return 0, err
 			}
-
-			if len(result) != tt.wantCount {
-				t.Errorf("GetFileEntryTagsByType() returned %d tags, want %d", len(result), tt.wantCount)
-			}
-		})
-	}
+			return len(tags), nil
+		}},
+	})
+	t.Run("integer tags", func(t *testing.T) { runGetFileEntryTagsByTypeCount(t, fe, generics.TagValueTypeInteger, 2) })
+	t.Run("float tags", func(t *testing.T) { runGetFileEntryTagsByTypeCount(t, fe, generics.TagValueTypeFloat, 1) })
 }
 
 // TestGetFileEntryTag tests GetFileEntryTag function
+//
+//nolint:gocognit // table-driven get-tag cases
 func TestGetFileEntryTag(t *testing.T) {
 	fe := NewFileEntry()
 	tags := []*generics.Tag[any]{
@@ -386,6 +412,8 @@ func TestGetFileEntryTag_WithAny(t *testing.T) {
 }
 
 // TestAddFileEntryTag tests AddFileEntryTag function
+//
+//nolint:gocognit // table-driven add-tag cases
 func TestAddFileEntryTag(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -402,7 +430,7 @@ func TestAddFileEntryTag(t *testing.T) {
 			value:   "John Doe",
 			tagType: generics.TagValueTypeString,
 			wantErr: false,
-			setup:   func() *FileEntry { return NewFileEntry() },
+			setup:   NewFileEntry,
 		},
 		{
 			name:    "add integer tag",
@@ -410,7 +438,7 @@ func TestAddFileEntryTag(t *testing.T) {
 			value:   int64(1),
 			tagType: generics.TagValueTypeInteger,
 			wantErr: false,
-			setup:   func() *FileEntry { return NewFileEntry() },
+			setup:   NewFileEntry,
 		},
 		{
 			name:    "add boolean tag",
@@ -418,7 +446,7 @@ func TestAddFileEntryTag(t *testing.T) {
 			value:   true,
 			tagType: generics.TagValueTypeBoolean,
 			wantErr: false,
-			setup:   func() *FileEntry { return NewFileEntry() },
+			setup:   NewFileEntry,
 		},
 		{
 			name:    "duplicate key error",
@@ -477,6 +505,8 @@ func TestAddFileEntryTag(t *testing.T) {
 }
 
 // TestSetFileEntryTag tests SetFileEntryTag function
+//
+//nolint:gocognit // table-driven set-tag cases
 func TestSetFileEntryTag(t *testing.T) {
 	fe := NewFileEntry()
 	_ = AddFileEntryTag(fe, "author", "John Doe", generics.TagValueTypeString)
@@ -535,6 +565,8 @@ func TestSetFileEntryTag(t *testing.T) {
 }
 
 // TestAddFileEntryTags tests AddFileEntryTags function
+//
+//nolint:gocognit // table-driven add-tags cases
 func TestAddFileEntryTags(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -550,7 +582,7 @@ func TestAddFileEntryTags(t *testing.T) {
 				generics.NewTag[any]("key2", int64(42), generics.TagValueTypeInteger),
 			},
 			wantErr: false,
-			setup:   func() *FileEntry { return NewFileEntry() },
+			setup:   NewFileEntry,
 		},
 		{
 			name: "duplicate key error",
@@ -560,7 +592,7 @@ func TestAddFileEntryTags(t *testing.T) {
 			},
 			wantErr: true,
 			errType: pkgerrors.ErrTypeValidation,
-			setup:   func() *FileEntry { return NewFileEntry() },
+			setup:   NewFileEntry,
 		},
 		{
 			name: "duplicate with existing tag",
@@ -608,6 +640,8 @@ func TestAddFileEntryTags(t *testing.T) {
 }
 
 // TestSetFileEntryTags tests SetFileEntryTags function
+//
+//nolint:gocognit // table-driven set-tags cases
 func TestSetFileEntryTags(t *testing.T) {
 	fe := NewFileEntry()
 	_ = AddFileEntryTag(fe, "key1", "value1", generics.TagValueTypeString)
@@ -658,6 +692,8 @@ func TestSetFileEntryTags(t *testing.T) {
 }
 
 // TestRemoveFileEntryTag tests RemoveFileEntryTag function
+//
+//nolint:gocognit // table-driven remove-tag cases
 func TestRemoveFileEntryTag(t *testing.T) {
 	fe := NewFileEntry()
 	_ = AddFileEntryTag(fe, "key1", "value1", generics.TagValueTypeString)
@@ -736,30 +772,16 @@ func TestHasFileEntryTag(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "empty file entry",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
-			key:  "anykey",
-			want: false,
+			name:  "empty file entry",
+			setup: NewFileEntry,
+			key:   "anykey",
+			want:  false,
 		},
 		{
-			name: "tag with error in getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			key:  "anykey",
-			want: false, // Should return false on error
+			name:  "tag with error in getTagsFromOptionalData",
+			setup: fileEntryWithCorruptedTagsData,
+			key:   "anykey",
+			want:  false, // Should return false on error
 		},
 	}
 
@@ -791,11 +813,9 @@ func TestHasFileEntryTags(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "no tags",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
-			want: false,
+			name:  "no tags",
+			setup: NewFileEntry,
+			want:  false,
 		},
 		{
 			name: "multiple tags",
@@ -808,21 +828,9 @@ func TestHasFileEntryTags(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "tag with error in getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			want: false, // Should return false on error
+			name:  "tag with error in getTagsFromOptionalData",
+			setup: fileEntryWithCorruptedTagsData,
+			want:  false, // Should return false on error
 		},
 	}
 
@@ -854,10 +862,8 @@ func TestSyncFileEntryTags(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "sync with no tags",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:    "sync with no tags",
+			setup:   NewFileEntry,
 			wantErr: false,
 		},
 		{
@@ -979,12 +985,7 @@ func TestSyncTagsToOptionalData_EdgeCases(t *testing.T) {
 
 // TestGetFileEntryEffectiveTags tests GetFileEntryEffectiveTags function
 func TestGetFileEntryEffectiveTags(t *testing.T) {
-	tests := []struct {
-		name      string
-		setup     func() *FileEntry
-		wantCount int
-		wantErr   bool
-	}{
+	tests := []getFileEntryTagsCase{
 		{
 			name: "file with tags",
 			setup: func() *FileEntry {
@@ -996,10 +997,8 @@ func TestGetFileEntryEffectiveTags(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "file with no tags",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:      "file with no tags",
+			setup:     NewFileEntry,
 			wantCount: 0,
 			wantErr:   false,
 		},
@@ -1060,50 +1059,12 @@ func TestGetFileEntryEffectiveTags(t *testing.T) {
 			wantErr:   false,
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			effectiveTags, err := GetFileEntryEffectiveTags(fe)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetFileEntryEffectiveTags() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if len(effectiveTags) != tt.wantCount {
-				t.Errorf("GetFileEntryEffectiveTags() returned %d tags, want %d", len(effectiveTags), tt.wantCount)
-			}
-		})
-	}
+	runTagsCountTable(t, tests, GetFileEntryEffectiveTags, "GetFileEntryEffectiveTags")
 }
 
 // TestGetFileEntryInheritedTags tests GetFileEntryInheritedTags function
 func TestGetFileEntryInheritedTags(t *testing.T) {
-	// Create hierarchy: root -> parent -> child
-	root := &PathMetadataEntry{
-		Path: generics.PathEntry{PathLength: 1, Path: "/"},
-		Type: PathMetadataTypeDirectory,
-		Inheritance: &PathInheritance{
-			Enabled:  true,
-			Priority: 1,
-		},
-		Properties: []*generics.Tag[any]{
-			{Key: "root-tag", Value: "root-value", Type: generics.TagValueTypeString},
-		},
-	}
-
-	parent := &PathMetadataEntry{
-		Path: generics.PathEntry{PathLength: 4, Path: "dir"},
-		Type: PathMetadataTypeDirectory,
-		Inheritance: &PathInheritance{
-			Enabled:  true,
-			Priority: 2,
-		},
-		Properties: []*generics.Tag[any]{
-			{Key: "parent-tag", Value: "parent-value", Type: generics.TagValueTypeString},
-		},
-	}
+	root, parent := pathMetadataRootParentFixture()
 	parent.SetParentPath(root)
 
 	fe := NewFileEntry()
@@ -1119,17 +1080,10 @@ func TestGetFileEntryInheritedTags(t *testing.T) {
 
 	_ = fe.AssociateWithPathMetadata(child)
 
-	tests := []struct {
-		name      string
-		setup     func() *FileEntry
-		wantCount int
-		wantErr   bool
-	}{
+	tests := []getFileEntryTagsCase{
 		{
-			name: "file with no inheritance",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:      "file with no inheritance",
+			setup:     NewFileEntry,
 			wantCount: 0,
 			wantErr:   false,
 		},
@@ -1152,22 +1106,7 @@ func TestGetFileEntryInheritedTags(t *testing.T) {
 			wantErr:   false,
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			inheritedTags, err := GetFileEntryInheritedTags(fe)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetFileEntryInheritedTags() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if len(inheritedTags) != tt.wantCount {
-				t.Errorf("GetFileEntryInheritedTags() returned %d tags, want %d", len(inheritedTags), tt.wantCount)
-			}
-		})
-	}
+	runTagsCountTable(t, tests, GetFileEntryInheritedTags, "GetFileEntryInheritedTags")
 }
 
 // TestFileEntryTagOperations_AllValueTypes tests tag operations with all TagValueType values
@@ -1231,326 +1170,86 @@ func TestFileEntryTagOperations_AllValueTypes(t *testing.T) {
 
 // TestGetFileEntryTags_CorruptionScenarios tests various corruption scenarios
 func TestGetFileEntryTags_CorruptionScenarios(t *testing.T) {
-	tests := []struct {
-		name      string
-		setup     func() *FileEntry
-		wantCount int
-		wantErr   bool
-	}{
+	tests := []getFileEntryTagsCase{
 		{
-			name: "all tags corrupted but array structure valid",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create array with tags that have invalid structure
-				// Use tags that will unmarshal but have zero ValueType (which is invalid)
-				corruptedArray := []byte(`[{"Key":"tag1","ValueType":0,"Value":null},{"Key":"tag2","ValueType":0,"Value":null}]`)
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(corruptedArray)),
-						Data:       corruptedArray,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			wantCount: 2, // Tags unmarshal successfully (zero values are valid)
+			name:      "all tags corrupted but array structure valid",
+			setup:     fileEntryWithCorruptedArrayValidStructure,
+			wantCount: 2,
 			wantErr:   false,
 		},
 		{
-			name: "partial corruption with some valid tags",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create array with mix of valid and corrupted tags
-				// Use the same approach as existing "array with corrupted individual tag" test
-				// Create valid tag first
-				validTag := generics.NewTag[any]("valid", "value", generics.TagValueTypeString)
-				tags := []*generics.Tag[any]{validTag}
-				tagData, _ := json.Marshal(tags)
-				// Create array with valid tag followed by corrupted tag
-				// Use the same approach as existing "array with corrupted individual tag" test
-				// The corrupted tag {"invalid":} is invalid JSON, so it will fail array parsing
-				// This tests the path where array structure itself is invalid
-				partialCorruption := []byte(`[`)
-				partialCorruption = append(partialCorruption, tagData[1:len(tagData)-1]...) // Remove outer brackets
-				partialCorruption = append(partialCorruption, []byte(`,{"invalid":}]`)...)
-				partialCorruption = append(partialCorruption, []byte(`]`)...)
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(partialCorruption)),
-						Data:       partialCorruption,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			wantCount: 0,    // Array structure invalid, so no tags parsed
-			wantErr:   true, // But report corruption error
+			name:      "partial corruption with some valid tags",
+			setup:     fileEntryWithPartialCorruptionInvalidArray,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
-			name: "all tags corrupted - entry removed",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create array with all tags corrupted (invalid JSON objects)
-				// Use valid array structure but with tags that fail individual unmarshaling
-				allCorrupted := []byte(`[{"invalid":},{"bad":}]`)
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(allCorrupted)),
-						Data:       allCorrupted,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			wantCount: 0,    // No valid tags, entry should be removed
-			wantErr:   true, // Corruption error should be returned
+			name:      "all tags corrupted - entry removed",
+			setup:     fileEntryWithAllCorruptedTags,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
-			name: "tags with invalid ValueType greater than maximum",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create array with tags that have valid JSON structure but invalid ValueType
-				// ValueType 0x11 (17) is greater than TagValueTypeNovusPackMetadata (0x10)
-				invalidValueType := []byte(`[{"Key":"tag1","ValueType":17,"Value":"value1"},{"Key":"tag2","ValueType":255,"Value":"value2"}]`)
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: uint16(len(invalidValueType)),
-						Data:       invalidValueType,
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			wantCount: 0,    // Invalid tags should be skipped
-			wantErr:   true, // Corruption error should be returned
+			name:      "tags with invalid ValueType greater than maximum",
+			setup:     fileEntryWithInvalidValueTypeTags,
+			wantCount: 0,
+			wantErr:   true,
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			tags, err := GetFileEntryTags(fe)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetFileEntryTags() error = %v, wantErr %v", err, tt.wantErr)
-				if err != nil {
-					t.Errorf("Error details: %+v", err)
-				}
-				return
-			}
-
-			if len(tags) != tt.wantCount {
-				t.Errorf("GetFileEntryTags() returned %d tags, want %d", len(tags), tt.wantCount)
-			}
-		})
-	}
+	runGetFileEntryTagsTable(t, tests)
 }
 
-// TestAddFileEntryTag_ErrorHandling tests error handling in AddFileEntryTag
-func TestAddFileEntryTag_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func() *FileEntry
-		key     string
-		value   string
-		wantErr bool
-	}{
+// TestAddAndSetFileEntryTag_ErrorHandling covers error handling for Add and Set (same getTagsFromOptionalData path).
+func TestAddAndSetFileEntryTag_ErrorHandling(t *testing.T) {
+	runTagErrorTable(t, []tagErrorCase{
 		{
-			name: "error from getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			key:     "test",
-			value:   "value",
+			name:    "AddFileEntryTag: error from getTagsFromOptionalData",
+			setup:   fileEntryWithCorruptedTagsData,
+			run:     func(fe *FileEntry) error { return AddFileEntryTag(fe, "test", "value", generics.TagValueTypeString) },
 			wantErr: true,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			err := AddFileEntryTag(fe, tt.key, tt.value, generics.TagValueTypeString)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("AddFileEntryTag() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-// TestSetFileEntryTag_ErrorHandling tests error handling in SetFileEntryTag
-func TestSetFileEntryTag_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func() *FileEntry
-		key     string
-		value   string
-		wantErr bool
-	}{
 		{
-			name: "error from getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			key:     "test",
-			value:   "value",
+			name:    "SetFileEntryTag: error from getTagsFromOptionalData",
+			setup:   fileEntryWithCorruptedTagsData,
+			run:     func(fe *FileEntry) error { return SetFileEntryTag(fe, "test", "value", generics.TagValueTypeString) },
 			wantErr: true,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			err := SetFileEntryTag(fe, tt.key, tt.value, generics.TagValueTypeString)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SetFileEntryTag() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	})
 }
 
 // TestRemoveFileEntryTag_ErrorHandling tests error handling in RemoveFileEntryTag
 func TestRemoveFileEntryTag_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func() *FileEntry
-		key     string
-		wantErr bool
-	}{
-		{
-			name: "error from getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			key:     "test",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			err := RemoveFileEntryTag(fe, tt.key)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RemoveFileEntryTag() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	runTagErrorTable(t, []tagErrorCase{{
+		name:    "error from getTagsFromOptionalData",
+		setup:   fileEntryWithCorruptedTagsData,
+		run:     func(fe *FileEntry) error { return RemoveFileEntryTag(fe, "test") },
+		wantErr: true,
+	}})
 }
 
 // TestGetFileEntryEffectiveTags_ErrorHandling tests error handling in GetFileEntryEffectiveTags
 func TestGetFileEntryEffectiveTags_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func() *FileEntry
-		wantErr bool
-	}{
-		{
-			name: "error from GetFileEntryTags",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			_, err := GetFileEntryEffectiveTags(fe)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetFileEntryEffectiveTags() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	runTagErrorTable(t, []tagErrorCase{{
+		name:    "error from GetFileEntryTags",
+		setup:   fileEntryWithCorruptedTagsData,
+		run:     func(fe *FileEntry) error { _, err := GetFileEntryEffectiveTags(fe); return err },
+		wantErr: true,
+	}})
 }
 
 // TestGetFileEntryTagsByType_ErrorHandling tests error handling in GetFileEntryTagsByType
 func TestGetFileEntryTagsByType_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func() *FileEntry
-		wantErr bool
-	}{
-		{
-			name: "error from GetFileEntryTags",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			_, err := GetFileEntryTagsByType[string](fe)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetFileEntryTagsByType() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	runTagErrorTable(t, []tagErrorCase{{
+		name:    "error from GetFileEntryTags",
+		setup:   fileEntryWithCorruptedTagsData,
+		run:     func(fe *FileEntry) error { _, err := GetFileEntryTagsByType[string](fe); return err },
+		wantErr: true,
+	}})
 }
 
 // TestGetFileEntryTag_ErrorHandling tests error handling in GetFileEntryTag
+//
+//nolint:gocognit // table-driven error-handling cases
 func TestGetFileEntryTag_ErrorHandling(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -1560,20 +1259,8 @@ func TestGetFileEntryTag_ErrorHandling(t *testing.T) {
 		errType pkgerrors.ErrorType
 	}{
 		{
-			name: "error from getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
+			name:    "error from getTagsFromOptionalData",
+			setup:   fileEntryWithCorruptedTagsData,
 			key:     "test",
 			wantErr: true,
 			errType: pkgerrors.ErrTypeCorruption,
@@ -1620,86 +1307,20 @@ func TestGetFileEntryTag_ErrorHandling(t *testing.T) {
 	}
 }
 
+var fileEntryTagsErrorCase = []*generics.Tag[any]{generics.NewTag[any]("key1", "value1", generics.TagValueTypeString)}
+
 // TestAddFileEntryTags_ErrorHandling tests error handling in AddFileEntryTags
 func TestAddFileEntryTags_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func() *FileEntry
-		tags    []*generics.Tag[any]
-		wantErr bool
-	}{
-		{
-			name: "error from getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			tags: []*generics.Tag[any]{
-				generics.NewTag[any]("key1", "value1", generics.TagValueTypeString),
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			err := AddFileEntryTags(fe, tt.tags)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("AddFileEntryTags() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	runTagErrorTable(t, []tagErrorCase{{
+		name: "error from getTagsFromOptionalData", setup: fileEntryWithCorruptedTagsData,
+		run: func(fe *FileEntry) error { return AddFileEntryTags(fe, fileEntryTagsErrorCase) }, wantErr: true,
+	}})
 }
 
 // TestSetFileEntryTags_ErrorHandling tests error handling in SetFileEntryTags
 func TestSetFileEntryTags_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func() *FileEntry
-		tags    []*generics.Tag[any]
-		wantErr bool
-	}{
-		{
-			name: "error from getTagsFromOptionalData",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				// Create corrupted optional data
-				fe.OptionalData = []OptionalDataEntry{
-					{
-						DataType:   OptionalDataTagsData,
-						DataLength: 10,
-						Data:       []byte("invalid json"),
-					},
-				}
-				fe.updateOptionalDataLen()
-				return fe
-			},
-			tags: []*generics.Tag[any]{
-				generics.NewTag[any]("key1", "value1", generics.TagValueTypeString),
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			err := SetFileEntryTags(fe, tt.tags)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SetFileEntryTags() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	runTagErrorTable(t, []tagErrorCase{{
+		name: "error from getTagsFromOptionalData", setup: fileEntryWithCorruptedTagsData,
+		run: func(fe *FileEntry) error { return SetFileEntryTags(fe, fileEntryTagsErrorCase) }, wantErr: true,
+	}})
 }

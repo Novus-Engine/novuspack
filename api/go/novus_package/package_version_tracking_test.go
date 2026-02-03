@@ -116,8 +116,7 @@ func TestPackage_VersionTracking_SyncToHeader(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
-		return
+		t.Fatalf("Write failed: %v", err)
 	}
 
 	// Verify versions are preserved (would need to reopen to check header)
@@ -145,15 +144,13 @@ func TestPackage_VersionTracking_SyncFromHeader(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
-		return
+		t.Fatalf("Write failed: %v", err)
 	}
 
 	// Reopen and verify versions are loaded from header
 	pkg2, err := OpenPackage(ctx, tmpPkg)
 	if err != nil {
-		t.Logf("OpenPackage failed: %v (may require complete Write implementation)", err)
-		return
+		t.Fatalf("OpenPackage failed: %v", err)
 	}
 	defer func() { _ = pkg2.Close() }()
 

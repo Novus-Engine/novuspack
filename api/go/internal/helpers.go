@@ -26,6 +26,7 @@ package internal
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -115,10 +116,8 @@ func ReadAndValidateHeader(ctx context.Context, reader io.Reader) (*fileformat.P
 		return nil, err
 	}
 
-	header := fileformat.NewPackageHeader()
-	_, err := header.ReadFrom(reader)
+	header, err := readPackageHeader(reader)
 	if err != nil {
-		// Check if this is a magic number error from ReadFrom
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "magic") {
 			return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, errMsg, err, struct{}{})
@@ -126,14 +125,67 @@ func ReadAndValidateHeader(ctx context.Context, reader io.Reader) (*fileformat.P
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "failed to read package header", err, struct{}{})
 	}
 
-	// Note: ReadFrom already validates the magic number, so we don't need to validate it again.
-
-	// Validate header structure
-	if err := header.Validate(); err != nil {
+	if err := validatePackageHeader(header); err != nil {
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid package header", err, struct{}{})
 	}
 
 	return header, nil
+}
+
+func readPackageHeader(reader io.Reader) (*fileformat.PackageHeader, error) {
+	header := fileformat.NewPackageHeader()
+	if err := binary.Read(reader, binary.LittleEndian, header); err != nil {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			return nil, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, fmt.Sprintf("failed to read header: incomplete data (expected %d bytes)", fileformat.PackageHeaderSize), pkgerrors.ValidationErrorContext{
+				Field:    "Header",
+				Value:    nil,
+				Expected: fmt.Sprintf("%d bytes", fileformat.PackageHeaderSize),
+			})
+		}
+		return nil, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read header", pkgerrors.ValidationErrorContext{
+			Field:    "Header",
+			Value:    nil,
+			Expected: fmt.Sprintf("%d bytes", fileformat.PackageHeaderSize),
+		})
+	}
+
+	if header.Magic != fileformat.NVPKMagic {
+		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid magic number", nil, pkgerrors.ValidationErrorContext{
+			Field:    "Magic",
+			Value:    fmt.Sprintf("0x%08X", header.Magic),
+			Expected: fmt.Sprintf("0x%08X", fileformat.NVPKMagic),
+		})
+	}
+
+	return header, nil
+}
+
+func validatePackageHeader(header *fileformat.PackageHeader) error {
+	if header == nil {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package header is nil", nil, struct{}{})
+	}
+	if header.Magic != fileformat.NVPKMagic {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid magic number", nil, pkgerrors.ValidationErrorContext{
+			Field:    "Magic",
+			Value:    fmt.Sprintf("0x%08X", header.Magic),
+			Expected: fmt.Sprintf("0x%08X", fileformat.NVPKMagic),
+		})
+	}
+	if header.FormatVersion != fileformat.FormatVersion {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "unsupported format version", nil, pkgerrors.ValidationErrorContext{
+			Field:    "FormatVersion",
+			Value:    header.FormatVersion,
+			Expected: fmt.Sprintf("%d", fileformat.FormatVersion),
+		})
+	}
+	if header.Reserved != 0 {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "reserved field must be 0", nil, pkgerrors.ValidationErrorContext{
+			Field:    "Reserved",
+			Value:    header.Reserved,
+			Expected: "0",
+		})
+	}
+	return nil
 }
 
 // LoadFileEntry loads a FileEntry from the specified offset in the file.
@@ -186,7 +238,7 @@ func LoadFileEntry(file *os.File, offset uint64) (*metadata.FileEntry, error) {
 //   - []string: Canonical path segments
 //   - error: Validation error if path would escape root or result in empty path
 //
-// Specification: api_core.md: 1.1.2 Package Path Semantics
+// Specification: api_core.md: 2.1.3 Dot Segment Canonicalization
 func canonicalizePathSegments(path string) ([]string, error) {
 	// Split path by separator
 	segments := strings.Split(path, "/")
@@ -238,7 +290,7 @@ func canonicalizePathSegments(path string) ([]string, error) {
 //   - string: Normalized canonical path with leading '/'
 //   - error: Validation error if path is invalid or would escape root
 //
-// Specification: api_core.md: 1.1.2 Package Path Semantics
+// Specification: api_core.md: 12.1 NormalizePackagePath Function
 func NormalizePackagePath(path string) (string, error) {
 	if path == "" {
 		return "", pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "path cannot be empty", nil, pkgerrors.ValidationErrorContext{
@@ -328,7 +380,7 @@ func NormalizePackagePath(path string) (string, error) {
 // Returns:
 //   - string: Path in display format (without leading "/")
 //
-// Specification: api_core.md: 1.1.2 Package Path Semantics
+// Specification: api_core.md: 12.2 ToDisplayPath Function
 func ToDisplayPath(storedPath string) string {
 	// Strip leading "/" for display
 	// Users should see relative paths, not package-root-prefixed paths
@@ -355,7 +407,7 @@ func ToDisplayPath(storedPath string) string {
 //   - []string: Warning messages (empty slice if no warnings)
 //   - error: Only if path exceeds absolute maximum (32,767 bytes)
 //
-// Specification: file_validation.md: 1. File Validation Requirements
+// Specification: api_core.md: 12.4 ValidatePathLength Function
 func ValidatePathLength(path string) ([]string, error) {
 	pathLen := len(path) // UTF-8 byte length
 
@@ -403,7 +455,7 @@ func ValidatePathLength(path string) ([]string, error) {
 // Returns:
 //   - error: Validation error if path is invalid, nil if valid
 //
-// Specification: api_core.md: 1.1.2 Package Path Semantics
+// Specification: api_core.md: 12.3 ValidatePackagePath Function
 func ValidatePackagePath(path string) error {
 	// Reject empty path
 	if path == "" {

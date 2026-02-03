@@ -10,6 +10,9 @@ import (
 	"github.com/novus-engine/novuspack/api/go/internal/testhelpers"
 )
 
+const testErrMsg = "test error"
+const testFieldVal = "test"
+
 // TestErrorType_String tests the ErrorType String method.
 func TestErrorType_String(t *testing.T) {
 	tests := []struct {
@@ -90,19 +93,19 @@ func TestPackageError_Error(t *testing.T) {
 			name: "error with cause",
 			pkgErr: &PackageError{
 				Type:    ErrTypeValidation,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   errors.New("underlying error"),
 			},
-			contains: []string{"[Validation]", "test error", "underlying error"},
+			contains: []string{"[Validation]", testErrMsg, "underlying error"},
 		},
 		{
 			name: "error without cause",
 			pkgErr: &PackageError{
 				Type:    ErrTypeIO,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   nil,
 			},
-			contains: []string{"[IO]", "test error"},
+			contains: []string{"[IO]", testErrMsg},
 		},
 		{
 			name: "error with context",
@@ -143,7 +146,7 @@ func TestPackageError_Unwrap(t *testing.T) {
 			name: "error with cause",
 			pkgErr: &PackageError{
 				Type:    ErrTypeValidation,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   underlyingErr,
 			},
 			expected: underlyingErr,
@@ -152,7 +155,7 @@ func TestPackageError_Unwrap(t *testing.T) {
 			name: "error without cause",
 			pkgErr: &PackageError{
 				Type:    ErrTypeIO,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   nil,
 			},
 			expected: nil,
@@ -184,7 +187,7 @@ func TestPackageError_Is(t *testing.T) {
 			name: "error with cause that matches target",
 			pkgErr: &PackageError{
 				Type:    ErrTypeValidation,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   targetErr,
 			},
 			target:   targetErr,
@@ -194,7 +197,7 @@ func TestPackageError_Is(t *testing.T) {
 			name: "error with cause that doesn't match target",
 			pkgErr: &PackageError{
 				Type:    ErrTypeIO,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   otherErr,
 			},
 			target:   targetErr,
@@ -204,7 +207,7 @@ func TestPackageError_Is(t *testing.T) {
 			name: "error without cause",
 			pkgErr: &PackageError{
 				Type:    ErrTypeSecurity,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   nil,
 			},
 			target:   targetErr,
@@ -214,7 +217,7 @@ func TestPackageError_Is(t *testing.T) {
 			name: "error with nil target",
 			pkgErr: &PackageError{
 				Type:    ErrTypeValidation,
-				Message: "test error",
+				Message: testErrMsg,
 				Cause:   targetErr,
 			},
 			target:   nil,
@@ -236,6 +239,12 @@ func TestPackageError_Is(t *testing.T) {
 func TestNewPackageError(t *testing.T) {
 	underlyingErr := errors.New("underlying error")
 
+	validateWithCause := func(e *PackageError) bool {
+		return e.Type == ErrTypeValidation && e.Message == testErrMsg && e.Cause == underlyingErr && e.Context != nil
+	}
+	validateWithoutCause := func(e *PackageError) bool {
+		return e.Type == ErrTypeIO && e.Message == testErrMsg && e.Cause == nil && e.Context != nil
+	}
 	tests := []struct {
 		name     string
 		errType  ErrorType
@@ -243,48 +252,30 @@ func TestNewPackageError(t *testing.T) {
 		cause    error
 		validate func(*PackageError) bool
 	}{
-		{
-			name:    "with cause",
-			errType: ErrTypeValidation,
-			message: "test error",
-			cause:   underlyingErr,
-			validate: func(e *PackageError) bool {
-				return e.Type == ErrTypeValidation &&
-					e.Message == "test error" &&
-					e.Cause == underlyingErr &&
-					e.Context != nil
-			},
-		},
-		{
-			name:    "without cause",
-			errType: ErrTypeIO,
-			message: "test error",
-			cause:   nil,
-			validate: func(e *PackageError) bool {
-				return e.Type == ErrTypeIO &&
-					e.Message == "test error" &&
-					e.Cause == nil &&
-					e.Context != nil
-			},
-		},
+		{"with cause", ErrTypeValidation, testErrMsg, underlyingErr, validateWithCause},
+		{"without cause", ErrTypeIO, testErrMsg, nil, validateWithoutCause},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := NewPackageError[struct{}](tt.errType, tt.message, tt.cause, struct{}{})
-			if result == nil {
-				t.Fatal("NewPackageError() returned nil")
-			}
-			if !tt.validate(result) {
-				t.Errorf("NewPackageError() validation failed: %+v", result)
-			}
-		})
+		runPackageErrorCase(t, tt.name, NewPackageError[struct{}](tt.errType, tt.message, tt.cause, struct{}{}), tt.validate)
 	}
+}
+
+func runPackageErrorCase(t *testing.T, name string, result *PackageError, validate func(*PackageError) bool) {
+	t.Helper()
+	t.Run(name, func(t *testing.T) {
+		if result == nil {
+			t.Fatal("result is nil")
+		}
+		if !validate(result) {
+			t.Errorf("validation failed: %+v", result)
+		}
+	})
 }
 
 // TestPackageError_WithContext tests the WithContext method.
 func TestPackageError_WithContext(t *testing.T) {
-	pkgErr := NewPackageError[struct{}](ErrTypeValidation, "test error", nil, struct{}{})
+	pkgErr := NewPackageError[struct{}](ErrTypeValidation, testErrMsg, nil, struct{}{})
 
 	result := pkgErr.WithContext("key1", "value1")
 	if result != pkgErr {
@@ -403,7 +394,7 @@ func TestIsPackageError(t *testing.T) {
 
 // TestAs tests the As function.
 func TestAs(t *testing.T) {
-	pkgErr := NewPackageError[struct{}](ErrTypeValidation, "test", nil, struct{}{})
+	pkgErr := NewPackageError[struct{}](ErrTypeValidation, testFieldVal, nil, struct{}{})
 	standardErr := errors.New("standard error")
 
 	tests := []struct {
@@ -454,7 +445,7 @@ func TestAs(t *testing.T) {
 
 // TestGetErrorType tests the GetErrorType function.
 func TestGetErrorType(t *testing.T) {
-	pkgErr := NewPackageError[struct{}](ErrTypeSecurity, "test", nil, struct{}{})
+	pkgErr := NewPackageError[struct{}](ErrTypeSecurity, testFieldVal, nil, struct{}{})
 	standardErr := errors.New("standard error")
 
 	tests := []struct {
@@ -498,7 +489,7 @@ func TestGetErrorType(t *testing.T) {
 
 // TestAddErrorContext tests the AddErrorContext generic function.
 func TestAddErrorContext(t *testing.T) {
-	pkgErr := NewPackageError[struct{}](ErrTypeValidation, "test", nil, struct{}{})
+	pkgErr := NewPackageError[struct{}](ErrTypeValidation, testFieldVal, nil, struct{}{})
 	standardErr := errors.New("standard error")
 
 	tests := []struct {
@@ -570,7 +561,7 @@ func TestAddErrorContext(t *testing.T) {
 
 // TestGetErrorContext tests the GetErrorContext generic function.
 func TestGetErrorContext(t *testing.T) {
-	pkgErr := NewPackageError[struct{}](ErrTypeValidation, "test", nil, struct{}{})
+	pkgErr := NewPackageError[struct{}](ErrTypeValidation, testFieldVal, nil, struct{}{})
 	pkgErr.Context["string_key"] = "string_value"
 	pkgErr.Context["int_key"] = 42
 	pkgErr.Context["wrong_type"] = "not_an_int"
@@ -660,9 +651,15 @@ func TestNewTypedPackageError(t *testing.T) {
 		Field2 int
 	}
 
-	ctx := TestContext{Field1: "test", Field2: 42}
+	ctx := TestContext{Field1: testFieldVal, Field2: 42}
 	underlyingErr := errors.New("underlying")
-
+	makeValidateTyped := func(wantType ErrorType, wantMsg string, wantCause error) func(*PackageError) bool {
+		return func(e *PackageError) bool {
+			typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
+			return e.Type == wantType && e.Message == wantMsg && e.Cause == wantCause && ok &&
+				typedCtx.Field1 == testFieldVal && typedCtx.Field2 == 42
+		}
+	}
 	tests := []struct {
 		name     string
 		errType  ErrorType
@@ -671,50 +668,12 @@ func TestNewTypedPackageError(t *testing.T) {
 		context  TestContext
 		validate func(*PackageError) bool
 	}{
-		{
-			name:    "with cause",
-			errType: ErrTypeValidation,
-			message: "test error",
-			cause:   underlyingErr,
-			context: ctx,
-			validate: func(e *PackageError) bool {
-				typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
-				return e.Type == ErrTypeValidation &&
-					e.Message == "test error" &&
-					e.Cause == underlyingErr &&
-					ok &&
-					typedCtx.Field1 == "test" &&
-					typedCtx.Field2 == 42
-			},
-		},
-		{
-			name:    "without cause",
-			errType: ErrTypeIO,
-			message: "test error",
-			cause:   nil,
-			context: ctx,
-			validate: func(e *PackageError) bool {
-				typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
-				return e.Type == ErrTypeIO &&
-					e.Message == "test error" &&
-					e.Cause == nil &&
-					ok &&
-					typedCtx.Field1 == "test" &&
-					typedCtx.Field2 == 42
-			},
-		},
+		{"with cause", ErrTypeValidation, testErrMsg, underlyingErr, ctx, makeValidateTyped(ErrTypeValidation, testErrMsg, underlyingErr)},
+		{"without cause", ErrTypeIO, testErrMsg, nil, ctx, makeValidateTyped(ErrTypeIO, testErrMsg, nil)},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := NewTypedPackageError(tt.errType, tt.message, tt.cause, tt.context)
-			if result == nil {
-				t.Fatal("NewTypedPackageError() returned nil")
-			}
-			if !tt.validate(result) {
-				t.Errorf("NewTypedPackageError() validation failed: %+v", result)
-			}
-		})
+		runPackageErrorCase(t, tt.name, NewTypedPackageError(tt.errType, tt.message, tt.cause, tt.context), tt.validate)
 	}
 }
 
@@ -726,8 +685,13 @@ func TestWrapErrorWithContext(t *testing.T) {
 
 	standardErr := errors.New("standard error")
 	pkgErr := NewPackageError[struct{}](ErrTypeValidation, "original", nil, struct{}{})
-	ctx := TestContext{Value: "test"}
-
+	ctx := TestContext{Value: testFieldVal}
+	validateWrapCtx := func(wantType ErrorType, wantMsg string, wantCause error) func(*PackageError) bool {
+		return func(e *PackageError) bool {
+			typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
+			return e.Type == wantType && e.Message == wantMsg && e.Cause == wantCause && ok && typedCtx.Value == testFieldVal
+		}
+	}
 	tests := []struct {
 		name     string
 		err      error
@@ -736,50 +700,12 @@ func TestWrapErrorWithContext(t *testing.T) {
 		context  TestContext
 		validate func(*PackageError) bool
 	}{
-		{
-			name:    "wrap standard error",
-			err:     standardErr,
-			errType: ErrTypeIO,
-			message: "wrapped",
-			context: ctx,
-			validate: func(e *PackageError) bool {
-				typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
-				return e.Type == ErrTypeIO &&
-					e.Message == "wrapped" &&
-					e.Cause == standardErr &&
-					ok &&
-					typedCtx.Value == "test"
-			},
-		},
-		{
-			name:    "wrap PackageError",
-			err:     pkgErr,
-			errType: ErrTypeSecurity,
-			message: "updated",
-			context: ctx,
-			validate: func(e *PackageError) bool {
-				typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
-				return e.Type == ErrTypeSecurity &&
-					e.Message == "updated" &&
-					ok &&
-					typedCtx.Value == "test"
-			},
-		},
-		{
-			name:    "wrap nil error",
-			err:     nil,
-			errType: ErrTypeValidation,
-			message: "new error",
-			context: ctx,
-			validate: func(e *PackageError) bool {
-				typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
-				return e.Type == ErrTypeValidation &&
-					e.Message == "new error" &&
-					e.Cause == nil &&
-					ok &&
-					typedCtx.Value == "test"
-			},
-		},
+		{"wrap standard error", standardErr, ErrTypeIO, "wrapped", ctx, validateWrapCtx(ErrTypeIO, "wrapped", standardErr)},
+		{"wrap PackageError", pkgErr, ErrTypeSecurity, "updated", ctx, func(e *PackageError) bool {
+			typedCtx, ok := GetErrorContext[TestContext](e, "_typed_context")
+			return e.Type == ErrTypeSecurity && e.Message == "updated" && ok && typedCtx.Value == testFieldVal
+		}},
+		{"wrap nil error", nil, ErrTypeValidation, "new error", ctx, validateWrapCtx(ErrTypeValidation, "new error", nil)},
 	}
 
 	for _, tt := range tests {
@@ -805,7 +731,7 @@ func TestMapError(t *testing.T) {
 	}
 
 	sourceCtx := SourceContext{Value: 42}
-	pkgErr := NewTypedPackageError(ErrTypeValidation, "test", nil, sourceCtx)
+	pkgErr := NewTypedPackageError(ErrTypeValidation, testFieldVal, nil, sourceCtx)
 	standardErr := errors.New("standard error")
 
 	tests := []struct {

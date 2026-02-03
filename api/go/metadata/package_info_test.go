@@ -11,6 +11,8 @@ import (
 )
 
 // TestPackageInfo tests the PackageInfo struct.
+//
+//nolint:gocognit,gocyclo // table-driven info cases
 func TestPackageInfo(t *testing.T) {
 	now := time.Now()
 	signatureInfo := signatures.SignatureInfo{
@@ -117,6 +119,8 @@ func TestPackageInfo(t *testing.T) {
 }
 
 // TestNewPackageInfo tests the NewPackageInfo function.
+//
+//nolint:gocognit,gocyclo // table-driven new-info cases
 func TestNewPackageInfo(t *testing.T) {
 	info := NewPackageInfo()
 
@@ -219,6 +223,8 @@ func TestNewPackageInfo(t *testing.T) {
 }
 
 // TestPackageInfo_ZeroValue tests the zero value of PackageInfo.
+//
+//nolint:gocognit,gocyclo // table-driven zero-value cases
 func TestPackageInfo_ZeroValue(t *testing.T) {
 	info := PackageInfo{}
 

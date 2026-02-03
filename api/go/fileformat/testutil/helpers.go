@@ -5,6 +5,7 @@
 package testutil
 
 import (
+	"encoding/binary"
 	"os"
 	"testing"
 
@@ -49,12 +50,23 @@ func CreateTestPackageFile(t *testing.T, path string) {
 	index.FirstEntryOffset = uint64(fileformat.PackageHeaderSize)
 
 	header.IndexStart = uint64(fileformat.PackageHeaderSize)
-	header.IndexSize = uint64(index.Size())
+	header.IndexSize = uint64(16 + int(index.EntryCount)*fileformat.IndexEntrySize)
 
-	if _, err := header.WriteTo(file); err != nil {
+	if err := binary.Write(file, binary.LittleEndian, header); err != nil {
 		t.Fatalf("Failed to write header: %v", err)
 	}
-	if _, err := index.WriteTo(file); err != nil {
-		t.Fatalf("Failed to write index: %v", err)
+	if err := binary.Write(file, binary.LittleEndian, index.EntryCount); err != nil {
+		t.Fatalf("Failed to write index entry count: %v", err)
+	}
+	if err := binary.Write(file, binary.LittleEndian, index.Reserved); err != nil {
+		t.Fatalf("Failed to write index reserved: %v", err)
+	}
+	if err := binary.Write(file, binary.LittleEndian, index.FirstEntryOffset); err != nil {
+		t.Fatalf("Failed to write index first entry offset: %v", err)
+	}
+	for i := range index.Entries {
+		if err := binary.Write(file, binary.LittleEndian, index.Entries[i]); err != nil {
+			t.Fatalf("Failed to write index entry %d: %v", i, err)
+		}
 	}
 }

@@ -6,39 +6,18 @@
 package novus_package
 
 import (
+	"bytes"
 	"context"
 	"path/filepath"
 	"testing"
 )
 
 func TestPackage_ReadFile_NotFound(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-
-	// Try to read non-existent file
-	_, err = pkg.ReadFile(ctx, "/nonexistent.txt")
-	if err == nil {
-		t.Error("ReadFile with non-existent path should fail")
-	}
+	runReadFileExpectFail(t, "/nonexistent.txt")
 }
 
 func TestPackage_ReadFile_EmptyPath(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-
-	// Try to read with empty path
-	_, err = pkg.ReadFile(ctx, "")
-	if err == nil {
-		t.Error("ReadFile with empty path should fail")
-	}
+	runReadFileExpectFail(t, "")
 }
 
 func TestPackage_ReadFile_NotOpen(t *testing.T) {
@@ -61,35 +40,32 @@ func TestPackage_ReadFile_NotOpen(t *testing.T) {
 	}
 }
 
-func TestPackage_ReadFile_FromDisk(t *testing.T) {
+func runReadFileFromDisk(t *testing.T, testContent []byte) {
+	t.Helper()
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage failed: %v", err)
 	}
-
 	ctx := context.Background()
-
-	// Create package to open it (required for ReadFile)
 	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
 	if err := pkg.Create(ctx, tmpPkg); err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
-
-	testContent := []byte("content from disk")
 	entry, err := pkg.AddFileFromMemory(ctx, "/test.txt", testContent, nil)
 	if err != nil {
 		t.Fatalf("AddFileFromMemory failed: %v", err)
 	}
-
-	// Read file
 	data, err := pkg.ReadFile(ctx, entry.Paths[0].Path)
 	if err != nil {
 		t.Fatalf("ReadFile failed: %v", err)
 	}
-
-	if string(data) != string(testContent) {
+	if !bytes.Equal(data, testContent) {
 		t.Errorf("ReadFile content mismatch: got %q, want %q", string(data), string(testContent))
 	}
+}
+
+func TestPackage_ReadFile_FromDisk(t *testing.T) {
+	runReadFileFromDisk(t, []byte("content from disk"))
 }
 
 func TestPackage_ListFiles_Empty(t *testing.T) {
@@ -201,15 +177,13 @@ func TestPackage_ListFiles_RoundTrip(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
-		return
+		t.Fatalf("Write failed: %v", err)
 	}
 
 	// Reopen and list again
 	pkg2, err := OpenPackage(ctx, tmpPkg)
 	if err != nil {
-		t.Logf("OpenPackage failed: %v (may require complete Write implementation)", err)
-		return
+		t.Fatalf("OpenPackage failed: %v", err)
 	}
 	defer func() { _ = pkg2.Close() }()
 
@@ -265,15 +239,7 @@ func TestPackage_GetInfo_Coverage(t *testing.T) {
 		t.Fatal("GetInfo returned nil")
 	}
 
-	// Add files (use different content to avoid deduplication)
-	for i := 0; i < 3; i++ {
-		path := "/file" + string(rune('0'+i)) + ".txt"
-		content := []byte("content " + string(rune('0'+i)))
-		_, err := pkg.AddFileFromMemory(ctx, path, content, nil)
-		if err != nil {
-			t.Fatalf("AddFileFromMemory failed: %v", err)
-		}
-	}
+	addThreeFilesFromMemory(t, ctx, pkg, "/", "content ")
 
 	// Get info after adding files
 	info2, err := pkg.GetInfo()
@@ -312,20 +278,7 @@ func TestPackage_GetMetadata_Coverage(t *testing.T) {
 }
 
 func TestPackage_GetMetadata_NoMetadataLoaded(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	// Get metadata from new package (may require package to be opened/loaded)
-	metadata, err := pkg.GetMetadata()
-	if err != nil {
-		t.Logf("GetMetadata failed: %v (may require package to be opened/loaded)", err)
-		return
-	}
-	if metadata == nil {
-		t.Fatal("GetMetadata returned nil")
-	}
+	runGetMetadataBasic(t)
 }
 
 func TestPackage_OpenPackage_FileNotFound(t *testing.T) {

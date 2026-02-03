@@ -13,6 +13,14 @@ import (
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
+// ensureInfoNotNil returns *PackageError if p.Info is nil.
+func (p *filePackage) ensureInfoNotNil() error {
+	if p.Info == nil {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package info is nil", nil, struct{}{})
+	}
+	return nil
+}
+
 // SetAppID sets or updates the package AppID.
 //
 // Sets the AppID in PackageInfo (the single source of truth) and syncs to header.
@@ -25,16 +33,11 @@ import (
 //
 // Specification: api_metadata.md: 1. Comment Management
 func (p *filePackage) SetAppID(appID uint64) error {
-	// Validate package state
-	if p.Info == nil {
-		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package info is nil", nil, struct{}{})
+	if err := p.ensureInfoNotNil(); err != nil {
+		return err
 	}
-
-	// Update PackageInfo (single source of truth)
 	p.Info.AppID = appID
-	// Increment MetadataVersion in PackageInfo (metadata changed)
 	p.Info.MetadataVersion++
-
 	return nil
 }
 
@@ -91,18 +94,11 @@ func (p *filePackage) HasAppID() bool {
 //
 // Specification: api_metadata.md: 2. AppID Management
 func (p *filePackage) SetVendorID(vendorID uint32) error {
-	// Validate package state
-	if p.Info == nil {
-		return pkgerrors.NewPackageError(
-			pkgerrors.ErrTypeValidation, "package info is nil", nil, struct{}{},
-		)
+	if err := p.ensureInfoNotNil(); err != nil {
+		return err
 	}
-
-	// Update PackageInfo (single source of truth)
 	p.Info.VendorID = vendorID
-	// Increment MetadataVersion in PackageInfo (metadata changed)
 	p.Info.MetadataVersion++
-
 	return nil
 }
 
@@ -184,7 +180,7 @@ func (p *filePackage) SetPackageIdentity(vendorID uint32, appID uint64) error {
 //   - uint64: Current package AppID
 //
 // Specification: api_metadata.md: 4. Combined Management
-func (p *filePackage) GetPackageIdentity() (uint32, uint64) {
+func (p *filePackage) GetPackageIdentity() (vendorID uint32, appID uint64) {
 	return p.GetVendorID(), p.GetAppID()
 }
 

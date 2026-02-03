@@ -244,40 +244,40 @@ func (p *WorkerPool[T]) GetWorkerStats() WorkerStats {
 	return stats
 }
 
+// processJob runs the job through the strategy (or pass-through) and sends the result.
+func (w *Worker[T]) processJob(ctx context.Context, job Job[T]) {
+	if w.strategy == nil {
+		job.Result <- Ok(job.Data)
+		return
+	}
+	jobCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		select {
+		case <-job.Context.Done():
+			cancel()
+		case <-ctx.Done():
+			cancel()
+		case <-jobCtx.Done():
+		}
+	}()
+	result, err := w.strategy.Process(jobCtx, job.Data)
+	cancel()
+	if err != nil {
+		job.Result <- Err[T](err)
+	} else {
+		job.Result <- Ok(result)
+	}
+}
+
 // run is the main loop for a worker.
 func (w *Worker[T]) run(ctx context.Context) {
 	for {
 		select {
 		case job := <-w.workChan:
-			if w.strategy != nil {
-				// Create a context derived from worker's context that also respects job's context
-				jobCtx, cancel := context.WithCancel(ctx)
-				go func() {
-					select {
-					case <-job.Context.Done():
-						cancel()
-					case <-ctx.Done():
-						cancel()
-					case <-jobCtx.Done():
-						// Context already cancelled, exit
-					}
-				}()
-				result, err := w.strategy.Process(jobCtx, job.Data)
-				cancel() // Always cancel to clean up the goroutine
-				if err != nil {
-					job.Result <- Err[T](err)
-				} else {
-					job.Result <- Ok(result)
-				}
-			} else {
-				// No strategy, just pass through
-				job.Result <- Ok(job.Data)
-			}
-
+			w.processJob(ctx, job)
 			w.mu.Lock()
 			w.stats.JobsProcessed++
 			w.mu.Unlock()
-
 		case <-w.done:
 			return
 		case <-ctx.Done():

@@ -11,14 +11,15 @@ import (
 	"testing"
 
 	"github.com/novus-engine/novuspack/api/go/fileformat"
-	"github.com/novus-engine/novuspack/api/go/internal/testhelpers"
 	"github.com/novus-engine/novuspack/api/go/metadata"
-	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
 // =============================================================================
 // TEST: AddDirectoryMetadata
 // =============================================================================
+
+const testDirPath = "test/dir"
+const testDirPathSlash = "test/dir/"
 
 // TestPackage_AddDirectoryMetadata_Basic tests basic AddDirectoryMetadata operation.
 func TestPackage_AddDirectoryMetadata_Basic(t *testing.T) {
@@ -36,7 +37,7 @@ func TestPackage_AddDirectoryMetadata_Basic(t *testing.T) {
 	fpkg.Info = metadata.NewPackageInfo()
 	fpkg.SpecialFiles = make(map[uint16]*metadata.FileEntry)
 	fpkg.PathMetadataEntries = make([]*metadata.PathMetadataEntry, 0)
-	err = fpkg.AddDirectoryMetadata(ctx, "test/dir", nil, nil, nil)
+	err = fpkg.AddDirectoryMetadata(ctx, testDirPath, nil, nil, nil)
 	if err != nil {
 		t.Errorf("AddDirectoryMetadata failed: %v", err)
 	}
@@ -57,7 +58,7 @@ func TestPackage_RemoveDirectoryMetadata_Basic(t *testing.T) {
 
 	// RemoveDirectoryMetadata should return error when LoadPathMetadataFile is not implemented
 	fpkg := pkg.(*filePackage)
-	err = fpkg.RemoveDirectoryMetadata(ctx, "test/dir")
+	err = fpkg.RemoveDirectoryMetadata(ctx, testDirPath)
 	if err == nil {
 		t.Error("RemoveDirectoryMetadata should return error when LoadPathMetadataFile is not implemented")
 	}
@@ -78,7 +79,7 @@ func TestPackage_UpdateDirectoryMetadata_Basic(t *testing.T) {
 
 	// UpdateDirectoryMetadata should return error when LoadPathMetadataFile is not implemented
 	fpkg := pkg.(*filePackage)
-	err = fpkg.UpdateDirectoryMetadata(ctx, "test/dir", nil, nil, nil)
+	err = fpkg.UpdateDirectoryMetadata(ctx, testDirPath, nil, nil, nil)
 	if err == nil {
 		t.Error("UpdateDirectoryMetadata should return error when LoadPathMetadataFile is not implemented")
 	}
@@ -88,20 +89,24 @@ func TestPackage_UpdateDirectoryMetadata_Basic(t *testing.T) {
 // TEST: ListDirectories
 // =============================================================================
 
-// TestPackage_ListDirectories_Basic tests basic ListDirectories operation.
-func TestPackage_ListDirectories_Basic(t *testing.T) {
+func setupOpenFilePackageForPathMetadata(t *testing.T) (Package, *filePackage) {
+	t.Helper()
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
-	defer func() { _ = pkg.Close() }()
-
-	// ListDirectories should now succeed (in-memory operation)
 	fpkg := pkg.(*filePackage)
 	fpkg.isOpen = true
 	fpkg.SpecialFiles = make(map[uint16]*metadata.FileEntry)
 	fpkg.PathMetadataEntries = make([]*metadata.PathMetadataEntry, 0)
-	_, err = fpkg.ListDirectories()
+	return pkg, fpkg
+}
+
+// TestPackage_ListDirectories_Basic tests basic ListDirectories operation.
+func TestPackage_ListDirectories_Basic(t *testing.T) {
+	pkg, fpkg := setupOpenFilePackageForPathMetadata(t)
+	defer func() { _ = pkg.Close() }()
+	_, err := fpkg.ListDirectories()
 	if err != nil {
 		t.Errorf("ListDirectories failed: %v", err)
 	}
@@ -112,6 +117,8 @@ func TestPackage_ListDirectories_Basic(t *testing.T) {
 // =============================================================================
 
 // TestPackage_AddDirectoryMetadata_PathNormalization tests AddDirectoryMetadata path normalization.
+//
+//nolint:gocognit // table-driven path normalization
 func TestPackage_AddDirectoryMetadata_PathNormalization(t *testing.T) {
 	ctx := context.Background()
 	pkg, err := NewPackage()
@@ -124,7 +131,7 @@ func TestPackage_AddDirectoryMetadata_PathNormalization(t *testing.T) {
 	fpkg.PathMetadataEntries = []*metadata.PathMetadataEntry{}
 
 	// Test path that doesn't end with /
-	pathWithoutSlash := "test/dir"
+	pathWithoutSlash := testDirPath
 	err = fpkg.AddDirectoryMetadata(ctx, pathWithoutSlash, nil, nil, nil)
 	// Should fail because SavePathMetadataFile is not implemented, but path should be normalized
 	if err == nil {
@@ -138,7 +145,7 @@ func TestPackage_AddDirectoryMetadata_PathNormalization(t *testing.T) {
 	}
 
 	// Test path that already ends with /
-	pathWithSlash := "test/dir/"
+	pathWithSlash := testDirPathSlash
 	fpkg.PathMetadataEntries = []*metadata.PathMetadataEntry{}
 	err = fpkg.AddDirectoryMetadata(ctx, pathWithSlash, nil, nil, nil)
 	// Should fail because SavePathMetadataFile is not implemented
@@ -179,12 +186,12 @@ func TestPackage_RemoveDirectoryMetadata_PathNormalization(t *testing.T) {
 	fpkg := pkg.(*filePackage)
 
 	// Test path that doesn't end with /
-	pathWithoutSlash := "test/dir"
+	pathWithoutSlash := testDirPath
 	_ = fpkg.RemoveDirectoryMetadata(ctx, pathWithoutSlash)
 	// Should fail because LoadPathMetadataFile is not implemented
 
 	// Test path that already ends with /
-	pathWithSlash := "test/dir/"
+	pathWithSlash := testDirPathSlash
 	_ = fpkg.RemoveDirectoryMetadata(ctx, pathWithSlash)
 	// Should fail because LoadPathMetadataFile is not implemented
 }
@@ -201,12 +208,12 @@ func TestPackage_UpdateDirectoryMetadata_PathNormalization(t *testing.T) {
 	fpkg := pkg.(*filePackage)
 
 	// Test path that doesn't end with /
-	pathWithoutSlash := "test/dir"
+	pathWithoutSlash := testDirPath
 	_ = fpkg.UpdateDirectoryMetadata(ctx, pathWithoutSlash, nil, nil, nil)
 	// Should fail because LoadPathMetadataFile is not implemented
 
 	// Test path that already ends with /
-	pathWithSlash := "test/dir/"
+	pathWithSlash := testDirPathSlash
 	_ = fpkg.UpdateDirectoryMetadata(ctx, pathWithSlash, nil, nil, nil)
 	// Should fail because LoadPathMetadataFile is not implemented
 }
@@ -239,26 +246,24 @@ func TestPackage_ListDirectories_Success(t *testing.T) {
 	}
 }
 
-// TestPackage_ListDirectories_Empty tests ListDirectories with no directories.
-func TestPackage_ListDirectories_Empty(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+func runListDirectoriesWithEntries(t *testing.T, entries []*metadata.PathMetadataEntry, wantCount int, errMsg string) {
+	t.Helper()
+	pkg, fpkg := setupOpenFilePackageForPathMetadata(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Create only files, no directories
-	file1 := createValidPathMetadataEntry("file1.txt", metadata.PathMetadataTypeFile)
-	fpkg.PathMetadataEntries = []*metadata.PathMetadataEntry{file1}
-
+	fpkg.PathMetadataEntries = entries
 	directories, err := fpkg.ListDirectories()
 	if err != nil {
-		t.Errorf("ListDirectories should succeed, got error: %v", err)
+		t.Errorf("ListDirectories %s: %v", errMsg, err)
 	}
-	if len(directories) != 0 {
-		t.Errorf("ListDirectories should return 0 directories, got %d", len(directories))
+	if len(directories) != wantCount {
+		t.Errorf("ListDirectories want %d directories, got %d", wantCount, len(directories))
 	}
+}
+
+// TestPackage_ListDirectories_Empty tests ListDirectories with no directories.
+func TestPackage_ListDirectories_Empty(t *testing.T) {
+	file1 := createValidPathMetadataEntry("file1.txt", metadata.PathMetadataTypeFile)
+	runListDirectoriesWithEntries(t, []*metadata.PathMetadataEntry{file1}, 0, "should succeed")
 }
 
 // =============================================================================
@@ -267,94 +272,27 @@ func TestPackage_ListDirectories_Empty(t *testing.T) {
 
 // TestPackage_AddDirectoryMetadata_ContextCancelled tests AddDirectoryMetadata with cancelled context.
 func TestPackage_AddDirectoryMetadata_ContextCancelled(t *testing.T) {
-	ctx := testhelpers.CancelledContext()
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	err = fpkg.AddDirectoryMetadata(ctx, "test/dir", nil, nil, nil)
-	if err == nil {
-		t.Error("AddDirectoryMetadata() should fail with cancelled context")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Expected error type Context, got: %v", pkgErr.Type)
-	}
+	runContextCancelledTest(t, func(fpkg *filePackage, ctx context.Context) error {
+		return fpkg.AddDirectoryMetadata(ctx, testDirPath, nil, nil, nil)
+	})
 }
 
 // TestPackage_RemoveDirectoryMetadata_ContextCancelled tests RemoveDirectoryMetadata with cancelled context.
 func TestPackage_RemoveDirectoryMetadata_ContextCancelled(t *testing.T) {
-	ctx := testhelpers.CancelledContext()
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	err = fpkg.RemoveDirectoryMetadata(ctx, "test/dir")
-	if err == nil {
-		t.Error("RemoveDirectoryMetadata() should fail with cancelled context")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Expected error type Context, got: %v", pkgErr.Type)
-	}
+	runContextCancelledTest(t, func(fpkg *filePackage, ctx context.Context) error {
+		return fpkg.RemoveDirectoryMetadata(ctx, testDirPath)
+	})
 }
 
 // TestPackage_UpdateDirectoryMetadata_ContextCancelled tests UpdateDirectoryMetadata with cancelled context.
 func TestPackage_UpdateDirectoryMetadata_ContextCancelled(t *testing.T) {
-	ctx := testhelpers.CancelledContext()
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	err = fpkg.UpdateDirectoryMetadata(ctx, "test/dir", nil, nil, nil)
-	if err == nil {
-		t.Error("UpdateDirectoryMetadata() should fail with cancelled context")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Expected error type Context, got: %v", pkgErr.Type)
-	}
+	runContextCancelledTest(t, func(fpkg *filePackage, ctx context.Context) error {
+		return fpkg.UpdateDirectoryMetadata(ctx, testDirPath, nil, nil, nil)
+	})
 }
 
 // TestPackage_ListDirectories_InMemoryOperation tests that ListDirectories is a pure in-memory operation.
 func TestPackage_ListDirectories_InMemoryOperation(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
 	dir1 := createValidPathMetadataEntry("dir1/", metadata.PathMetadataTypeDirectory)
-	fpkg.PathMetadataEntries = []*metadata.PathMetadataEntry{dir1}
-
-	// ListDirectories is now a pure in-memory operation and does not require context
-	directories, err := fpkg.ListDirectories()
-	if err != nil {
-		t.Errorf("ListDirectories should succeed as in-memory operation, got error: %v", err)
-	}
-	if len(directories) != 1 {
-		t.Errorf("ListDirectories should return 1 directory, got %d", len(directories))
-	}
+	runListDirectoriesWithEntries(t, []*metadata.PathMetadataEntry{dir1}, 1, "should succeed as in-memory operation")
 }

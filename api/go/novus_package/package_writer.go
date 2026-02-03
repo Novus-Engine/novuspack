@@ -1,8 +1,8 @@
-// This file implements PackageWriter interface methods: Write, SafeWrite, FastWrite.
+// This file implements Package write operations: Write, SafeWrite, FastWrite.
 // It contains all write operations for persisting package contents to disk as specified
 // in api_core.md and api_writing.md.
 //
-// Note: StageFile and UnstageFile have been removed from the PackageWriter interface
+// Note: StageFile and UnstageFile have been removed from the Package API
 // as per Priority 0 requirements. File management now uses AddFile/AddFileFromMemory/
 // RemoveFile methods instead.
 //
@@ -15,6 +15,9 @@ package novus_package
 
 import (
 	"context"
+	"encoding/binary"
+	"fmt"
+	"hash/crc32"
 	"io"
 	"os"
 	"path/filepath"
@@ -33,7 +36,7 @@ import (
 //
 // This baseline implementation uses SafeWrite with overwrite=true.
 //
-// Specification: api_core.md: 1.2 PackageWriter Interface
+// Specification: api_core.md: 1.3 Package Write Operations
 // Specification: api_writing.md: 1. SafeWrite - Atomic Package Writing
 func (p *filePackage) Write(ctx context.Context) error {
 	// Validate context
@@ -62,8 +65,8 @@ func (p *filePackage) Write(ctx context.Context) error {
 //
 // This baseline implementation writes uncompressed and unencrypted files only.
 //
-// Specification: api_core.md: 1.2 PackageWriter Interface
-// Specification: api_writing.md: 5.3.3 Write Method Compression Handling
+// Specification: api_core.md: 1.3 Package Write Operations
+// Specification: api_writing.md: 5.3.3 Package.Write Method
 func (p *filePackage) SafeWrite(ctx context.Context, overwrite bool) error {
 	// Validate context
 	if err := internal.CheckContext(ctx, "SafeWrite"); err != nil {
@@ -106,8 +109,9 @@ func (p *filePackage) SafeWrite(ctx context.Context, overwrite bool) error {
 	}()
 
 	// Write package to temp file
-	if writeErr = p.writePackageToFile(ctx, tempFile); writeErr != nil {
-		return writeErr
+	if err := p.writePackageToFile(ctx, tempFile); err != nil {
+		writeErr = err
+		return err
 	}
 
 	// Close temp file before rename
@@ -140,7 +144,7 @@ func (p *filePackage) SafeWrite(ctx context.Context, overwrite bool) error {
 //
 // TODO: Implement fast package writing with state-driven compression and signing.
 //
-// Specification: api_core.md: 1.2 PackageWriter Interface
+// Specification: api_core.md: 1.3 Package Write Operations
 // Specification: api_writing.md: 1. SafeWrite - Atomic Package Writing
 func (p *filePackage) FastWrite(ctx context.Context) error {
 	// TODO: Implement fast package writing
@@ -152,7 +156,7 @@ func (p *filePackage) FastWrite(ctx context.Context) error {
 //
 // TODO: Implement package defragmentation.
 //
-// Specification: api_core.md: 1.3 Package Interface
+// Specification: api_basic_operations.md: 16. Package.Defragment Method
 func (p *filePackage) Defragment(ctx context.Context) error {
 	// TODO: Implement defragmentation
 	return pkgerrors.NewPackageError(pkgerrors.ErrTypeUnsupported, "Defragment not yet implemented", nil, struct{}{})
@@ -173,6 +177,8 @@ func (p *filePackage) Defragment(ctx context.Context) error {
 //
 // Returns:
 //   - error: *PackageError on failure
+//
+//nolint:gocognit,gocyclo // write sequence branches
 func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) error {
 	// Update PackageInfo (canonical in-memory metadata)
 	if p.Info == nil {
@@ -203,7 +209,7 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 
 	// Write placeholder header (we'll update it later with correct offsets)
 	headerSize := int64(fileformat.PackageHeaderSize)
-	if _, err := p.header.WriteTo(file); err != nil {
+	if _, err := writePackageHeader(file, p.header); err != nil {
 		return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to write header placeholder")
 	}
 
@@ -221,6 +227,10 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 			continue
 		}
 
+		if fe.IsDataLoaded {
+			p.syncStoredMetadataFromMemory(fe)
+		}
+
 		// Record entry offset in index
 		index.Entries = append(index.Entries, fileformat.IndexEntry{
 			FileID: fe.FileID,
@@ -228,6 +238,7 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 		})
 
 		// Write file entry metadata
+		entryOffset := currentOffset
 		metaWritten, err := fe.WriteMetaTo(file)
 		if err != nil {
 			return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to write file entry metadata")
@@ -235,14 +246,67 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 		currentOffset += uint64(metaWritten)
 
 		// Write file data
-		if fe.IsDataLoaded {
+		switch {
+		case fe.IsDataLoaded:
 			// Write in-memory data
 			n, err := file.Write(fe.Data)
 			if err != nil {
 				return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to write file data")
 			}
 			currentOffset += uint64(n)
-		} else if p.fileHandle != nil {
+		case fe.SourceFile != nil:
+			dataSize := fe.SourceSize
+			if dataSize == 0 {
+				dataSize = int64(fe.OriginalSize)
+			}
+
+			if _, err := fe.SourceFile.Seek(fe.SourceOffset, io.SeekStart); err != nil {
+				return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to seek to source file data")
+			}
+
+			needsChecksums := fe.RawChecksum == 0 || fe.StoredChecksum == 0 || fe.StoredSize == 0
+			if needsChecksums {
+				hasher := crc32.NewIEEE()
+				writer := io.MultiWriter(file, hasher)
+				n, err := io.CopyN(writer, fe.SourceFile, dataSize)
+				if err != nil {
+					return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to copy file data from source")
+				}
+				if n != dataSize {
+					return pkgerrors.NewPackageError(pkgerrors.ErrTypeCorruption, "source file size mismatch during write", nil, pkgerrors.ValidationErrorContext{
+						Field:    "SourceSize",
+						Value:    n,
+						Expected: fmt.Sprintf("%d", dataSize),
+					})
+				}
+
+				checksum := hasher.Sum32()
+				if fe.RawChecksum == 0 {
+					fe.RawChecksum = checksum
+				}
+				if fe.StoredChecksum == 0 {
+					fe.StoredChecksum = checksum
+				}
+				if fe.StoredSize == 0 {
+					fe.StoredSize = uint64(n)
+				}
+
+				currentOffset += uint64(n)
+
+				if err := p.rewriteFileEntryMeta(file, entryOffset, fe); err != nil {
+					return err
+				}
+				if _, err := file.Seek(int64(currentOffset), io.SeekStart); err != nil {
+					return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to seek back to end after metadata rewrite")
+				}
+			} else {
+				n, err := io.CopyN(file, fe.SourceFile, dataSize)
+				if err != nil {
+					return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to copy file data from source")
+				}
+				currentOffset += uint64(n)
+			}
+		case p.fileHandle != nil:
 			// Stream existing file data from opened package
 			// Find data offset in source file
 			var sourceDataOffset uint64
@@ -266,6 +330,12 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 				}
 				currentOffset += uint64(n)
 			}
+		default:
+			return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "file entry has no data source for writing", nil, pkgerrors.ValidationErrorContext{
+				Field:    "FileEntry",
+				Value:    fe.FileID,
+				Expected: "data loaded, source file, or open package handle",
+			})
 		}
 
 		// Check context cancellation periodically
@@ -281,7 +351,7 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 
 	// Write file index
 	indexStart := currentOffset
-	indexWritten, err := index.WriteTo(file)
+	indexWritten, err := writeFileIndexTo(file, index)
 	if err != nil {
 		return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to write file index")
 	}
@@ -295,10 +365,9 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 	if p.Info != nil && p.Info.Comment != "" {
 		commentStart := currentOffset
 
-		// Create PackageComment and serialize properly
-		comment := metadata.NewPackageComment()
-		if err := comment.SetComment(p.Info.Comment); err != nil {
-			return pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "failed to set comment for writing")
+		comment, err := buildPackageComment(p.Info.Comment)
+		if err != nil {
+			return pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "failed to build comment for writing")
 		}
 
 		commentWritten, err := comment.WriteTo(file)
@@ -323,7 +392,7 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 		return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to seek to beginning for header update")
 	}
 
-	if _, err := p.header.WriteTo(file); err != nil {
+	if _, err := writePackageHeader(file, p.header); err != nil {
 		return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to write updated header")
 	}
 
@@ -334,7 +403,19 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 	if p.Info == nil {
 		p.Info = metadata.NewPackageInfo()
 	}
-	p.Info.FileCount = len(p.FileEntries)
+	fileCount := 0
+	for _, fe := range p.FileEntries {
+		if fe == nil {
+			continue
+		}
+		if p.SpecialFiles != nil {
+			if _, ok := p.SpecialFiles[fe.Type]; ok {
+				continue
+			}
+		}
+		fileCount++
+	}
+	p.Info.FileCount = fileCount
 
 	// Note: FileCount doesn't sync to header because header doesn't have a FileCount field
 	// The file count is derived from the file index when reading
@@ -351,4 +432,99 @@ func (p *filePackage) writePackageToFile(ctx context.Context, file *os.File) err
 	p.Info.FilesCompressedSize = int64(totalStoredSize)
 
 	return nil
+}
+
+func (p *filePackage) syncStoredMetadataFromMemory(fe *metadata.FileEntry) {
+	if fe == nil || !fe.IsDataLoaded {
+		return
+	}
+
+	if fe.StoredSize == 0 {
+		fe.StoredSize = uint64(len(fe.Data))
+	}
+	if fe.OriginalSize == 0 {
+		fe.OriginalSize = fe.StoredSize
+	}
+	if fe.RawChecksum == 0 || fe.StoredChecksum == 0 {
+		checksum := internal.CalculateCRC32(fe.Data)
+		if fe.RawChecksum == 0 {
+			fe.RawChecksum = checksum
+		}
+		if fe.StoredChecksum == 0 {
+			fe.StoredChecksum = checksum
+		}
+	}
+}
+
+func (p *filePackage) rewriteFileEntryMeta(file *os.File, entryOffset uint64, fe *metadata.FileEntry) error {
+	if _, err := file.Seek(int64(entryOffset), io.SeekStart); err != nil {
+		return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to seek to file entry metadata for rewrite")
+	}
+	if _, err := fe.WriteMetaTo(file); err != nil {
+		return pkgerrors.WrapError(err, pkgerrors.ErrTypeIO, "failed to rewrite file entry metadata")
+	}
+	return nil
+}
+
+func writePackageHeader(w io.Writer, header *fileformat.PackageHeader) (int64, error) {
+	if header == nil {
+		return 0, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package header is nil", nil, struct{}{})
+	}
+	if err := binary.Write(w, binary.LittleEndian, header); err != nil {
+		return 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to write header", pkgerrors.ValidationErrorContext{
+			Field:    "Header",
+			Value:    nil,
+			Expected: fmt.Sprintf("%d bytes", fileformat.PackageHeaderSize),
+		})
+	}
+	return fileformat.PackageHeaderSize, nil
+}
+
+func writeFileIndexTo(w io.Writer, index *fileformat.FileIndex) (int64, error) {
+	if index == nil {
+		return 0, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "file index is nil", nil, struct{}{})
+	}
+
+	var totalWritten int64
+	index.EntryCount = uint32(len(index.Entries))
+
+	if err := binary.Write(w, binary.LittleEndian, index.EntryCount); err != nil {
+		return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to write entry count", pkgerrors.ValidationErrorContext{
+			Field:    "EntryCount",
+			Value:    index.EntryCount,
+			Expected: "written successfully",
+		})
+	}
+	totalWritten += 4
+
+	if err := binary.Write(w, binary.LittleEndian, index.Reserved); err != nil {
+		return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to write reserved", pkgerrors.ValidationErrorContext{
+			Field:    "Reserved",
+			Value:    index.Reserved,
+			Expected: "written successfully",
+		})
+	}
+	totalWritten += 4
+
+	if err := binary.Write(w, binary.LittleEndian, index.FirstEntryOffset); err != nil {
+		return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to write first entry offset", pkgerrors.ValidationErrorContext{
+			Field:    "FirstEntryOffset",
+			Value:    index.FirstEntryOffset,
+			Expected: "written successfully",
+		})
+	}
+	totalWritten += 8
+
+	for i, entry := range index.Entries {
+		if err := binary.Write(w, binary.LittleEndian, entry); err != nil {
+			return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to write entry %d", i), pkgerrors.ValidationErrorContext{
+				Field:    "Entries",
+				Value:    i,
+				Expected: "written successfully",
+			})
+		}
+		totalWritten += fileformat.IndexEntrySize
+	}
+
+	return totalWritten, nil
 }

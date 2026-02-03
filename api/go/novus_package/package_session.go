@@ -2,7 +2,7 @@
 // It provides methods for setting, getting, clearing, and checking the session base path,
 // which is used for automatic path derivation when adding files from absolute filesystem paths.
 //
-// Specification: api_basic_operations.md: 1. Context Integration
+// Specification: api_basic_operations.md: 19 Package Session Base Management
 
 package novus_package
 
@@ -35,7 +35,7 @@ import (
 //	    return err
 //	}
 //
-// Specification: api_basic_operations.md: 1. Context Integration
+// Specification: api_basic_operations.md: 19.4 Package.SetSessionBase Method
 func (p *filePackage) SetSessionBase(basePath string) error {
 	// Validate that basePath is not empty
 	if basePath == "" {
@@ -84,7 +84,7 @@ func (p *filePackage) SetSessionBase(basePath string) error {
 //	    fmt.Println("No session base set")
 //	}
 //
-// Specification: api_basic_operations.md: 1. Context Integration
+// Specification: api_basic_operations.md: 19.5 Package.GetSessionBase Method
 func (p *filePackage) GetSessionBase() string {
 	return p.sessionBase
 }
@@ -99,7 +99,7 @@ func (p *filePackage) GetSessionBase() string {
 //	pkg.ClearSessionBase()
 //	// Next absolute file path will establish new session base
 //
-// Specification: api_basic_operations.md: 9.6 Session Base Management
+// Specification: api_basic_operations.md: 19.6 Package.ClearSessionBase Method
 func (p *filePackage) ClearSessionBase() {
 	p.sessionBase = ""
 }
@@ -115,7 +115,7 @@ func (p *filePackage) ClearSessionBase() {
 //	    fmt.Printf("Session base: %s\n", pkg.GetSessionBase())
 //	}
 //
-// Specification: api_basic_operations.md: 9.6 Session Base Management
+// Specification: api_basic_operations.md: 19.7 Package.HasSessionBase Method
 func (p *filePackage) HasSessionBase() bool {
 	return p.sessionBase != ""
 }

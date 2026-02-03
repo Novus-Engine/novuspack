@@ -60,16 +60,7 @@ func GetPathMetaTagsByType[T any](pme *PathMetadataEntry) ([]*generics.Tag[T], e
 	if err != nil {
 		return nil, err
 	}
-
-	result := make([]*generics.Tag[T], 0)
-	for i := range allTags {
-		// Type assert the value to ensure it's of type T
-		if typedValue, ok := allTags[i].Value.(T); ok {
-			result = append(result, generics.NewTag(allTags[i].Key, typedValue, allTags[i].Type))
-		}
-	}
-
-	return result, nil
+	return filterTagsByType[T](allTags), nil
 }
 
 // GetPathMetaTag retrieves a type-safe tag by key from a PathMetadataEntry.

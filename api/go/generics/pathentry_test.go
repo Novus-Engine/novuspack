@@ -105,6 +105,8 @@ func TestPathEntryValidation(t *testing.T) {
 
 // TestPathEntryReadFrom verifies ReadFrom deserialization
 // Specification: package_file_format.md: 4.1.4.2 Path Entries
+//
+//nolint:gocognit // table-driven test
 func TestPathEntryReadFrom(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -238,6 +240,8 @@ func TestPathEntryReadFromEmptyPath(t *testing.T) {
 
 // TestPathEntryWriteTo verifies WriteTo serialization
 // Specification: package_file_format.md: 4.1.4.2 Path Entries
+//
+//nolint:gocognit // table-driven test
 func TestPathEntryWriteTo(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -304,6 +308,8 @@ func TestPathEntryWriteTo(t *testing.T) {
 }
 
 // TestPathEntryRoundTrip verifies round-trip serialization
+//
+//nolint:gocognit // table-driven round-trip
 func TestPathEntryRoundTrip(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -366,6 +372,8 @@ func TestPathEntryRoundTrip(t *testing.T) {
 }
 
 // TestPathEntryWriteToErrorPaths verifies WriteTo error handling
+//
+//nolint:gocognit // table-driven error paths
 func TestPathEntryWriteToErrorPaths(t *testing.T) {
 	tests := []struct {
 		name      string

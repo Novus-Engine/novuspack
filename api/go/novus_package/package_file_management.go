@@ -33,7 +33,9 @@ import (
 //   - *metadata.FileEntry: The created file entry with complete metadata
 //   - error: *PackageError on failure
 //
-// Specification: api_file_mgmt_addition.md: 2.1 AddFile Package Method
+// Specification: api_file_mgmt_addition.md: 2.1 Package.AddFile Method
+//
+//nolint:gocognit,gocyclo // validation and path-determination branches
 func (p *filePackage) AddFile(ctx context.Context, path string, options *AddFileOptions) (*metadata.FileEntry, error) {
 	// Validate context
 	if err := internal.CheckContext(ctx, "AddFile"); err != nil {
@@ -266,7 +268,7 @@ func (p *filePackage) AddFile(ctx context.Context, path string, options *AddFile
 					} else {
 						// Add new path to existing entry (multi-path/alias)
 						targetEntry = entry
-						entry.Paths = append(entry.Paths, generics.PathEntry{Path: storedPath})
+						entry.Paths = append(entry.Paths, generics.PathEntry{PathLength: uint16(len(storedPath)), Path: storedPath})
 						entry.PathCount++
 						entry.MetadataVersion++
 					}
@@ -301,7 +303,7 @@ func (p *filePackage) AddFile(ctx context.Context, path string, options *AddFile
 		targetEntry = metadata.NewFileEntry()
 		targetEntry.FileID = newFileID
 		targetEntry.Type = 0 // TODO: Determine file type from extension/content
-		targetEntry.Paths = []generics.PathEntry{{Path: storedPath}}
+		targetEntry.Paths = []generics.PathEntry{{PathLength: uint16(len(storedPath)), Path: storedPath}}
 		targetEntry.PathCount = 1
 		targetEntry.OriginalSize = originalSize
 		targetEntry.RawChecksum = rawChecksum // May be 0 if no deduplication check
@@ -402,7 +404,9 @@ func (p *filePackage) AddFile(ctx context.Context, path string, options *AddFile
 //   - *metadata.FileEntry: The created file entry
 //   - error: *PackageError on failure
 //
-// Specification: api_file_mgmt_addition.md: 2.2 AddFileFromMemory Package Method
+// Specification: api_file_mgmt_addition.md: 2.2 Package.AddFileFromMemory Method
+//
+//nolint:gocognit,gocyclo // validation and path branches
 func (p *filePackage) AddFileFromMemory(ctx context.Context, path string, data []byte, options *AddFileOptions) (*metadata.FileEntry, error) {
 	// Validate context
 	if err := internal.CheckContext(ctx, "AddFileFromMemory"); err != nil {
@@ -483,7 +487,7 @@ func (p *filePackage) AddFileFromMemory(ctx context.Context, path string, data [
 				} else {
 					// Add path to existing entry (multi-path support)
 					targetEntry = entry
-					entry.Paths = append(entry.Paths, generics.PathEntry{Path: normalizedPath})
+					entry.Paths = append(entry.Paths, generics.PathEntry{PathLength: uint16(len(normalizedPath)), Path: normalizedPath})
 					entry.PathCount++
 				}
 				break
@@ -500,7 +504,7 @@ func (p *filePackage) AddFileFromMemory(ctx context.Context, path string, data [
 		targetEntry = metadata.NewFileEntry()
 		targetEntry.FileID = newFileID
 		targetEntry.Type = 0 // Default type (could be enhanced with content detection)
-		targetEntry.Paths = []generics.PathEntry{{Path: normalizedPath}}
+		targetEntry.Paths = []generics.PathEntry{{PathLength: uint16(len(normalizedPath)), Path: normalizedPath}}
 		targetEntry.PathCount = 1
 		targetEntry.OriginalSize = originalSize
 		targetEntry.RawChecksum = rawChecksum
@@ -547,34 +551,25 @@ func (p *filePackage) AddFileFromMemory(ctx context.Context, path string, data [
 //   - []*metadata.FileEntry: Slice of created file entries (stub returns nil)
 //   - error: *PackageError with ErrTypeUnsupported
 //
-// Specification: api_file_mgmt_addition.md: 2.4 AddFilePattern Package Method
+// Specification: api_file_mgmt_addition.md: 2.4 Package.AddFilePattern Method
 func (p *filePackage) AddFilePattern(ctx context.Context, pattern string, options *AddFileOptions) ([]*metadata.FileEntry, error) {
-	// Validate context
-	if err := internal.CheckContext(ctx, "AddFilePattern"); err != nil {
+	return p.addStubWithContextAndNonEmpty(ctx, "AddFilePattern", pattern, "pattern", "non-empty glob pattern", "pattern cannot be empty", "AddFilePattern full implementation deferred to Priority 2")
+}
+
+// addStubWithContextAndNonEmpty validates context and non-empty value, then returns ErrTypeUnsupported stub.
+func (p *filePackage) addStubWithContextAndNonEmpty(ctx context.Context, opName, value, fieldName, expectedMsg, emptyErrMsg, stubMsg string) ([]*metadata.FileEntry, error) {
+	if err := internal.CheckContext(ctx, opName); err != nil {
 		return nil, err
 	}
-
-	// Validate pattern is not empty
-	if pattern == "" {
+	if value == "" {
 		return nil, pkgerrors.NewPackageError(
 			pkgerrors.ErrTypeValidation,
-			"pattern cannot be empty",
+			emptyErrMsg,
 			nil,
-			pkgerrors.ValidationErrorContext{
-				Field:    "pattern",
-				Value:    pattern,
-				Expected: "non-empty glob pattern",
-			},
+			pkgerrors.ValidationErrorContext{Field: fieldName, Value: value, Expected: expectedMsg},
 		)
 	}
-
-	// Stub: Return unsupported error
-	return nil, pkgerrors.NewPackageError[struct{}](
-		pkgerrors.ErrTypeUnsupported,
-		"AddFilePattern full implementation deferred to Priority 2",
-		nil,
-		struct{}{},
-	)
+	return nil, pkgerrors.NewPackageError[struct{}](pkgerrors.ErrTypeUnsupported, stubMsg, nil, struct{}{})
 }
 
 // AddDirectory recursively adds files from a directory to the package.
@@ -591,34 +586,9 @@ func (p *filePackage) AddFilePattern(ctx context.Context, pattern string, option
 //   - []*metadata.FileEntry: Slice of created file entries (stub returns nil)
 //   - error: *PackageError with ErrTypeUnsupported
 //
-// Specification: api_file_mgmt_addition.md: 2.5 AddDirectory Package Method
+// Specification: api_file_mgmt_addition.md: 2.5 Package.AddDirectory Method
 func (p *filePackage) AddDirectory(ctx context.Context, dirPath string, options *AddFileOptions) ([]*metadata.FileEntry, error) {
-	// Validate context
-	if err := internal.CheckContext(ctx, "AddDirectory"); err != nil {
-		return nil, err
-	}
-
-	// Validate dirPath is not empty
-	if dirPath == "" {
-		return nil, pkgerrors.NewPackageError(
-			pkgerrors.ErrTypeValidation,
-			"directory path cannot be empty",
-			nil,
-			pkgerrors.ValidationErrorContext{
-				Field:    "dirPath",
-				Value:    dirPath,
-				Expected: "non-empty directory path",
-			},
-		)
-	}
-
-	// Stub: Return unsupported error
-	return nil, pkgerrors.NewPackageError[struct{}](
-		pkgerrors.ErrTypeUnsupported,
-		"AddDirectory full implementation deferred to Priority 2",
-		nil,
-		struct{}{},
-	)
+	return p.addStubWithContextAndNonEmpty(ctx, "AddDirectory", dirPath, "dirPath", "non-empty directory path", "directory path cannot be empty", "AddDirectory full implementation deferred to Priority 2")
 }
 
 // RemoveFile removes a file from the package.
@@ -635,6 +605,8 @@ func (p *filePackage) AddDirectory(ctx context.Context, dirPath string, options 
 //   - error: *PackageError on failure
 //
 // Specification: api_file_mgmt_removal.md: 2. RemoveFile Package Method
+//
+//nolint:gocognit,gocyclo // validation and removal branches
 func (p *filePackage) RemoveFile(ctx context.Context, path string) error {
 	// Validate context
 	if err := internal.CheckContext(ctx, "RemoveFile"); err != nil {
@@ -778,7 +750,7 @@ func (p *filePackage) ensurePathMetadata(path string, fileEntry *metadata.FileEn
 
 	// Create new path metadata entry
 	pathEntry := &metadata.PathMetadataEntry{
-		Path:                  generics.PathEntry{Path: path},
+		Path:                  generics.PathEntry{PathLength: uint16(len(path)), Path: path},
 		Type:                  metadata.PathMetadataTypeFile,
 		AssociatedFileEntries: []*metadata.FileEntry{fileEntry},
 		ParentPath:            nil, // Could be enhanced to find parent
@@ -793,6 +765,8 @@ func (p *filePackage) ensurePathMetadata(path string, fileEntry *metadata.FileEn
 
 // determineStoredPath determines the stored package path from the filesystem path.
 // Implements the complete path determination logic per api_file_mgmt_addition.md Section 2.6 (Path Determination Rules).
+//
+//nolint:gocognit,gocyclo // path-determination branches
 func (p *filePackage) determineStoredPath(filesystemPath string, options *AddFileOptions) (string, error) {
 	// Validate that at most one path determination option is set
 	optionsSet := 0
@@ -1017,7 +991,7 @@ func (p *filePackage) captureFilesystemMetadata(storedPath string, fileInfo os.F
 	}
 
 	// Always capture IsExecutable (required)
-	pathMetadata.FileSystem.IsExecutable = (fileInfo.Mode() & 0111) != 0
+	pathMetadata.FileSystem.IsExecutable = (fileInfo.Mode() & 0o111) != 0
 
 	// Capture additional metadata if requested
 	preservePermissions := false
@@ -1094,6 +1068,26 @@ func (p *filePackage) deriveSessionBase(filesystemPath string, preserveDepth int
 	return basePath
 }
 
+// validateStubContextAndNonEmpty checks context and that value is non-empty; used by stub methods.
+func (p *filePackage) validateStubContextAndNonEmpty(ctx context.Context, opName, value, emptyErrMsg, expectedMsg, fieldName string) error {
+	if err := internal.CheckContext(ctx, opName); err != nil {
+		return err
+	}
+	if value == "" {
+		return pkgerrors.NewPackageError(
+			pkgerrors.ErrTypeValidation,
+			emptyErrMsg,
+			nil,
+			pkgerrors.ValidationErrorContext{
+				Field:    fieldName,
+				Value:    value,
+				Expected: expectedMsg,
+			},
+		)
+	}
+	return nil
+}
+
 // RemoveFilePattern removes files matching a pattern from the package.
 //
 // STUB IMPLEMENTATION: This method validates inputs but returns ErrTypeUnsupported.
@@ -1104,36 +1098,20 @@ func (p *filePackage) deriveSessionBase(filesystemPath string, preserveDepth int
 //   - pattern: Glob pattern to match files
 //
 // Returns:
+//   - []string: Nil slice (stub implementation)
 //   - error: *PackageError with ErrTypeUnsupported
 //
 // Specification: api_file_mgmt_removal.md: 3. RemoveFilePattern Package Method
-func (p *filePackage) RemoveFilePattern(ctx context.Context, pattern string) error {
-	// Validate context
-	if err := internal.CheckContext(ctx, "RemoveFilePattern"); err != nil {
-		return err
+func (p *filePackage) RemoveFilePattern(ctx context.Context, pattern string) ([]string, error) {
+	if err := p.validateStubContextAndNonEmpty(ctx, "RemoveFilePattern", pattern, "pattern cannot be empty", "non-empty glob pattern", "pattern"); err != nil {
+		return nil, err
 	}
+	return nil, p.returnStubUnsupported("RemoveFilePattern full implementation deferred to Priority 2")
+}
 
-	// Validate pattern is not empty
-	if pattern == "" {
-		return pkgerrors.NewPackageError(
-			pkgerrors.ErrTypeValidation,
-			"pattern cannot be empty",
-			nil,
-			pkgerrors.ValidationErrorContext{
-				Field:    "pattern",
-				Value:    pattern,
-				Expected: "non-empty glob pattern",
-			},
-		)
-	}
-
-	// Stub: Return unsupported error
-	return pkgerrors.NewPackageError[struct{}](
-		pkgerrors.ErrTypeUnsupported,
-		"RemoveFilePattern full implementation deferred to Priority 2",
-		nil,
-		struct{}{},
-	)
+// returnStubUnsupported returns ErrTypeUnsupported for stub methods.
+func (p *filePackage) returnStubUnsupported(msg string) error {
+	return pkgerrors.NewPackageError[struct{}](pkgerrors.ErrTypeUnsupported, msg, nil, struct{}{})
 }
 
 // RemoveDirectory removes files from a directory path in the package.
@@ -1146,34 +1124,14 @@ func (p *filePackage) RemoveFilePattern(ctx context.Context, pattern string) err
 //   - dirPath: Package directory path to remove files from
 //
 // Returns:
+//   - []string: Nil slice (stub implementation)
 //   - error: *PackageError with ErrTypeUnsupported
 //
 // Specification: api_file_mgmt_removal.md: 4. RemoveDirectory Package Method
-func (p *filePackage) RemoveDirectory(ctx context.Context, dirPath string) error {
-	// Validate context
-	if err := internal.CheckContext(ctx, "RemoveDirectory"); err != nil {
-		return err
+func (p *filePackage) RemoveDirectory(ctx context.Context, dirPath string, options *RemoveDirectoryOptions) ([]string, error) {
+	_ = options
+	if err := p.validateStubContextAndNonEmpty(ctx, "RemoveDirectory", dirPath, "directory path cannot be empty", "non-empty directory path", "dirPath"); err != nil {
+		return nil, err
 	}
-
-	// Validate dirPath is not empty
-	if dirPath == "" {
-		return pkgerrors.NewPackageError(
-			pkgerrors.ErrTypeValidation,
-			"directory path cannot be empty",
-			nil,
-			pkgerrors.ValidationErrorContext{
-				Field:    "dirPath",
-				Value:    dirPath,
-				Expected: "non-empty directory path",
-			},
-		)
-	}
-
-	// Stub: Return unsupported error
-	return pkgerrors.NewPackageError[struct{}](
-		pkgerrors.ErrTypeUnsupported,
-		"RemoveDirectory full implementation deferred to Priority 2",
-		nil,
-		struct{}{},
-	)
+	return nil, p.returnStubUnsupported("RemoveDirectory full implementation deferred to Priority 2")
 }

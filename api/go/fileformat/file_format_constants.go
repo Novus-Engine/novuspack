@@ -4,7 +4,7 @@
 // only constant definitions used throughout the fileformat package and re-exported
 // by the main novuspack package.
 //
-// Specification: package_file_format.md: 1 `.nvpk` File Format Overview
+// Specification: package_file_format.md: 1 1. .Nvpk File Format Overview
 
 // Package novuspack provides the core NovusPack file format implementation.
 //

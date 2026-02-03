@@ -21,7 +21,7 @@ import (
 func (f *FileEntry) updateOptionalDataLen() {
 	f.OptionalDataLen = 0
 	for _, opt := range f.OptionalData {
-		f.OptionalDataLen += uint16(opt.Size())
+		f.OptionalDataLen += uint16(opt.size())
 	}
 }
 
@@ -33,104 +33,78 @@ func (f *FileEntry) removeOptionalDataEntry(index int) {
 	f.updateOptionalDataLen()
 }
 
+// parseTagFromRaw unmarshals one tag from raw JSON; returns nil tag and error if invalid or unknown ValueType.
+func parseTagFromRaw(rawTag json.RawMessage) (*generics.Tag[any], error) {
+	var tagData struct {
+		Key       string
+		ValueType generics.TagValueType
+		Value     any
+	}
+	if err := json.Unmarshal(rawTag, &tagData); err != nil {
+		return nil, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to parse individual tag from optional data", pkgerrors.ValidationErrorContext{
+			Field: "tag", Value: string(rawTag), Expected: "valid tag JSON object",
+		})
+	}
+	if tagData.ValueType > generics.TagValueTypeNovusPackMetadata {
+		return nil, pkgerrors.NewTypedPackageError(pkgerrors.ErrTypeCorruption, "invalid tag value type", nil, pkgerrors.ValidationErrorContext{
+			Field: "ValueType", Value: tagData.ValueType, Expected: "valid TagValueType constant (0x00-0x10)",
+		})
+	}
+	return generics.NewTag(tagData.Key, tagData.Value, tagData.ValueType), nil
+}
+
 // getTagsFromOptionalData extracts tags from OptionalData entries.
 //
 // Returns a map of tag keys to Tag[any] pointers and an error if corruption is encountered.
 // If individual tags are corrupted, they are skipped while preserving valid tags.
 // If the entire OptionalData entry is corrupted beyond recovery, it is removed.
-// The error indicates that corruption was encountered, allowing calling code to handle it appropriately.
+//
+//nolint:gocognit // loop + corruption handling branches
 func (f *FileEntry) getTagsFromOptionalData() (map[string]*generics.Tag[any], error) {
 	tags := make(map[string]*generics.Tag[any])
 	var corruptionErr error
-
-	// Find the tags OptionalDataEntry (DataType 0x00)
 	for i, opt := range f.OptionalData {
-		if opt.DataType == OptionalDataTagsData {
-			// First, try to unmarshal as an array of raw JSON messages
-			// This allows us to parse individual tags even if some are corrupted
-			var rawTags []json.RawMessage
-			if err := json.Unmarshal(opt.Data, &rawTags); err != nil {
-				// If we can't even parse the array structure, remove the entire entry
-				corruptionErr = pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to parse tags array from optional data", pkgerrors.ValidationErrorContext{
-					Field:    "OptionalData",
-					Value:    opt.Data,
-					Expected: "valid JSON tag array",
-				})
-				f.removeOptionalDataEntry(i)
-				return tags, corruptionErr
-			}
-
-			// Parse each tag individually, skipping corrupted ones
-			corruptedCount := 0
-			for _, rawTag := range rawTags {
-				var tagData struct {
-					Key       string
-					ValueType generics.TagValueType
-					Value     any
-				}
-				if err := json.Unmarshal(rawTag, &tagData); err != nil {
-					// Track corruption but continue parsing other tags
-					corruptedCount++
-					if corruptionErr == nil {
-						corruptionErr = pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to parse individual tag from optional data", pkgerrors.ValidationErrorContext{
-							Field:    "tag",
-							Value:    string(rawTag),
-							Expected: "valid tag JSON object",
-						})
-					}
-					continue
-				}
-
-				// Validate that ValueType is a valid TagValueType constant (0x00-0x10)
-				// Note: TagValueTypeString = 0x00 is valid, but we need to ensure it's explicitly set
-				if tagData.ValueType > generics.TagValueTypeNovusPackMetadata {
-					// Invalid tag type - skip this tag
-					corruptedCount++
-					if corruptionErr == nil {
-						corruptionErr = pkgerrors.NewTypedPackageError(pkgerrors.ErrTypeCorruption, "invalid tag value type", nil, pkgerrors.ValidationErrorContext{
-							Field:    "ValueType",
-							Value:    tagData.ValueType,
-							Expected: "valid TagValueType constant (0x00-0x10)",
-						})
-					}
-					continue
-				}
-
-				// Create Tag[any] with appropriate type conversion
-				tag := generics.NewTag(tagData.Key, tagData.Value, tagData.ValueType)
-				tags[tagData.Key] = tag
-			}
-
-			// If we encountered corruption, update the error message with count
-			if corruptedCount > 0 && corruptionErr != nil {
-				errType, _ := pkgerrors.GetErrorType(corruptionErr)
-				corruptionErr = pkgerrors.WrapErrorWithContext(corruptionErr, errType,
-					"encountered corrupted tags during parsing", pkgerrors.ValidationErrorContext{
-						Field:    "corrupted_tags",
-						Value:    corruptedCount,
-						Expected: "all tags valid",
-					})
-			}
-
-			// If we successfully parsed at least some tags, update the OptionalData
-			// to reflect only the valid tags (this repairs the data)
-			if len(tags) > 0 {
-				// Re-sync to remove any corrupted tags from storage
-				if err := f.syncTagsToOptionalData(tags); err != nil {
-					// If sync fails, return what we have with both errors
-					if corruptionErr != nil {
-						return tags, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to repair corrupted tags", corruptionErr)
-					}
-					return tags, err
-				}
-			} else {
-				// No valid tags found, remove the entry
-				f.removeOptionalDataEntry(i)
-			}
-			break
+		if opt.DataType != OptionalDataTagsData {
+			continue
 		}
+		var rawTags []json.RawMessage
+		if err := json.Unmarshal(opt.Data, &rawTags); err != nil {
+			corruptionErr = pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to parse tags array from optional data", pkgerrors.ValidationErrorContext{
+				Field: "OptionalData", Value: opt.Data, Expected: "valid JSON tag array",
+			})
+			f.removeOptionalDataEntry(i)
+			return tags, corruptionErr
+		}
+		corruptedCount := 0
+		for _, rawTag := range rawTags {
+			tag, err := parseTagFromRaw(rawTag)
+			if err != nil {
+				corruptedCount++
+				if corruptionErr == nil {
+					corruptionErr = err
+				}
+				continue
+			}
+			tags[tag.Key] = tag
+		}
+		if corruptedCount > 0 && corruptionErr != nil {
+			errType, _ := pkgerrors.GetErrorType(corruptionErr)
+			corruptionErr = pkgerrors.WrapErrorWithContext(corruptionErr, errType, "encountered corrupted tags during parsing", pkgerrors.ValidationErrorContext{
+				Field: "corrupted_tags", Value: corruptedCount, Expected: "all tags valid",
+			})
+		}
+		if len(tags) > 0 {
+			if err := f.syncTagsToOptionalData(tags); err != nil {
+				if corruptionErr != nil {
+					return tags, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to repair corrupted tags", corruptionErr)
+				}
+				return tags, err
+			}
+		} else {
+			f.removeOptionalDataEntry(i)
+		}
+		break
 	}
-
 	return tags, corruptionErr
 }
 
@@ -246,17 +220,7 @@ func GetFileEntryTagsByType[T any](fe *FileEntry) ([]*generics.Tag[T], error) {
 	if err != nil {
 		return nil, err
 	}
-
-	result := make([]*generics.Tag[T], 0)
-	for i := range allTags {
-		// Type assert the value to ensure it's of type T
-		// If type assertion succeeds, the tag's Type field should match the expected TagValueType for T
-		if typedValue, ok := allTags[i].Value.(T); ok {
-			result = append(result, generics.NewTag(allTags[i].Key, typedValue, allTags[i].Type))
-		}
-	}
-
-	return result, nil
+	return filterTagsByType[T](allTags), nil
 }
 
 // GetFileEntryTag retrieves a type-safe tag by key from a FileEntry.
@@ -588,6 +552,8 @@ func SyncFileEntryTags(fe *FileEntry) error {
 //
 // Note: This is a standalone function rather than a method due to Go's limitation
 // of not supporting generic methods on non-generic types. See api_generics.md for details.
+//
+//nolint:gocognit // inheritance and merge logic branches
 func GetFileEntryEffectiveTags(fe *FileEntry) ([]*generics.Tag[any], error) {
 	// Start with file-level tags
 	fileTags, err := GetFileEntryTags(fe)

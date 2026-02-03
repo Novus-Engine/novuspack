@@ -6,20 +6,49 @@ import (
 	"github.com/novus-engine/novuspack/api/go/generics"
 )
 
+type fileEntryTableCase struct {
+	name  string
+	setup func() *FileEntry
+	want  interface{}
+}
+
+func runFileEntryTableTest(t *testing.T, tests []fileEntryTableCase, getter func(*FileEntry) interface{}, format string) {
+	t.Helper()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fe := tt.setup()
+			got := getter(fe)
+			if got != tt.want {
+				t.Errorf(format, got, tt.want)
+			}
+		})
+	}
+}
+
+// fileEntryWithPathAndParent returns a FileEntry with one path and PathMetadataEntry with given parent path (depth 1).
+func fileEntryWithPathAndParent(filePath, parentPath string) *FileEntry {
+	fe := NewFileEntry()
+	fe.Paths = []generics.PathEntry{
+		{Path: filePath, PathLength: uint16(len(filePath))},
+	}
+	pme := &PathMetadataEntry{
+		Path: generics.PathEntry{Path: filePath, PathLength: uint16(len(filePath))},
+	}
+	parent := &PathMetadataEntry{
+		Path: generics.PathEntry{Path: parentPath, PathLength: uint16(len(parentPath))},
+	}
+	pme.ParentPath = parent
+	if fe.PathMetadataEntries == nil {
+		fe.PathMetadataEntries = make(map[string]*PathMetadataEntry)
+	}
+	fe.PathMetadataEntries[filePath] = pme
+	return fe
+}
+
 // TestGetParentPath tests GetParentPath method
 func TestGetParentPath(t *testing.T) {
-	tests := []struct {
-		name  string
-		setup func() *FileEntry
-		want  string
-	}{
-		{
-			name: "no path metadata entries",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
-			want: "",
-		},
+	tests := []fileEntryTableCase{
+		{name: "no path metadata entries", setup: NewFileEntry, want: ""},
 		{
 			name: "with path metadata entry",
 			setup: func() *FileEntry {
@@ -39,116 +68,23 @@ func TestGetParentPath(t *testing.T) {
 			want: "/test",
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			got := fe.GetParentPath()
-
-			if got != tt.want {
-				t.Errorf("GetParentPath() = %q, want %q", got, tt.want)
-			}
-		})
-	}
+	runFileEntryTableTest(t, tests, func(fe *FileEntry) interface{} { return fe.GetParentPath() }, "GetParentPath() = %q, want %q")
 }
 
 // TestGetDirectoryDepth tests GetDirectoryDepth method
 func TestGetDirectoryDepth(t *testing.T) {
-	tests := []struct {
-		name  string
-		setup func() *FileEntry
-		want  int
-	}{
-		{
-			name: "no path metadata entries",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
-			want: 0,
-		},
-		{
-			name: "one level deep",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				fe.Paths = []generics.PathEntry{
-					{Path: "/test/file.txt", PathLength: 14},
-				}
-				pme := &PathMetadataEntry{
-					Path: generics.PathEntry{Path: "/test/file.txt", PathLength: 14},
-				}
-				// Set depth to 1
-				parent := &PathMetadataEntry{
-					Path: generics.PathEntry{Path: "/test", PathLength: 5},
-				}
-				pme.ParentPath = parent
-				if fe.PathMetadataEntries == nil {
-					fe.PathMetadataEntries = make(map[string]*PathMetadataEntry)
-				}
-				fe.PathMetadataEntries["/test/file.txt"] = pme
-				return fe
-			},
-			want: 1,
-		},
+	tests := []fileEntryTableCase{
+		{name: "no path metadata entries", setup: NewFileEntry, want: 0},
+		{name: "one level deep", setup: func() *FileEntry { return fileEntryWithPathAndParent("/test/file.txt", "/test") }, want: 1},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			got := fe.GetDirectoryDepth()
-
-			if got != tt.want {
-				t.Errorf("GetDirectoryDepth() = %d, want %d", got, tt.want)
-			}
-		})
-	}
+	runFileEntryTableTest(t, tests, func(fe *FileEntry) interface{} { return fe.GetDirectoryDepth() }, "GetDirectoryDepth() = %d, want %d")
 }
 
 // TestIsRootRelative tests IsRootRelative method
 func TestIsRootRelative(t *testing.T) {
-	tests := []struct {
-		name  string
-		setup func() *FileEntry
-		want  bool
-	}{
-		{
-			name: "root relative",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
-			want: true,
-		},
-		{
-			name: "not root relative",
-			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				fe.Paths = []generics.PathEntry{
-					{Path: "/test/file.txt", PathLength: 14},
-				}
-				pme := &PathMetadataEntry{
-					Path: generics.PathEntry{Path: "/test/file.txt", PathLength: 14},
-				}
-				parent := &PathMetadataEntry{
-					Path: generics.PathEntry{Path: "/test", PathLength: 5},
-				}
-				pme.ParentPath = parent
-				if fe.PathMetadataEntries == nil {
-					fe.PathMetadataEntries = make(map[string]*PathMetadataEntry)
-				}
-				fe.PathMetadataEntries["/test/file.txt"] = pme
-				return fe
-			},
-			want: false,
-		},
+	tests := []fileEntryTableCase{
+		{name: "root relative", setup: NewFileEntry, want: true},
+		{name: "not root relative", setup: func() *FileEntry { return fileEntryWithPathAndParent("/test/file.txt", "/test") }, want: false},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			got := fe.IsRootRelative()
-
-			if got != tt.want {
-				t.Errorf("IsRootRelative() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	runFileEntryTableTest(t, tests, func(fe *FileEntry) interface{} { return fe.IsRootRelative() }, "IsRootRelative() = %v, want %v")
 }

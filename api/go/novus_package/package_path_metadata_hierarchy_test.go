@@ -42,18 +42,9 @@ func TestPackage_GetPathInfo_Basic(t *testing.T) {
 
 // TestPackage_ListPaths_Basic tests basic ListPaths operation.
 func TestPackage_ListPaths_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := setupOpenFilePackageForPathMetadata(t)
 	defer func() { _ = pkg.Close() }()
-
-	// ListPaths should now succeed since LoadPathMetadataFile is implemented
-	fpkg := pkg.(*filePackage)
-	fpkg.isOpen = true
-	fpkg.SpecialFiles = make(map[uint16]*metadata.FileEntry)
-	fpkg.PathMetadataEntries = make([]*metadata.PathMetadataEntry, 0)
-	_, err = fpkg.ListPaths()
+	_, err := fpkg.ListPaths()
 	if err != nil {
 		t.Errorf("ListPaths failed: %v", err)
 	}
@@ -65,18 +56,9 @@ func TestPackage_ListPaths_Basic(t *testing.T) {
 
 // TestPackage_GetPathHierarchy_Basic tests basic GetPathHierarchy operation.
 func TestPackage_GetPathHierarchy_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := setupOpenFilePackageForPathMetadata(t)
 	defer func() { _ = pkg.Close() }()
-
-	// GetPathHierarchy should now succeed since LoadPathMetadataFile is implemented
-	fpkg := pkg.(*filePackage)
-	fpkg.isOpen = true
-	fpkg.SpecialFiles = make(map[uint16]*metadata.FileEntry)
-	fpkg.PathMetadataEntries = make([]*metadata.PathMetadataEntry, 0)
-	_, err = fpkg.GetPathHierarchy()
+	_, err := fpkg.GetPathHierarchy()
 	if err != nil {
 		t.Errorf("GetPathHierarchy failed: %v", err)
 	}
@@ -85,6 +67,8 @@ func TestPackage_GetPathHierarchy_Basic(t *testing.T) {
 // =============================================================================
 // TEST: GetPathInfo with cached entries
 // =============================================================================
+
+const parentPathStr = "parent"
 
 // TestPackage_GetPathInfo_NotFound tests GetPathInfo when path not found.
 func TestPackage_GetPathInfo_NotFound(t *testing.T) {
@@ -142,7 +126,7 @@ func TestPackage_GetPathInfo_WithParent(t *testing.T) {
 	defer func() { _ = pkg.Close() }()
 
 	fpkg := pkg.(*filePackage)
-	parentPath := "parent"
+	parentPath := parentPathStr
 	childPath := "parent/child"
 	parent := createValidPathMetadataEntry(parentPath, metadata.PathMetadataTypeDirectory)
 	child := createValidPathMetadataEntry(childPath, metadata.PathMetadataTypeFile)
@@ -167,7 +151,7 @@ func TestPackage_GetPathInfo_WithSubDirs(t *testing.T) {
 	defer func() { _ = pkg.Close() }()
 
 	fpkg := pkg.(*filePackage)
-	parentPath := "parent"
+	parentPath := parentPathStr
 	subDir1 := "parent/subdir1"
 	subDir2 := "parent/subdir2"
 	parent := createValidPathMetadataEntry(parentPath, metadata.PathMetadataTypeDirectory)
@@ -237,24 +221,32 @@ func TestPackage_ListPaths_Success(t *testing.T) {
 	}
 }
 
+func runEmptyPathMetadataCall(t *testing.T, callListPaths bool) {
+	t.Helper()
+	pkg, fpkg := setupOpenFilePackageForPathMetadata(t)
+	defer func() { _ = pkg.Close() }()
+	if callListPaths {
+		pathInfos, err := fpkg.ListPaths()
+		if err != nil {
+			t.Errorf("ListPaths should succeed with empty entries, got error: %v", err)
+		}
+		if len(pathInfos) != 0 {
+			t.Errorf("ListPaths should return empty slice, got %d", len(pathInfos))
+		}
+	} else {
+		hierarchy, err := fpkg.GetPathHierarchy()
+		if err != nil {
+			t.Errorf("GetPathHierarchy should succeed with empty entries, got error: %v", err)
+		}
+		if len(hierarchy) != 0 {
+			t.Errorf("GetPathHierarchy should return empty map, got %d entries", len(hierarchy))
+		}
+	}
+}
+
 // TestPackage_ListPaths_Empty tests ListPaths with empty entries.
 func TestPackage_ListPaths_Empty(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	fpkg.PathMetadataEntries = []*metadata.PathMetadataEntry{}
-
-	pathInfos, err := fpkg.ListPaths()
-	if err != nil {
-		t.Errorf("ListPaths should succeed with empty entries, got error: %v", err)
-	}
-	if len(pathInfos) != 0 {
-		t.Errorf("ListPaths should return empty slice, got %d", len(pathInfos))
-	}
+	runEmptyPathMetadataCall(t, true)
 }
 
 // =============================================================================
@@ -270,7 +262,7 @@ func TestPackage_GetPathHierarchy_Success(t *testing.T) {
 	defer func() { _ = pkg.Close() }()
 
 	fpkg := pkg.(*filePackage)
-	parentPath := "parent"
+	parentPath := parentPathStr
 	child1 := "parent/child1"
 	child2 := "parent/child2"
 	rootPath := "root"
@@ -297,22 +289,7 @@ func TestPackage_GetPathHierarchy_Success(t *testing.T) {
 
 // TestPackage_GetPathHierarchy_Empty tests GetPathHierarchy with empty entries.
 func TestPackage_GetPathHierarchy_Empty(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	fpkg.PathMetadataEntries = []*metadata.PathMetadataEntry{}
-
-	hierarchy, err := fpkg.GetPathHierarchy()
-	if err != nil {
-		t.Errorf("GetPathHierarchy should succeed with empty entries, got error: %v", err)
-	}
-	if len(hierarchy) != 0 {
-		t.Errorf("GetPathHierarchy should return empty map, got %d entries", len(hierarchy))
-	}
+	runEmptyPathMetadataCall(t, false)
 }
 
 // TestPackage_GetPathHierarchy_AllRoot tests GetPathHierarchy with all root paths.

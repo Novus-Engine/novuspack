@@ -3,11 +3,12 @@
 // It verifies that the path canonicalization logic correctly handles dot segments
 // in real package operations.
 //
-// Specification: api_core.md: 1.1.2 Package Path Semantics
+// Specification: api_core.md: 2. Package Path Semantics
 
 package novus_package
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ func TestPathCanonicalization_AddFile_Integration(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -81,7 +82,7 @@ func TestPathCanonicalization_ReadFile_Integration(t *testing.T) {
 		t.Fatalf("ReadFile failed: %v", err)
 	}
 
-	if string(data) != string(testContent) {
+	if !bytes.Equal(data, testContent) {
 		t.Errorf("ReadFile content mismatch: got %q, want %q", string(data), string(testContent))
 	}
 }
@@ -164,7 +165,7 @@ func TestPathCanonicalization_RoundTrip(t *testing.T) {
 		t.Fatalf("ReadFile failed: %v", err)
 	}
 
-	if string(data) != string(testContent) {
+	if !bytes.Equal(data, testContent) {
 		t.Errorf("Content mismatch: got %q, want %q", string(data), string(testContent))
 	}
 

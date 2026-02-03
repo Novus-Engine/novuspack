@@ -18,6 +18,8 @@ import (
 // TEST: SetComment
 // =============================================================================
 
+const testCommentStr = "Test comment"
+
 // TestPackage_SetComment_Basic tests basic SetComment operation.
 func TestPackage_SetComment_Basic(t *testing.T) {
 	pkg, err := NewPackage()
@@ -79,14 +81,14 @@ func TestPackage_SetComment_UpdatesHeaderFlags(t *testing.T) {
 	fpkg := pkg.(*filePackage)
 
 	// Set comment
-	comment := "Test comment"
+	comment := testCommentStr
 	err = fpkg.SetComment(comment)
 	if err != nil {
 		t.Fatalf("SetComment() failed: %v", err)
 	}
 
 	// Verify header flag is set
-	if !fpkg.header.HasFeature(fileformat.FlagHasPackageComment) {
+	if (fpkg.header.Flags & fileformat.FlagHasPackageComment) == 0 {
 		t.Error("Header flag FlagHasPackageComment should be set after SetComment")
 	}
 
@@ -172,7 +174,7 @@ func TestPackage_GetComment_Basic(t *testing.T) {
 	}
 
 	// Set comment and retrieve
-	testComment := "Test comment"
+	testComment := testCommentStr
 	err = fpkg.SetComment(testComment)
 	if err != nil {
 		t.Fatalf("SetComment() failed: %v", err)
@@ -199,7 +201,7 @@ func TestPackage_ClearComment_Basic(t *testing.T) {
 	fpkg := pkg.(*filePackage)
 
 	// Set comment first
-	err = fpkg.SetComment("Test comment")
+	err = fpkg.SetComment(testCommentStr)
 	if err != nil {
 		t.Fatalf("SetComment() failed: %v", err)
 	}
@@ -220,7 +222,7 @@ func TestPackage_ClearComment_Basic(t *testing.T) {
 	}
 
 	// Verify header flag is cleared
-	if fpkg.header.HasFeature(fileformat.FlagHasPackageComment) {
+	if (fpkg.header.Flags & fileformat.FlagHasPackageComment) != 0 {
 		t.Error("Header flag FlagHasPackageComment should be cleared after ClearComment")
 	}
 
@@ -230,38 +232,29 @@ func TestPackage_ClearComment_Basic(t *testing.T) {
 	}
 }
 
-// TestPackage_ClearComment_NoComment tests clearing comment when no comment exists.
-func TestPackage_ClearComment_NoComment(t *testing.T) {
+func runClearCommentSucceeds(t *testing.T, errMsg string) {
+	t.Helper()
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
 	defer func() { _ = pkg.Close() }()
-
 	fpkg := pkg.(*filePackage)
-
-	// ClearComment should succeed even when no comment exists
 	err = fpkg.ClearComment()
 	if err != nil {
-		t.Errorf("ClearComment() should succeed when no comment exists, got error: %v", err)
+		t.Errorf("ClearComment() %s: %v", errMsg, err)
 	}
+}
+
+// TestPackage_ClearComment_NoComment tests clearing comment when no comment exists.
+func TestPackage_ClearComment_NoComment(t *testing.T) {
+	runClearCommentSucceeds(t, "should succeed when no comment exists")
 }
 
 // TestPackage_ClearComment_WithContext tests ClearComment (no longer applicable since ClearComment doesn't take context).
 // This test is kept for reference but ClearComment is now a pure in-memory operation per spec.
 func TestPackage_ClearComment_WithContext(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// ClearComment is a pure in-memory operation and doesn't take context per spec
-	err = fpkg.ClearComment()
-	if err != nil {
-		t.Errorf("ClearComment() failed: %v", err)
-	}
+	runClearCommentSucceeds(t, "failed")
 }
 
 // =============================================================================
@@ -284,7 +277,7 @@ func TestPackage_HasComment_Basic(t *testing.T) {
 	}
 
 	// Set comment
-	err = fpkg.SetComment("Test comment")
+	err = fpkg.SetComment(testCommentStr)
 	if err != nil {
 		t.Fatalf("SetComment() failed: %v", err)
 	}
@@ -321,7 +314,7 @@ func TestPackage_SetComment_WithNilInfo(t *testing.T) {
 	fpkg.Info = nil
 
 	// SetComment should handle nil Info gracefully
-	comment := "Test comment"
+	comment := testCommentStr
 	err = fpkg.SetComment(comment)
 	if err != nil {
 		t.Errorf("SetComment() should handle nil Info, got error: %v", err)
@@ -331,28 +324,25 @@ func TestPackage_SetComment_WithNilInfo(t *testing.T) {
 	fpkg.Info = originalInfo
 }
 
-// TestPackage_GetComment_WithNilInfo tests GetComment when Info is nil.
-func TestPackage_GetComment_WithNilInfo(t *testing.T) {
+func runGetCommentWithNilInfo(t *testing.T) {
+	t.Helper()
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
 	defer func() { _ = pkg.Close() }()
-
 	fpkg := pkg.(*filePackage)
-
-	// Temporarily set Info to nil
 	originalInfo := fpkg.Info
 	fpkg.Info = nil
-
-	// GetComment should return empty string when Info is nil
-	comment := fpkg.GetComment()
-	if comment != "" {
+	defer func() { fpkg.Info = originalInfo }()
+	if comment := fpkg.GetComment(); comment != "" {
 		t.Errorf("GetComment() = %q, want empty string when Info is nil", comment)
 	}
+}
 
-	// Restore Info
-	fpkg.Info = originalInfo
+// TestPackage_GetComment_WithNilInfo tests GetComment when Info is nil.
+func TestPackage_GetComment_WithNilInfo(t *testing.T) {
+	runGetCommentWithNilInfo(t)
 }
 
 // TestPackage_HasComment_WithNilInfo tests HasComment when Info is nil.
@@ -389,7 +379,7 @@ func TestPackage_ClearComment_WithNilInfo(t *testing.T) {
 	fpkg := pkg.(*filePackage)
 
 	// Set comment first
-	err = fpkg.SetComment("Test comment")
+	err = fpkg.SetComment(testCommentStr)
 	if err != nil {
 		t.Fatalf("SetComment() failed: %v", err)
 	}

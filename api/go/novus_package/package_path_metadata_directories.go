@@ -118,6 +118,8 @@ func (p *filePackage) UpdateDirectoryMetadata(ctx context.Context, path string, 
 //   - error: *PackageError on failure
 //
 // Specification: api_metadata.md: 8.2 PathMetadata Management Methods
+//
+//nolint:gocognit // hierarchy walk branches
 func (p *filePackage) ListDirectories() ([]PathInfo, error) {
 	// This is an in-memory operation
 	directories := make(map[string]*PathInfo)

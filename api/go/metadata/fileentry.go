@@ -137,6 +137,47 @@ type FileEntry struct {
 	PathMetadataEntries map[string]*PathMetadataEntry // Path -> PathMetadataEntry mapping
 }
 
+// FileEntryFixed is the 64-byte fixed section used for binary read/write.
+// Specification: package_file_format.md: 4.1 FileEntry Binary Format Specification
+type FileEntryFixed struct {
+	FileID             uint64
+	OriginalSize       uint64
+	StoredSize         uint64
+	RawChecksum        uint32
+	StoredChecksum     uint32
+	FileVersion        uint32
+	MetadataVersion    uint32
+	PathCount          uint16
+	Type               uint16
+	CompressionType    uint8
+	CompressionLevel   uint8
+	EncryptionType     uint8
+	HashCount          uint8
+	HashDataOffset     uint32
+	HashDataLen        uint16
+	OptionalDataLen    uint16
+	OptionalDataOffset uint32
+	Reserved           uint32
+}
+
+// skipReaderToOffset skips bytes in r from currentOffset to targetOffset when targetOffset > currentOffset.
+// Returns bytes skipped and nil, or 0 and a wrapped error on failure.
+func skipReaderToOffset(r io.Reader, _, currentOffset, targetOffset int64, fieldName string, fieldValue uint32) (int64, error) {
+	if targetOffset <= 0 || targetOffset <= currentOffset {
+		return 0, nil
+	}
+	skip := targetOffset - currentOffset
+	_, err := io.CopyN(io.Discard, r, skip)
+	if err != nil {
+		return 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to skip to "+fieldName, pkgerrors.ValidationErrorContext{
+			Field:    fieldName,
+			Value:    fieldValue,
+			Expected: "skip successful",
+		})
+	}
+	return skip, nil
+}
+
 // Validate performs validation checks on the FileEntry.
 //
 // Validation checks:
@@ -195,7 +236,7 @@ func (f *FileEntry) Validate() error {
 
 	// Validate all hashes
 	for i, hash := range f.Hashes {
-		if err := hash.Validate(); err != nil {
+		if err := hash.validate(); err != nil {
 			return pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeValidation, fmt.Sprintf("invalid hash at index %d", i), pkgerrors.ValidationErrorContext{
 				Field:    "Hashes",
 				Value:    i,
@@ -206,7 +247,7 @@ func (f *FileEntry) Validate() error {
 
 	// Validate all optional data
 	for i, opt := range f.OptionalData {
-		if err := opt.Validate(); err != nil {
+		if err := opt.validate(); err != nil {
 			return pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeValidation, fmt.Sprintf("invalid optional data at index %d", i), pkgerrors.ValidationErrorContext{
 				Field:    "OptionalData",
 				Value:    i,
@@ -230,8 +271,8 @@ func (f *FileEntry) FixedSize() int {
 // Specification: package_file_format.md: 4.1.4 Variable-Length Data (follows fixed structure)
 func (f *FileEntry) VariableSize() int {
 	pathSize := lo.SumBy(f.Paths, func(p generics.PathEntry) int { return p.Size() })
-	hashSize := lo.SumBy(f.Hashes, func(h HashEntry) int { return h.Size() })
-	optSize := lo.SumBy(f.OptionalData, func(o OptionalDataEntry) int { return o.Size() })
+	hashSize := lo.SumBy(f.Hashes, func(h HashEntry) int { return h.size() })
+	optSize := lo.SumBy(f.OptionalData, func(o OptionalDataEntry) int { return o.size() })
 	return pathSize + hashSize + optSize
 }
 
@@ -263,53 +304,19 @@ func NewFileEntry() *FileEntry {
 //   - Hash entries (HashCount entries, starting at HashDataOffset)
 //   - Optional data entries (starting at OptionalDataOffset)
 //
-// Returns the number of bytes read and any error encountered.
-//
-// Specification: package_file_format.md: 4.1 FileEntry Binary Format Specification
-func (f *FileEntry) ReadFrom(r io.Reader) (int64, error) {
-	var totalRead int64
-
-	// Read fixed section (64 bytes)
-	// Create a temporary struct to read the fixed fields
-	type FileEntryFixed struct {
-		FileID             uint64
-		OriginalSize       uint64
-		StoredSize         uint64
-		RawChecksum        uint32
-		StoredChecksum     uint32
-		FileVersion        uint32
-		MetadataVersion    uint32
-		PathCount          uint16
-		Type               uint16
-		CompressionType    uint8
-		CompressionLevel   uint8
-		EncryptionType     uint8
-		HashCount          uint8
-		HashDataOffset     uint32
-		HashDataLen        uint16
-		OptionalDataLen    uint16
-		OptionalDataOffset uint32
-		Reserved           uint32
-	}
-
+// readFileEntryFixed reads the 64-byte fixed section, copies to f, and initializes slices; returns bytes read and error.
+func readFileEntryFixed(r io.Reader, f *FileEntry) (int64, error) {
 	var fixed FileEntryFixed
 	if err := binary.Read(r, binary.LittleEndian, &fixed); err != nil {
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, fmt.Sprintf("failed to read fixed section: incomplete data (read %d bytes, expected %d)", totalRead, FileEntryFixedSize), pkgerrors.ValidationErrorContext{
-				Field:    "FixedSection",
-				Value:    totalRead,
-				Expected: fmt.Sprintf("%d bytes", FileEntryFixedSize),
+			return 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, fmt.Sprintf("failed to read fixed section: incomplete data (expected %d bytes)", FileEntryFixedSize), pkgerrors.ValidationErrorContext{
+				Field: "FixedSection", Value: int64(0), Expected: fmt.Sprintf("%d bytes", FileEntryFixedSize),
 			})
 		}
-		return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read fixed section", pkgerrors.ValidationErrorContext{
-			Field:    "FixedSection",
-			Value:    nil,
-			Expected: fmt.Sprintf("%d bytes", FileEntryFixedSize),
+		return 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read fixed section", pkgerrors.ValidationErrorContext{
+			Field: "FixedSection", Value: nil, Expected: fmt.Sprintf("%d bytes", FileEntryFixedSize),
 		})
 	}
-	totalRead += FileEntryFixedSize
-
-	// Copy fixed fields to FileEntry
 	f.FileID = fixed.FileID
 	f.OriginalSize = fixed.OriginalSize
 	f.StoredSize = fixed.StoredSize
@@ -328,101 +335,94 @@ func (f *FileEntry) ReadFrom(r io.Reader) (int64, error) {
 	f.OptionalDataLen = fixed.OptionalDataLen
 	f.OptionalDataOffset = fixed.OptionalDataOffset
 	f.Reserved = fixed.Reserved
-
-	// Initialize slices
 	f.Paths = make([]generics.PathEntry, 0, f.PathCount)
 	f.Hashes = make([]HashEntry, 0, f.HashCount)
 	f.OptionalData = make([]OptionalDataEntry, 0)
+	return FileEntryFixedSize, nil
+}
 
-	// Read path entries (starting at offset 0)
+// readFileEntryPaths reads PathCount path entries into f.Paths; returns total bytes read (including existing totalRead) and error.
+func readFileEntryPaths(r io.Reader, f *FileEntry, totalRead int64) (int64, error) {
 	for i := uint16(0); i < f.PathCount; i++ {
 		var path generics.PathEntry
 		n, err := path.ReadFrom(r)
 		if err != nil {
 			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to read path entry %d", i), pkgerrors.ValidationErrorContext{
-				Field:    "Paths",
-				Value:    i,
-				Expected: "valid path entry",
+				Field: "Paths", Value: i, Expected: "valid path entry",
 			})
 		}
 		totalRead += n
 		f.Paths = append(f.Paths, path)
 	}
+	return totalRead, nil
+}
 
-	// Read hash entries (starting at HashDataOffset)
-	// Calculate how many bytes we've read so far (paths)
-	pathsSize := int64(lo.SumBy(f.Paths, func(p generics.PathEntry) int { return p.Size() }))
-
-	// If HashDataOffset is set, we may need to skip some bytes
-	if f.HashDataOffset > 0 && int64(f.HashDataOffset) > pathsSize {
-		skip := int64(f.HashDataOffset) - pathsSize
-		_, err := io.CopyN(io.Discard, r, skip)
-		if err != nil {
-			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to skip to hash data offset", pkgerrors.ValidationErrorContext{
-				Field:    "HashDataOffset",
-				Value:    f.HashDataOffset,
-				Expected: "skip successful",
-			})
-		}
-		totalRead += skip
+// readFileEntryHashes skips to HashDataOffset if needed, then reads HashCount hash entries; returns total bytes read and error.
+func readFileEntryHashes(r io.Reader, f *FileEntry, totalRead, pathsSize int64) (int64, error) {
+	n, err := skipReaderToOffset(r, totalRead, pathsSize, int64(f.HashDataOffset), "HashDataOffset", f.HashDataOffset)
+	if err != nil {
+		return totalRead, err
 	}
-
-	// Read hash entries
+	totalRead += n
 	for i := uint8(0); i < f.HashCount; i++ {
 		var hash HashEntry
-		n, err := hash.ReadFrom(r)
+		n, err := hash.readFrom(r)
 		if err != nil {
 			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to read hash entry %d", i), pkgerrors.ValidationErrorContext{
-				Field:    "Hashes",
-				Value:    i,
-				Expected: "valid hash entry",
+				Field: "Hashes", Value: i, Expected: "valid hash entry",
 			})
 		}
 		totalRead += n
 		f.Hashes = append(f.Hashes, hash)
 	}
+	return totalRead, nil
+}
 
-	// Read optional data entries (starting at OptionalDataOffset)
-	// Calculate current position after paths and hashes
-	hashSize := int64(lo.SumBy(f.Hashes, func(h HashEntry) int { return h.Size() }))
-	currentOffset := pathsSize + hashSize
-
-	if f.OptionalDataOffset > 0 && int64(f.OptionalDataOffset) > currentOffset {
-		skip := int64(f.OptionalDataOffset) - currentOffset
-		_, err := io.CopyN(io.Discard, r, skip)
-		if err != nil {
-			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to skip to optional data offset", pkgerrors.ValidationErrorContext{
-				Field:    "OptionalDataOffset",
-				Value:    f.OptionalDataOffset,
-				Expected: "skip successful",
-			})
-		}
-		totalRead += skip
+// readFileEntryOptionalData skips to OptionalDataOffset if needed, then reads optional data entries until OptionalDataLen bytes consumed.
+func readFileEntryOptionalData(r io.Reader, f *FileEntry, totalRead, currentOffset int64) (int64, error) {
+	n, err := skipReaderToOffset(r, totalRead, currentOffset, int64(f.OptionalDataOffset), "OptionalDataOffset", f.OptionalDataOffset)
+	if err != nil {
+		return totalRead, err
 	}
-
-	// Read optional data entries
-	// We need to read until we've consumed OptionalDataLen bytes
+	totalRead += n
 	optionalDataRead := int64(0)
 	for optionalDataRead < int64(f.OptionalDataLen) {
 		var opt OptionalDataEntry
-		n, err := opt.ReadFrom(r)
+		n, err := opt.readFrom(r)
 		if err != nil {
 			if err == io.EOF && optionalDataRead > 0 {
-				// We've read some optional data, this might be acceptable
 				break
 			}
 			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read optional data entry", pkgerrors.ValidationErrorContext{
-				Field:    "OptionalData",
-				Value:    optionalDataRead,
-				Expected: fmt.Sprintf("%d bytes", f.OptionalDataLen),
+				Field: "OptionalData", Value: optionalDataRead, Expected: fmt.Sprintf("%d bytes", f.OptionalDataLen),
 			})
 		}
 		totalRead += n
 		optionalDataRead += n
 		f.OptionalData = append(f.OptionalData, opt)
 	}
-
 	return totalRead, nil
+}
+
+// Returns the number of bytes read and any error encountered.
+//
+// Specification: package_file_format.md: 4.1 FileEntry Binary Format Specification
+func (f *FileEntry) ReadFrom(r io.Reader) (int64, error) {
+	totalRead, err := readFileEntryFixed(r, f)
+	if err != nil {
+		return totalRead, err
+	}
+	totalRead, err = readFileEntryPaths(r, f, totalRead)
+	if err != nil {
+		return totalRead, err
+	}
+	pathsSize := int64(lo.SumBy(f.Paths, func(p generics.PathEntry) int { return p.Size() }))
+	totalRead, err = readFileEntryHashes(r, f, totalRead, pathsSize)
+	if err != nil {
+		return totalRead, err
+	}
+	hashSize := int64(lo.SumBy(f.Hashes, func(h HashEntry) int { return h.size() }))
+	return readFileEntryOptionalData(r, f, totalRead, pathsSize+hashSize)
 }
 
 // WriteTo writes both metadata and data to a writer.

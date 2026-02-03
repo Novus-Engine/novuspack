@@ -6,6 +6,20 @@ import (
 	"time"
 )
 
+// runContextDoneTest verifies ctx is done and Err() matches wantErr; fails t on timeout or wrong error.
+func runContextDoneTest(t *testing.T, ctx context.Context, wantErr error, timeoutMsg string) {
+	t.Helper()
+	select {
+	case <-ctx.Done():
+		err := ctx.Err()
+		if err != wantErr {
+			t.Errorf("expected %v error, got %v", wantErr, err)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Error(timeoutMsg)
+	}
+}
+
 func TestCancelledContext(t *testing.T) {
 	t.Run("returns cancelled context", func(t *testing.T) {
 		ctx := CancelledContext()
@@ -29,18 +43,7 @@ func TestCancelledContext(t *testing.T) {
 	})
 
 	t.Run("context error in operations", func(t *testing.T) {
-		ctx := CancelledContext()
-
-		// Simulate using the context in an operation
-		select {
-		case <-ctx.Done():
-			err := ctx.Err()
-			if err != context.Canceled {
-				t.Errorf("expected context.Canceled error, got %v", err)
-			}
-		case <-time.After(100 * time.Millisecond):
-			t.Error("context should be immediately cancelled")
-		}
+		runContextDoneTest(t, CancelledContext(), context.Canceled, "context should be immediately cancelled")
 	})
 }
 
@@ -67,18 +70,7 @@ func TestTimeoutContext(t *testing.T) {
 	})
 
 	t.Run("context deadline exceeded in operations", func(t *testing.T) {
-		ctx := TimeoutContext()
-
-		// Simulate using the context in an operation
-		select {
-		case <-ctx.Done():
-			err := ctx.Err()
-			if err != context.DeadlineExceeded {
-				t.Errorf("expected context.DeadlineExceeded error, got %v", err)
-			}
-		case <-time.After(100 * time.Millisecond):
-			t.Error("context should be timed out")
-		}
+		runContextDoneTest(t, TimeoutContext(), context.DeadlineExceeded, "context should be timed out")
 	})
 
 	t.Run("deadline has passed", func(t *testing.T) {

@@ -43,8 +43,8 @@ func TestPackageBuilder_WithEncryption(t *testing.T) {
 // TestPackageBuilder_WithMetadata tests the WithMetadata method.
 func TestPackageBuilder_WithMetadata(t *testing.T) {
 	builder := NewBuilder()
-	metadata := map[string]string{"key": "value"}
-	result := builder.WithMetadata(metadata)
+	md := map[string]string{"key": "value"}
+	result := builder.WithMetadata(md)
 	if result != builder {
 		t.Errorf("WithMetadata() should return the same builder instance")
 	}
@@ -192,14 +192,9 @@ func TestPackageBuilder_Build_SetCommentError(t *testing.T) {
 	}
 }
 
-// TestPackageBuilder_Build_SetVendorIDError tests Build when SetVendorID fails.
-func TestPackageBuilder_Build_SetVendorIDError(t *testing.T) {
+func runBuildAndAssertID[T comparable](t *testing.T, builder PackageBuilder, getter func(Package) T, want T, fieldName string) {
+	t.Helper()
 	ctx := context.Background()
-	builder := NewBuilder().WithVendorID(12345)
-
-	// We need to somehow make SetVendorID fail, but it only fails if Info is nil
-	// Since NewPackage always creates Info, we can't easily trigger this error
-	// This test documents the limitation
 	pkg, err := builder.Build(ctx)
 	if err != nil {
 		t.Fatalf("Build() failed: %v", err)
@@ -207,26 +202,17 @@ func TestPackageBuilder_Build_SetVendorIDError(t *testing.T) {
 	if pkg == nil {
 		t.Fatal("Build() returned nil package")
 	}
-	if pkg.GetVendorID() != 12345 {
-		t.Errorf("VendorID = %d, want 12345", pkg.GetVendorID())
+	if getter(pkg) != want {
+		t.Errorf("%s = %v, want %v", fieldName, getter(pkg), want)
 	}
+}
+
+// TestPackageBuilder_Build_SetVendorIDError tests Build when SetVendorID fails.
+func TestPackageBuilder_Build_SetVendorIDError(t *testing.T) {
+	runBuildAndAssertID(t, NewBuilder().WithVendorID(12345), func(p Package) uint32 { return p.GetVendorID() }, uint32(12345), "VendorID")
 }
 
 // TestPackageBuilder_Build_SetAppIDError tests Build when SetAppID fails.
 func TestPackageBuilder_Build_SetAppIDError(t *testing.T) {
-	ctx := context.Background()
-	builder := NewBuilder().WithAppID(67890)
-
-	// Similar to SetVendorID, SetAppID only fails if Info is nil
-	// Since NewPackage always creates Info, we can't easily trigger this error
-	pkg, err := builder.Build(ctx)
-	if err != nil {
-		t.Fatalf("Build() failed: %v", err)
-	}
-	if pkg == nil {
-		t.Fatal("Build() returned nil package")
-	}
-	if pkg.GetAppID() != 67890 {
-		t.Errorf("AppID = %d, want 67890", pkg.GetAppID())
-	}
+	runBuildAndAssertID(t, NewBuilder().WithAppID(67890), func(p Package) uint64 { return p.GetAppID() }, uint64(67890), "AppID")
 }

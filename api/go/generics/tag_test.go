@@ -4,6 +4,33 @@ import (
 	"testing"
 )
 
+func assertTagKeyAndType(t *testing.T, tag interface{}, key string, tagType TagValueType) {
+	t.Helper()
+	if tag == nil {
+		t.Fatal("NewTag() returned nil")
+	}
+	switch tagVal := tag.(type) {
+	case *Tag[string]:
+		if tagVal.Key != key || tagVal.Type != tagType {
+			t.Errorf("NewTag() tag.Key = %q, tag.Type = %v; want Key %q Type %v", tagVal.Key, tagVal.Type, key, tagType)
+		}
+	case *Tag[int64]:
+		if tagVal.Key != key || tagVal.Type != tagType {
+			t.Errorf("NewTag() tag.Key = %q, tag.Type = %v; want Key %q Type %v", tagVal.Key, tagVal.Type, key, tagType)
+		}
+	case *Tag[float64]:
+		if tagVal.Key != key || tagVal.Type != tagType {
+			t.Errorf("NewTag() tag.Key = %q, tag.Type = %v; want Key %q Type %v", tagVal.Key, tagVal.Type, key, tagType)
+		}
+	case *Tag[bool]:
+		if tagVal.Key != key || tagVal.Type != tagType {
+			t.Errorf("NewTag() tag.Key = %q, tag.Type = %v; want Key %q Type %v", tagVal.Key, tagVal.Type, key, tagType)
+		}
+	default:
+		t.Errorf("NewTag() returned unexpected type: %T", tag)
+	}
+}
+
 // TestNewTag tests NewTag factory function
 func TestNewTag(t *testing.T) {
 	tests := []struct {
@@ -30,7 +57,6 @@ func TestNewTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var tag interface{}
-
 			switch v := tt.value.(type) {
 			case string:
 				tag = NewTag[string](tt.key, v, tt.tagType)
@@ -41,43 +67,7 @@ func TestNewTag(t *testing.T) {
 			case bool:
 				tag = NewTag[bool](tt.key, v, tt.tagType)
 			}
-
-			if tag == nil {
-				t.Fatal("NewTag() returned nil")
-			}
-			// Use type assertion to check tag properties
-			switch tagVal := tag.(type) {
-			case *Tag[string]:
-				if tagVal.Key != tt.key {
-					t.Errorf("NewTag() tag.Key = %q, want %q", tagVal.Key, tt.key)
-				}
-				if tagVal.Type != tt.tagType {
-					t.Errorf("NewTag() tag.Type = %v, want %v", tagVal.Type, tt.tagType)
-				}
-			case *Tag[int64]:
-				if tagVal.Key != tt.key {
-					t.Errorf("NewTag() tag.Key = %q, want %q", tagVal.Key, tt.key)
-				}
-				if tagVal.Type != tt.tagType {
-					t.Errorf("NewTag() tag.Type = %v, want %v", tagVal.Type, tt.tagType)
-				}
-			case *Tag[float64]:
-				if tagVal.Key != tt.key {
-					t.Errorf("NewTag() tag.Key = %q, want %q", tagVal.Key, tt.key)
-				}
-				if tagVal.Type != tt.tagType {
-					t.Errorf("NewTag() tag.Type = %v, want %v", tagVal.Type, tt.tagType)
-				}
-			case *Tag[bool]:
-				if tagVal.Key != tt.key {
-					t.Errorf("NewTag() tag.Key = %q, want %q", tagVal.Key, tt.key)
-				}
-				if tagVal.Type != tt.tagType {
-					t.Errorf("NewTag() tag.Type = %v, want %v", tagVal.Type, tt.tagType)
-				}
-			default:
-				t.Errorf("NewTag() returned unexpected type: %T", tag)
-			}
+			assertTagKeyAndType(t, tag, tt.key, tt.tagType)
 		})
 	}
 }

@@ -1,4 +1,4 @@
-// This file implements PackageReader interface methods: ReadFile, ListFiles,
+// This file implements package read operations: ReadFile, ListFiles,
 // GetMetadata, Validate, and GetInfo. It contains all read-only operations
 // for accessing package contents and metadata as specified in api_core.md.
 // This file should contain methods for reading files, listing package contents,
@@ -65,7 +65,7 @@ import (
 //	fmt.Printf("Compressed Size: %d bytes\n", info.FilesCompressedSize)
 //	fmt.Printf("Created: %v\n", info.Created)
 //
-// Specification: api_core.md: 1.1.4 ListFiles Method Contract
+// Specification: api_core.md: 1.2.5 Package.GetInfo Method
 func (p *filePackage) GetInfo() (*metadata.PackageInfo, error) {
 	// GetInfo is an in-memory operation that is allowed after Close() as long as
 	// metadata remains available, but it should not work after CloseWithCleanup().
@@ -95,7 +95,7 @@ func (p *filePackage) GetInfo() (*metadata.PackageInfo, error) {
 // Error Conditions:
 //   - ErrTypeValidation: Package is closed or metadata not loaded
 //
-// Specification: api_core.md: 1.1.6 GetMetadata Method Contract
+// Specification: api_core.md: 1.2.6 Package.GetMetadata Method
 func (p *filePackage) GetMetadata() (*metadata.PackageMetadata, error) {
 	// GetMetadata is an in-memory operation that is allowed after Close() as long
 	// as metadata remains available, but it should not work for a package that has
@@ -141,122 +141,90 @@ func (p *filePackage) GetMetadata() (*metadata.PackageMetadata, error) {
 //   - ErrTypeValidation: Path is invalid or file not found
 //   - ErrTypeIO: Failed to read file data
 //
-// Specification: api_core.md: 1.1.3 ReadFile Method Contract
+// Specification: api_core.md: 1.2.2 Package.ReadFile Method
 func (p *filePackage) ReadFile(ctx context.Context, path string) ([]byte, error) {
-	// Validate context
-	if err := internal.CheckContext(ctx, "ReadFile"); err != nil {
-		return nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeContext, "error during ReadFile: context validation failed")
-	}
-
-	// Check if package is open
-	if !p.isOpen {
-		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package is not open", nil, struct{}{})
-	}
-
-	// Validate path
-	if err := internal.ValidatePackagePath(path); err != nil {
-		return nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "error during ReadFile: path validation failed")
-	}
-
-	// Normalize path for comparison
-	normalizedPath, err := internal.NormalizePackagePath(path)
+	normalizedPath, fileEntry, err := p.readFileValidateAndResolve(ctx, path)
 	if err != nil {
-		return nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "error during ReadFile: path normalization failed")
+		return nil, err
 	}
-
-	// Find FileEntry by normalized path
-	fileEntry, err := p.findFileEntryByPath(normalizedPath)
-	if err != nil {
-		return nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "error during ReadFile: file not found")
-	}
-
-	// Check if data is already loaded in memory (from StageFile or not-yet-written entries)
+	_ = normalizedPath // used only for resolution; fileEntry is the resolved entry
 	if fileEntry.IsDataLoaded {
-		// Return in-memory data directly (no need for decryption/decompression in baseline)
-		// This works even when fileHandle is nil (for newly written files)
 		return fileEntry.Data, nil
 	}
+	return p.readFileDataFromSource(ctx, fileEntry)
+}
 
-	// Check context cancellation before I/O
+// readFileValidateAndResolve validates context, package state, path, and resolves the FileEntry.
+func (p *filePackage) readFileValidateAndResolve(ctx context.Context, path string) (string, *metadata.FileEntry, error) {
+	if err := internal.CheckContext(ctx, "ReadFile"); err != nil {
+		return "", nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeContext, "error during ReadFile: context validation failed")
+	}
+	if !p.isOpen {
+		return "", nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package is not open", nil, struct{}{})
+	}
+	if err := internal.ValidatePackagePath(path); err != nil {
+		return "", nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "error during ReadFile: path validation failed")
+	}
+	normalizedPath, err := internal.NormalizePackagePath(path)
+	if err != nil {
+		return "", nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "error during ReadFile: path normalization failed")
+	}
+	fileEntry, err := p.findFileEntryByPath(normalizedPath)
+	if err != nil {
+		return "", nil, pkgerrors.WrapError(err, pkgerrors.ErrTypeValidation, "error during ReadFile: file not found")
+	}
+	return normalizedPath, fileEntry, nil
+}
+
+// readFileDataFromSource reads file data from the package file using SourceFile/SourceOffset.
+func (p *filePackage) readFileDataFromSource(ctx context.Context, fileEntry *metadata.FileEntry) ([]byte, error) {
 	select {
 	case <-ctx.Done():
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeContext, "context cancelled", ctx.Err(), struct{}{})
 	default:
 	}
-
-	// Use the stored SourceFile and SourceOffset to locate file data
-	// For opened packages, SourceFile points to the package file and SourceOffset is the file data offset
 	if fileEntry.SourceFile == nil {
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "file source is not available", nil, pkgerrors.ValidationErrorContext{
-			Field:    "SourceFile",
-			Value:    "nil",
-			Expected: "valid file handle",
+			Field: "SourceFile", Value: "nil", Expected: "valid file handle",
 		})
 	}
-
 	if fileEntry.SourceOffset == 0 {
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "file source offset is not set", nil, pkgerrors.ValidationErrorContext{
-			Field:    "SourceOffset",
-			Value:    0,
-			Expected: "valid file offset",
+			Field: "SourceOffset", Value: 0, Expected: "valid file offset",
 		})
 	}
-
-	// Seek to file data using stored offset
 	if _, err := fileEntry.SourceFile.Seek(fileEntry.SourceOffset, 0); err != nil {
 		return nil, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to seek to file data", pkgerrors.ValidationErrorContext{
-			Field:    "SourceOffset",
-			Value:    fileEntry.SourceOffset,
-			Expected: "seek successful",
+			Field: "SourceOffset", Value: fileEntry.SourceOffset, Expected: "seek successful",
 		})
 	}
-
-	// Check context cancellation during I/O
 	select {
 	case <-ctx.Done():
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeContext, "context cancelled", ctx.Err(), struct{}{})
 	default:
 	}
-
-	// Read file data (stored size)
 	data := make([]byte, fileEntry.StoredSize)
 	n, err := fileEntry.SourceFile.Read(data)
 	if err != nil && err != io.EOF {
 		return nil, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read file data", pkgerrors.ValidationErrorContext{
-			Field:    "StoredSize",
-			Value:    fileEntry.StoredSize,
-			Expected: "read successful",
+			Field: "StoredSize", Value: fileEntry.StoredSize, Expected: "read successful",
 		})
 	}
-
 	if uint64(n) != fileEntry.StoredSize {
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeCorruption, "incomplete file data read", nil, pkgerrors.ValidationErrorContext{
-			Field:    "Data",
-			Value:    n,
-			Expected: fmt.Sprintf("%d bytes", fileEntry.StoredSize),
+			Field: "Data", Value: n, Expected: fmt.Sprintf("%d bytes", fileEntry.StoredSize),
 		})
 	}
-
-	// TODO: Apply decryption if file is encrypted
 	if fileEntry.EncryptionType != 0 {
-		// Decryption not yet implemented
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeUnsupported, "file decryption not yet implemented", nil, pkgerrors.ValidationErrorContext{
-			Field:    "EncryptionType",
-			Value:    fileEntry.EncryptionType,
-			Expected: "decryption support",
+			Field: "EncryptionType", Value: fileEntry.EncryptionType, Expected: "decryption support",
 		})
 	}
-
-	// TODO: Apply decompression if file is compressed
 	if fileEntry.CompressionType != 0 {
-		// Decompression not yet implemented
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeUnsupported, "file decompression not yet implemented", nil, pkgerrors.ValidationErrorContext{
-			Field:    "CompressionType",
-			Value:    fileEntry.CompressionType,
-			Expected: "decompression support",
+			Field: "CompressionType", Value: fileEntry.CompressionType, Expected: "decompression support",
 		})
 	}
-
 	return data, nil
 }
 
@@ -267,7 +235,7 @@ func (p *filePackage) ReadFile(ctx context.Context, path string) ([]byte, error)
 // perform I/O, so it does not accept a context parameter.
 //
 // The results are stable across calls when package state is unchanged.
-// Files removed from in-memory package (via UnstageFile) are excluded.
+// Files removed from in-memory package (via RemoveFile) are excluded.
 //
 // Returns:
 //   - []FileInfo: Sorted list of file information
@@ -276,7 +244,9 @@ func (p *filePackage) ReadFile(ctx context.Context, path string) ([]byte, error)
 // Error Conditions:
 //   - ErrTypeValidation: Package is closed or path normalization fails
 //
-// Specification: api_core.md: 1.1.3 ReadFile Method Contract
+// Specification: api_core.md: 1.2.3 Package.ListFiles Method
+//
+//nolint:gocognit // iteration and metadata branches
 func (p *filePackage) ListFiles() ([]FileInfo, error) {
 	// CloseWithCleanup clears in-memory state.
 	// ListFiles is an in-memory operation and is allowed after Close as long as
@@ -294,6 +264,13 @@ func (p *filePackage) ListFiles() ([]FileInfo, error) {
 	for _, entry := range p.FileEntries {
 		if entry == nil {
 			continue
+		}
+
+		// Exclude internal special metadata files from user-visible listings.
+		if p.SpecialFiles != nil {
+			if _, ok := p.SpecialFiles[entry.Type]; ok {
+				continue
+			}
 		}
 
 		// Collect and convert all paths for this entry
@@ -412,7 +389,7 @@ func (p *filePackage) ListFiles() ([]FileInfo, error) {
 //	}
 //	fmt.Println("Package is valid")
 //
-// Specification: api_basic_operations.md: 9.1 Package Validation
+// Specification: api_basic_operations.md: 15. Package.Validate Method
 func (p *filePackage) Validate(ctx context.Context) error {
 	// Validate context
 	if err := internal.CheckContext(ctx, "Validate"); err != nil {
@@ -429,13 +406,13 @@ func (p *filePackage) Validate(ctx context.Context) error {
 		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package header is nil", nil, struct{}{})
 	}
 
-	if err := p.header.Validate(); err != nil {
+	if err := validatePackageHeader(p.header); err != nil {
 		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid package header", err, struct{}{})
 	}
 
 	// Validate file index if present
 	if p.index != nil {
-		if err := p.index.Validate(); err != nil {
+		if err := validateFileIndex(p.index); err != nil {
 			return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid file index", err, struct{}{})
 		}
 	}

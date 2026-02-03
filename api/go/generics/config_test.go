@@ -17,58 +17,39 @@ func TestConfigBuilder(t *testing.T) {
 	}
 }
 
+func assertConfigOptionSet[T comparable](t *testing.T, opt Option[T], expected T, fieldName string) {
+	t.Helper()
+	if !opt.IsSet() {
+		t.Errorf("%s should be set", fieldName)
+	}
+	val, ok := opt.Get()
+	if !ok {
+		t.Errorf("%s should be retrievable", fieldName)
+	}
+	if val != expected {
+		t.Errorf("%s should be %v, got %v", fieldName, expected, val)
+	}
+}
+
 // TestConfigBuilder_WithChunkSize tests WithChunkSize
 func TestConfigBuilder_WithChunkSize(t *testing.T) {
 	builder := NewConfigBuilder[string]()
 	builder.WithChunkSize(1024)
-
-	config := builder.Build()
-	if !config.ChunkSize.IsSet() {
-		t.Error("ChunkSize should be set")
-	}
-	chunkSize, ok := config.ChunkSize.Get()
-	if !ok {
-		t.Error("ChunkSize should be retrievable")
-	}
-	if chunkSize != 1024 {
-		t.Errorf("ChunkSize should be 1024, got %d", chunkSize)
-	}
+	assertConfigOptionSet(t, builder.Build().ChunkSize, 1024, "ChunkSize")
 }
 
 // TestConfigBuilder_WithMemoryUsage tests WithMemoryUsage
 func TestConfigBuilder_WithMemoryUsage(t *testing.T) {
 	builder := NewConfigBuilder[int]()
 	builder.WithMemoryUsage(2 * 1024 * 1024)
-
-	config := builder.Build()
-	if !config.MaxMemoryUsage.IsSet() {
-		t.Error("MaxMemoryUsage should be set")
-	}
-	memoryUsage, ok := config.MaxMemoryUsage.Get()
-	if !ok {
-		t.Error("MaxMemoryUsage should be retrievable")
-	}
-	if memoryUsage != 2*1024*1024 {
-		t.Errorf("MaxMemoryUsage should be 2MB, got %d", memoryUsage)
-	}
+	assertConfigOptionSet(t, builder.Build().MaxMemoryUsage, 2*1024*1024, "MaxMemoryUsage")
 }
 
 // TestConfigBuilder_WithCompressionLevel tests WithCompressionLevel
 func TestConfigBuilder_WithCompressionLevel(t *testing.T) {
 	builder := NewConfigBuilder[float64]()
 	builder.WithCompressionLevel(5)
-
-	config := builder.Build()
-	if !config.CompressionLevel.IsSet() {
-		t.Error("CompressionLevel should be set")
-	}
-	level, ok := config.CompressionLevel.Get()
-	if !ok {
-		t.Error("CompressionLevel should be retrievable")
-	}
-	if level != 5 {
-		t.Errorf("CompressionLevel should be 5, got %d", level)
-	}
+	assertConfigOptionSet(t, builder.Build().CompressionLevel, 5, "CompressionLevel")
 }
 
 // TestConfigBuilder_WithStrategy tests WithStrategy

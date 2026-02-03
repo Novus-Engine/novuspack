@@ -13,133 +13,146 @@ import (
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
+func mustNewFilePackage(t *testing.T) (Package, *filePackage) {
+	t.Helper()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage() failed: %v", err)
+	}
+	return pkg, pkg.(*filePackage)
+}
+
+// identityOps holds set/get/has/clear/info callbacks for AppID or VendorID.
+// Used by table-driven identity tests to avoid duplicating test logic.
+type (
+	setFn   func(*filePackage, interface{}) error
+	getFn   func(*filePackage) interface{}
+	hasFn   func(*filePackage) bool
+	clearFn func(*filePackage) error
+	infoFn  func(*filePackage) interface{}
+)
+type identityOps struct {
+	set   setFn
+	get   getFn
+	has   hasFn
+	clear clearFn
+	info  infoFn
+}
+
+func runIdentitySetGetHas(t *testing.T, fpkg *filePackage, val interface{}, ops identityOps, fieldName string) {
+	t.Helper()
+	if err := ops.set(fpkg, val); err != nil {
+		t.Errorf("Set%s() failed: %v", fieldName, err)
+	}
+	if got := ops.get(fpkg); got != val {
+		t.Errorf("Get%s() = %v, want %v", fieldName, got, val)
+	}
+	if !ops.has(fpkg) {
+		t.Errorf("Has%s() should return true after Set", fieldName)
+	}
+}
+
+func runIdentityClear(t *testing.T, fpkg *filePackage, setVal interface{}, ops identityOps, fieldName string) {
+	t.Helper()
+	if err := ops.set(fpkg, setVal); err != nil {
+		t.Fatalf("Set%s() failed: %v", fieldName, err)
+	}
+	if err := ops.clear(fpkg); err != nil {
+		t.Errorf("Clear%s() failed: %v", fieldName, err)
+	}
+	if ops.get(fpkg) != uint64(0) && ops.get(fpkg) != uint32(0) {
+		t.Errorf("Get%s() after Clear = %v, want 0", fieldName, ops.get(fpkg))
+	}
+	if ops.has(fpkg) {
+		t.Errorf("Has%s() should return false after Clear", fieldName)
+	}
+}
+
+func runIdentityHasLifecycle(t *testing.T, fpkg *filePackage, setVal interface{}, ops identityOps, fieldName string) {
+	t.Helper()
+	if ops.has(fpkg) {
+		t.Errorf("Has%s() should return false for new package", fieldName)
+	}
+	if err := ops.set(fpkg, setVal); err != nil {
+		t.Fatalf("Set%s() failed: %v", fieldName, err)
+	}
+	if !ops.has(fpkg) {
+		t.Errorf("Has%s() should return true after Set", fieldName)
+	}
+	if err := ops.clear(fpkg); err != nil {
+		t.Fatalf("Clear%s() failed: %v", fieldName, err)
+	}
+	if ops.has(fpkg) {
+		t.Errorf("Has%s() should return false after Clear", fieldName)
+	}
+}
+
+func runIdentityPersistsInInfo(t *testing.T, fpkg *filePackage, val interface{}, ops identityOps, fieldName string) {
+	t.Helper()
+	if err := ops.set(fpkg, val); err != nil {
+		t.Fatalf("Set%s() failed: %v", fieldName, err)
+	}
+	if ops.info(fpkg) != val {
+		t.Errorf("Info.%s = %v, want %v", fieldName, ops.info(fpkg), val)
+	}
+}
+
+func makeIdentityOps(set setFn, get getFn, has hasFn, clearOp clearFn, info infoFn) identityOps {
+	return identityOps{set: set, get: get, has: has, clear: clearOp, info: info}
+}
+
+func appIDIdentityOps() identityOps {
+	return makeIdentityOps(
+		func(fpkg *filePackage, v interface{}) error { return fpkg.SetAppID(v.(uint64)) },
+		func(fpkg *filePackage) interface{} { return fpkg.GetAppID() },
+		func(fpkg *filePackage) bool { return fpkg.HasAppID() },
+		func(fpkg *filePackage) error { return fpkg.ClearAppID() },
+		func(fpkg *filePackage) interface{} { return fpkg.Info.AppID },
+	)
+}
+
+func vendorIDIdentityOps() identityOps {
+	set := func(fpkg *filePackage, v interface{}) error { return fpkg.SetVendorID(v.(uint32)) }
+	get := func(fpkg *filePackage) interface{} { return fpkg.GetVendorID() }
+	has := func(fpkg *filePackage) bool { return fpkg.HasVendorID() }
+	clearFn := func(fpkg *filePackage) error { return fpkg.ClearVendorID() }
+	info := func(fpkg *filePackage) interface{} { return fpkg.Info.VendorID }
+	return identityOps{set: set, get: get, has: has, clear: clearFn, info: info}
+}
+
+var appIDOps = appIDIdentityOps()
+var vendorIDOps = vendorIDIdentityOps()
+
 // =============================================================================
 // TEST: SetAppID / GetAppID / HasAppID / ClearAppID
 // =============================================================================
 
 // TestPackage_SetAppID_Basic tests basic SetAppID operation.
 func TestPackage_SetAppID_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Set AppID
-	appID := uint64(12345)
-	err = fpkg.SetAppID(appID)
-	if err != nil {
-		t.Errorf("SetAppID() failed: %v", err)
-	}
-
-	// Verify AppID was set
-	retrieved := fpkg.GetAppID()
-	if retrieved != appID {
-		t.Errorf("GetAppID() = %d, want %d", retrieved, appID)
-	}
-
-	if !fpkg.HasAppID() {
-		t.Error("HasAppID() should return true after SetAppID")
-	}
+	runIdentitySetGetHas(t, fpkg, uint64(12345), appIDOps, "AppID")
 }
 
 // TestPackage_ClearAppID_Basic tests basic ClearAppID operation.
 func TestPackage_ClearAppID_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Set AppID first
-	err = fpkg.SetAppID(12345)
-	if err != nil {
-		t.Fatalf("SetAppID() failed: %v", err)
-	}
-
-	// Clear AppID
-	err = fpkg.ClearAppID()
-	if err != nil {
-		t.Errorf("ClearAppID() failed: %v", err)
-	}
-
-	// Verify AppID was cleared
-	if fpkg.GetAppID() != 0 {
-		t.Errorf("GetAppID() = %d, want 0", fpkg.GetAppID())
-	}
-
-	if fpkg.HasAppID() {
-		t.Error("HasAppID() should return false after ClearAppID")
-	}
+	runIdentityClear(t, fpkg, uint64(12345), appIDOps, "AppID")
 }
 
 // TestPackage_HasAppID_Basic tests basic HasAppID operation.
 func TestPackage_HasAppID_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Initially no AppID
-	if fpkg.HasAppID() {
-		t.Error("HasAppID() should return false for new package")
-	}
-
-	// Set AppID
-	err = fpkg.SetAppID(12345)
-	if err != nil {
-		t.Fatalf("SetAppID() failed: %v", err)
-	}
-
-	// Verify HasAppID returns true
-	if !fpkg.HasAppID() {
-		t.Error("HasAppID() should return true after SetAppID")
-	}
-
-	// Clear AppID
-	err = fpkg.ClearAppID()
-	if err != nil {
-		t.Fatalf("ClearAppID() failed: %v", err)
-	}
-
-	// Verify HasAppID returns false
-	if fpkg.HasAppID() {
-		t.Error("HasAppID() should return false after ClearAppID")
-	}
+	runIdentityHasLifecycle(t, fpkg, uint64(12345), appIDOps, "AppID")
 }
 
 // TestPackage_AppID_PersistsInHeader tests that AppID is stored in Info and synced to header.
 func TestPackage_AppID_PersistsInHeader(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Set AppID
-	appID := uint64(54321)
-	err = fpkg.SetAppID(appID)
-	if err != nil {
-		t.Fatalf("SetAppID() failed: %v", err)
-	}
-
-	// Verify PackageInfo (single source of truth)
-	if fpkg.Info.AppID != appID {
-		t.Errorf("Info.AppID = %d, want %d", fpkg.Info.AppID, appID)
-	}
-
-	// Note: Header is NOT synced immediately after mutations.
-	// It will be synced during write operations (Write/SafeWrite/FastWrite).
-	// This follows the "PackageInfo as single source of truth" pattern.
+	runIdentityPersistsInInfo(t, fpkg, uint64(54321), appIDOps, "AppID")
 }
 
 // =============================================================================
@@ -148,127 +161,30 @@ func TestPackage_AppID_PersistsInHeader(t *testing.T) {
 
 // TestPackage_SetVendorID_Basic tests basic SetVendorID operation.
 func TestPackage_SetVendorID_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Set VendorID
-	vendorID := uint32(67890)
-	err = fpkg.SetVendorID(vendorID)
-	if err != nil {
-		t.Errorf("SetVendorID() failed: %v", err)
-	}
-
-	// Verify VendorID was set
-	retrieved := fpkg.GetVendorID()
-	if retrieved != vendorID {
-		t.Errorf("GetVendorID() = %d, want %d", retrieved, vendorID)
-	}
-
-	if !fpkg.HasVendorID() {
-		t.Error("HasVendorID() should return true after SetVendorID")
-	}
+	runIdentitySetGetHas(t, fpkg, uint32(67890), vendorIDOps, "VendorID")
 }
 
 // TestPackage_ClearVendorID_Basic tests basic ClearVendorID operation.
 func TestPackage_ClearVendorID_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Set VendorID first
-	err = fpkg.SetVendorID(67890)
-	if err != nil {
-		t.Fatalf("SetVendorID() failed: %v", err)
-	}
-
-	// Clear VendorID
-	err = fpkg.ClearVendorID()
-	if err != nil {
-		t.Errorf("ClearVendorID() failed: %v", err)
-	}
-
-	// Verify VendorID was cleared
-	if fpkg.GetVendorID() != 0 {
-		t.Errorf("GetVendorID() = %d, want 0", fpkg.GetVendorID())
-	}
-
-	if fpkg.HasVendorID() {
-		t.Error("HasVendorID() should return false after ClearVendorID")
-	}
+	runIdentityClear(t, fpkg, uint32(67890), vendorIDOps, "VendorID")
 }
 
 // TestPackage_HasVendorID_Basic tests basic HasVendorID operation.
 func TestPackage_HasVendorID_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Initially no VendorID
-	if fpkg.HasVendorID() {
-		t.Error("HasVendorID() should return false for new package")
-	}
-
-	// Set VendorID
-	err = fpkg.SetVendorID(67890)
-	if err != nil {
-		t.Fatalf("SetVendorID() failed: %v", err)
-	}
-
-	// Verify HasVendorID returns true
-	if !fpkg.HasVendorID() {
-		t.Error("HasVendorID() should return true after SetVendorID")
-	}
-
-	// Clear VendorID
-	err = fpkg.ClearVendorID()
-	if err != nil {
-		t.Fatalf("ClearVendorID() failed: %v", err)
-	}
-
-	// Verify HasVendorID returns false
-	if fpkg.HasVendorID() {
-		t.Error("HasVendorID() should return false after ClearVendorID")
-	}
+	runIdentityHasLifecycle(t, fpkg, uint32(67890), vendorIDOps, "VendorID")
 }
 
 // TestPackage_VendorID_PersistsInHeader tests that VendorID is stored in Info and synced to header.
 func TestPackage_VendorID_PersistsInHeader(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
+	pkg, fpkg := mustNewFilePackage(t)
 	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Set VendorID
-	vendorID := uint32(98765)
-	err = fpkg.SetVendorID(vendorID)
-	if err != nil {
-		t.Fatalf("SetVendorID() failed: %v", err)
-	}
-
-	// Verify PackageInfo (single source of truth)
-	if fpkg.Info.VendorID != vendorID {
-		t.Errorf("Info.VendorID = %d, want %d", fpkg.Info.VendorID, vendorID)
-	}
-
-	// Note: Header is NOT synced immediately after mutations.
-	// It will be synced during write operations (Write/SafeWrite/FastWrite).
-	// This follows the "PackageInfo as single source of truth" pattern.
+	runIdentityPersistsInInfo(t, fpkg, uint32(98765), vendorIDOps, "VendorID")
 }
 
 // =============================================================================
@@ -370,52 +286,31 @@ func TestPackage_GetPackageIdentity_Basic(t *testing.T) {
 	}
 }
 
-// TestPackage_GetAppID_WithNilHeader tests GetAppID when header is nil.
-func TestPackage_GetAppID_WithNilHeader(t *testing.T) {
+func runGetterWithNilHeader(t *testing.T, getter func(*filePackage) interface{}, want interface{}, name string) {
+	t.Helper()
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
 	defer func() { _ = pkg.Close() }()
-
 	fpkg := pkg.(*filePackage)
-
-	// Temporarily set header to nil
 	originalHeader := fpkg.header
 	fpkg.header = nil
-
-	// GetAppID should return 0 when header is nil
-	appID := fpkg.GetAppID()
-	if appID != 0 {
-		t.Errorf("GetAppID() = %d, want 0 when header is nil", appID)
+	defer func() { fpkg.header = originalHeader }()
+	got := getter(fpkg)
+	if got != want {
+		t.Errorf("%s() = %v, want %v when header is nil", name, got, want)
 	}
+}
 
-	// Restore header
-	fpkg.header = originalHeader
+// TestPackage_GetAppID_WithNilHeader tests GetAppID when header is nil.
+func TestPackage_GetAppID_WithNilHeader(t *testing.T) {
+	runGetterWithNilHeader(t, func(fpkg *filePackage) interface{} { return fpkg.GetAppID() }, uint64(0), "GetAppID")
 }
 
 // TestPackage_GetVendorID_WithNilHeader tests GetVendorID when header is nil.
 func TestPackage_GetVendorID_WithNilHeader(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// Temporarily set header to nil
-	originalHeader := fpkg.header
-	fpkg.header = nil
-
-	// GetVendorID should return 0 when header is nil
-	vendorID := fpkg.GetVendorID()
-	if vendorID != 0 {
-		t.Errorf("GetVendorID() = %d, want 0 when header is nil", vendorID)
-	}
-
-	// Restore header
-	fpkg.header = originalHeader
+	runGetterWithNilHeader(t, func(fpkg *filePackage) interface{} { return fpkg.GetVendorID() }, uint32(0), "GetVendorID")
 }
 
 // TestPackage_SetPackageIdentity_WithNilHeader removed - obsolete test.
@@ -449,212 +344,116 @@ func TestPackage_GetVendorID_WithNilHeader(t *testing.T) {
 // TestPackage_GetAppID_WithNilInfo tests GetAppID when Info is nil.
 // Expected: Should return 0 gracefully
 func TestPackage_GetAppID_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// GetAppID should return 0 (not panic)
-	appID := fpkg.GetAppID()
-	if appID != 0 {
-		t.Errorf("GetAppID() with nil Info = %d, want 0", appID)
-	}
+	runWithNilInfo(t, func(t *testing.T, fpkg *filePackage) {
+		appID := fpkg.GetAppID()
+		if appID != 0 {
+			t.Errorf("GetAppID() with nil Info = %d, want 0", appID)
+		}
+	})
 }
 
 // TestPackage_GetVendorID_WithNilInfo tests GetVendorID when Info is nil.
 // Expected: Should return 0 gracefully
 func TestPackage_GetVendorID_WithNilInfo(t *testing.T) {
+	runWithNilInfo(t, func(t *testing.T, fpkg *filePackage) {
+		vendorID := fpkg.GetVendorID()
+		if vendorID != 0 {
+			t.Errorf("GetVendorID() with nil Info = %d, want 0", vendorID)
+		}
+	})
+}
+
+func runWithNilInfo(t *testing.T, check func(t *testing.T, fpkg *filePackage)) {
+	t.Helper()
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
 	defer func() { _ = pkg.Close() }()
-
 	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
 	fpkg.Info = nil
-
-	// GetVendorID should return 0 (not panic)
-	vendorID := fpkg.GetVendorID()
-	if vendorID != 0 {
-		t.Errorf("GetVendorID() with nil Info = %d, want 0", vendorID)
-	}
+	check(t, fpkg)
 }
 
 // TestPackage_HasAppID_WithNilInfo tests HasAppID when Info is nil.
 // Expected: Should return false gracefully
 func TestPackage_HasAppID_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// HasAppID should return false (not panic)
-	if fpkg.HasAppID() {
-		t.Error("HasAppID() with nil Info should return false")
-	}
+	runWithNilInfo(t, func(t *testing.T, fpkg *filePackage) {
+		if fpkg.HasAppID() {
+			t.Error("HasAppID() with nil Info should return false")
+		}
+	})
 }
 
 // TestPackage_HasVendorID_WithNilInfo tests HasVendorID when Info is nil.
 // Expected: Should return false gracefully
 func TestPackage_HasVendorID_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// HasVendorID should return false (not panic)
-	if fpkg.HasVendorID() {
-		t.Error("HasVendorID() with nil Info should return false")
-	}
+	runWithNilInfo(t, func(t *testing.T, fpkg *filePackage) {
+		if fpkg.HasVendorID() {
+			t.Error("HasVendorID() with nil Info should return false")
+		}
+	})
 }
 
 // TestPackage_GetPackageIdentity_WithNilInfo tests GetPackageIdentity when Info is nil.
 // Expected: Should return zeros gracefully
 func TestPackage_GetPackageIdentity_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
+	runWithNilInfo(t, func(t *testing.T, fpkg *filePackage) {
+		vendorID, appID := fpkg.GetPackageIdentity()
+		if vendorID != 0 {
+			t.Errorf("GetPackageIdentity() VendorID with nil Info = %d, want 0", vendorID)
+		}
+		if appID != 0 {
+			t.Errorf("GetPackageIdentity() AppID with nil Info = %d, want 0", appID)
+		}
+	})
+}
 
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// GetPackageIdentity should return zeros (not panic)
-	vendorID, appID := fpkg.GetPackageIdentity()
-	if vendorID != 0 {
-		t.Errorf("GetPackageIdentity() VendorID with nil Info = %d, want 0", vendorID)
-	}
-	if appID != 0 {
-		t.Errorf("GetPackageIdentity() AppID with nil Info = %d, want 0", appID)
-	}
+func assertSetWithNilInfoReturnsValidationError(t *testing.T, setFn func(*filePackage) error) {
+	t.Helper()
+	runWithNilInfo(t, func(t *testing.T, fpkg *filePackage) {
+		err := setFn(fpkg)
+		if err == nil {
+			t.Error("Set with nil Info should return error")
+		}
+		pkgErr := &pkgerrors.PackageError{}
+		if !asPackageError(err, pkgErr) {
+			t.Fatalf("Expected PackageError, got: %T", err)
+		}
+		if pkgErr.Type != pkgerrors.ErrTypeValidation {
+			t.Errorf("Expected error type Validation, got: %v", pkgErr.Type)
+		}
+	})
 }
 
 // TestPackage_SetAppID_WithNilInfo tests SetAppID when Info is nil.
 // Expected: Should return validation error
 func TestPackage_SetAppID_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// SetAppID should return error
-	err = fpkg.SetAppID(12345)
-	if err == nil {
-		t.Error("SetAppID() with nil Info should return error")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeValidation {
-		t.Errorf("Expected error type Validation, got: %v", pkgErr.Type)
-	}
+	assertSetWithNilInfoReturnsValidationError(t, func(fpkg *filePackage) error {
+		return fpkg.SetAppID(12345)
+	})
 }
 
 // TestPackage_SetVendorID_WithNilInfo tests SetVendorID when Info is nil.
 // Expected: Should return validation error
 func TestPackage_SetVendorID_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// SetVendorID should return error
-	err = fpkg.SetVendorID(12345)
-	if err == nil {
-		t.Error("SetVendorID() with nil Info should return error")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeValidation {
-		t.Errorf("Expected error type Validation, got: %v", pkgErr.Type)
-	}
+	assertSetWithNilInfoReturnsValidationError(t, func(fpkg *filePackage) error {
+		return fpkg.SetVendorID(12345)
+	})
 }
 
 // TestPackage_SetPackageIdentity_WithNilInfo tests SetPackageIdentity when Info is nil.
 // Expected: Should return validation error
 func TestPackage_SetPackageIdentity_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// SetPackageIdentity should return error
-	err = fpkg.SetPackageIdentity(12345, 67890)
-	if err == nil {
-		t.Error("SetPackageIdentity() with nil Info should return error")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeValidation {
-		t.Errorf("Expected error type Validation, got: %v", pkgErr.Type)
-	}
+	assertSetWithNilInfoReturnsValidationError(t, func(fpkg *filePackage) error {
+		return fpkg.SetPackageIdentity(12345, 67890)
+	})
 }
 
 // TestPackage_ClearPackageIdentity_WithNilInfo tests ClearPackageIdentity when Info is nil.
 // Expected: Should return validation error
 func TestPackage_ClearPackageIdentity_WithNilInfo(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	// Manually set Info to nil
-	fpkg.Info = nil
-
-	// ClearPackageIdentity should return error
-	err = fpkg.ClearPackageIdentity()
-	if err == nil {
-		t.Error("ClearPackageIdentity() with nil Info should return error")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeValidation {
-		t.Errorf("Expected error type Validation, got: %v", pkgErr.Type)
-	}
+	assertSetWithNilInfoReturnsValidationError(t, func(fpkg *filePackage) error {
+		return fpkg.ClearPackageIdentity()
+	})
 }

@@ -80,6 +80,7 @@ func TestContainsIgnoreCase(t *testing.T) {
 	})
 }
 
+//nolint:gocognit // table-driven index cases
 func TestIndexIgnoreCase(t *testing.T) {
 	t.Run("finds index case insensitive", func(t *testing.T) {
 		idx := IndexIgnoreCase("hello world", "WORLD")

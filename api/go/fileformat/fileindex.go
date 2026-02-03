@@ -64,7 +64,7 @@ type FileIndex struct {
 //   - All FileIDs must be unique and non-zero
 //
 // Returns an error if any validation check fails.
-func (f *FileIndex) Validate() error {
+func (f *FileIndex) validate() error {
 	if f.Reserved != 0 {
 		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "reserved field must be zero", nil, pkgerrors.ValidationErrorContext{
 			Field:    "Reserved",
@@ -115,7 +115,7 @@ func (f *FileIndex) Validate() error {
 // Size returns the total size of the FileIndex in bytes.
 //
 // Specification: package_file_format.md: 6 File Index Section
-func (f *FileIndex) Size() int {
+func (f *FileIndex) size() int {
 	return 16 + (IndexEntrySize * len(f.Entries))
 }
 
@@ -138,152 +138,94 @@ func NewFileIndex() *FileIndex {
 //
 // Returns the number of bytes read and any error encountered.
 //
-// Specification: package_file_format.md: 6 File Index Section
-func (f *FileIndex) ReadFrom(r io.Reader) (int64, error) {
-	var totalRead int64
-
-	// Read header (16 bytes)
-	var entryCount uint32
-	if err := binary.Read(r, binary.LittleEndian, &entryCount); err != nil {
+// readFileIndexHeader reads the 16-byte header and returns entryCount, reserved, firstEntryOffset, totalRead, error.
+func readFileIndexHeader(r io.Reader) (entryCount, reserved uint32, firstEntryOffset uint64, totalRead int64, err error) {
+	if err = binary.Read(r, binary.LittleEndian, &entryCount); err != nil {
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to read entry count: incomplete data", pkgerrors.ValidationErrorContext{
-				Field:    "EntryCount",
-				Value:    totalRead,
-				Expected: "4 bytes",
+			return 0, 0, 0, 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to read entry count: incomplete data", pkgerrors.ValidationErrorContext{
+				Field: "EntryCount", Value: int64(0), Expected: "4 bytes",
 			})
 		}
-		return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read entry count", pkgerrors.ValidationErrorContext{
-			Field:    "EntryCount",
-			Value:    nil,
-			Expected: "4 bytes",
+		return 0, 0, 0, 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read entry count", pkgerrors.ValidationErrorContext{
+			Field: "EntryCount", Value: nil, Expected: "4 bytes",
+		})
+	}
+	totalRead = 4
+	if err = binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return 0, 0, 0, totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read reserved", pkgerrors.ValidationErrorContext{
+			Field: "Reserved", Value: nil, Expected: "4 bytes",
 		})
 	}
 	totalRead += 4
-	f.EntryCount = entryCount
-
-	var reserved uint32
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read reserved", pkgerrors.ValidationErrorContext{
-			Field:    "Reserved",
-			Value:    nil,
-			Expected: "4 bytes",
-		})
-	}
-	totalRead += 4
-	f.Reserved = reserved
-
-	var firstEntryOffset uint64
-	if err := binary.Read(r, binary.LittleEndian, &firstEntryOffset); err != nil {
-		return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read first entry offset", pkgerrors.ValidationErrorContext{
-			Field:    "FirstEntryOffset",
-			Value:    nil,
-			Expected: "8 bytes",
+	if err = binary.Read(r, binary.LittleEndian, &firstEntryOffset); err != nil {
+		return 0, 0, 0, totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read first entry offset", pkgerrors.ValidationErrorContext{
+			Field: "FirstEntryOffset", Value: nil, Expected: "8 bytes",
 		})
 	}
 	totalRead += 8
-	f.FirstEntryOffset = firstEntryOffset
+	return entryCount, reserved, firstEntryOffset, totalRead, nil
+}
 
-	// Read entries
-	// Validate entry count before allocation to prevent OOM from corrupted/malicious files
-	// Specification: package_file_format.md: 6.1 File Index Structure
-	// EntryCount is a uint32 (4 bytes) as per specification, maximum value: 4,294,967,295
-	// Note: Since entryCount is already uint32, it cannot exceed this limit by type definition,
-	// but we validate against practical limits below to prevent OOM attacks.
-
-	// Check if allocation size would overflow or exceed maximum slice size
-	// maxInt represents the maximum slice length in Go (architecture-dependent)
-	// On 64-bit systems: 2^63 - 1 = 9,223,372,036,854,775,807
-	// On 32-bit systems: 2^31 - 1 = 2,147,483,647
-	// Note: entryCount is uint32, so on 64-bit systems this check will never trigger
-	// (max uint32 = 4,294,967,295 < maxInt on 64-bit), but it's kept for correctness
-	// and potential future use with larger integer types.
-	const maxInt = int(^uint(0) >> 1) // Maximum value for int (architecture-dependent)
+// validateEntryCountAllocation checks entryCount against allocation limits; returns an error if allocation would be unsafe.
+func validateEntryCountAllocation(entryCount uint32, totalRead int64) error {
+	const maxInt = int(^uint(0) >> 1)
 	if int(entryCount) > maxInt {
-		return totalRead, pkgerrors.WrapErrorWithContext(
+		return pkgerrors.WrapErrorWithContext(
 			fmt.Errorf("entry count %d exceeds maximum slice size %d", entryCount, maxInt),
-			pkgerrors.ErrTypeValidation,
-			"entry count exceeds system allocation limits",
-			pkgerrors.ValidationErrorContext{
-				Field:    "EntryCount",
-				Value:    entryCount,
-				Expected: fmt.Sprintf("value <= %d", maxInt),
-			},
+			pkgerrors.ErrTypeValidation, "entry count exceeds system allocation limits",
+			pkgerrors.ValidationErrorContext{Field: "EntryCount", Value: entryCount, Expected: fmt.Sprintf("value <= %d", maxInt)},
 		)
 	}
-
-	// Calculate total required bytes for allocation
-	// Each IndexEntry is 16 bytes
-	// Note: uint32 max * 16 = 68,719,476,720 bytes (~64 GB), which is well within uint64 range
-	// so overflow in this multiplication is impossible
 	requiredBytes := uint64(entryCount) * uint64(IndexEntrySize)
-
-	// Check if required bytes would exceed maximum slice size in bytes
-	// This checks if entryCount * IndexEntrySize would exceed maxInt bytes
-	// On 64-bit: maxInt/16 = 576,460,752,303,423,487, so this check never triggers
-	//   (max uint32 = 4,294,967,295 is way smaller)
-	// On 32-bit: maxInt/16 = 134,217,727, so this check catches values in range
-	//   134,217,728 to 2,147,483,647 that would cause allocation size to exceed maxInt
-	//   (The earlier check catches values > 2,147,483,647)
-	if entryCount > 0 {
-		// Check if entryCount * IndexEntrySize would exceed maxInt when converted to int
-		// This prevents allocations that would exceed Go's slice size limits
-		if int(entryCount) > maxInt/int(IndexEntrySize) {
-			return totalRead, pkgerrors.WrapErrorWithContext(
-				fmt.Errorf("entry count %d would require allocation exceeding maximum slice size", entryCount),
-				pkgerrors.ErrTypeValidation,
-				"entry count exceeds maximum allocation size",
-				pkgerrors.ValidationErrorContext{
-					Field:    "EntryCount",
-					Value:    entryCount,
-					Expected: fmt.Sprintf("value <= %d", maxInt/int(IndexEntrySize)),
-				},
-			)
-		}
+	if entryCount > 0 && int(entryCount) > maxInt/int(IndexEntrySize) {
+		return pkgerrors.WrapErrorWithContext(
+			fmt.Errorf("entry count %d would require allocation exceeding maximum slice size", entryCount),
+			pkgerrors.ErrTypeValidation, "entry count exceeds maximum allocation size",
+			pkgerrors.ValidationErrorContext{Field: "EntryCount", Value: entryCount, Expected: fmt.Sprintf("value <= %d", maxInt/int(IndexEntrySize))},
+		)
 	}
-
-	// Check available system memory dynamically to prevent OOM
-	// This respects actual system constraints rather than hard-coded limits
+	if requiredBytes <= 1024*1024*1024 {
+		return nil
+	}
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	// For very large allocations (>1GB), check against available system memory
-	// Use a conservative estimate based on system memory statistics
-	if requiredBytes > 1024*1024*1024 { // > 1GB
-		// For large allocations, require that it's less than 50% of system memory
-		// or less than 10GB if system memory is unknown/very large
-		maxReasonableAllocation := uint64(10 * 1024 * 1024 * 1024) // 10GB default
-		if memStats.Sys > 0 && memStats.Sys < maxReasonableAllocation*2 {
-			maxReasonableAllocation = memStats.Sys / 2
-		}
-		if requiredBytes > maxReasonableAllocation {
-			return totalRead, pkgerrors.WrapErrorWithContext(
-				fmt.Errorf("entry count %d would require %d bytes (%d GB), exceeding available system memory", entryCount, requiredBytes, requiredBytes/(1024*1024*1024)),
-				pkgerrors.ErrTypeValidation,
-				"entry count exceeds available system memory",
-				pkgerrors.ValidationErrorContext{
-					Field:    "EntryCount",
-					Value:    entryCount,
-					Expected: "value within available system memory constraints",
-				},
-			)
-		}
+	maxReasonableAllocation := uint64(10 * 1024 * 1024 * 1024)
+	if memStats.Sys > 0 && memStats.Sys < maxReasonableAllocation*2 {
+		maxReasonableAllocation = memStats.Sys / 2
 	}
+	if requiredBytes > maxReasonableAllocation {
+		return pkgerrors.WrapErrorWithContext(
+			fmt.Errorf("entry count %d would require %d bytes (%d GB), exceeding available system memory", entryCount, requiredBytes, requiredBytes/(1024*1024*1024)),
+			pkgerrors.ErrTypeValidation, "entry count exceeds available system memory",
+			pkgerrors.ValidationErrorContext{Field: "EntryCount", Value: entryCount, Expected: "value within available system memory constraints"},
+		)
+	}
+	return nil
+}
 
-	// Attempt allocation - system will naturally limit based on available memory
+// Specification: package_file_format.md: 6 File Index Section
+func (f *FileIndex) readFrom(r io.Reader) (int64, error) {
+	entryCount, reserved, firstEntryOffset, totalRead, err := readFileIndexHeader(r)
+	if err != nil {
+		return totalRead, err
+	}
+	f.EntryCount = entryCount
+	f.Reserved = reserved
+	f.FirstEntryOffset = firstEntryOffset
+	if err := validateEntryCountAllocation(entryCount, totalRead); err != nil {
+		return totalRead, err
+	}
 	f.Entries = make([]IndexEntry, 0, entryCount)
-
 	for i := uint32(0); i < entryCount; i++ {
 		var entry IndexEntry
 		if err := binary.Read(r, binary.LittleEndian, &entry); err != nil {
 			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to read entry %d", i), pkgerrors.ValidationErrorContext{
-				Field:    "Entries",
-				Value:    i,
-				Expected: "valid index entry",
+				Field: "Entries", Value: i, Expected: "valid index entry",
 			})
 		}
 		totalRead += IndexEntrySize
 		f.Entries = append(f.Entries, entry)
 	}
-
 	return totalRead, nil
 }
 
@@ -300,7 +242,7 @@ func (f *FileIndex) ReadFrom(r io.Reader) (int64, error) {
 // Returns the number of bytes written and any error encountered.
 //
 // Specification: package_file_format.md: 6 File Index Section
-func (f *FileIndex) WriteTo(w io.Writer) (int64, error) {
+func (f *FileIndex) writeTo(w io.Writer) (int64, error) {
 	var totalWritten int64
 
 	// Update EntryCount to match actual entries

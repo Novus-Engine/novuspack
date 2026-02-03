@@ -45,35 +45,52 @@ func TestPackageMetadata_ContainsPackageInfo(t *testing.T) {
 	}
 }
 
-// TestPackageMetadata_ContainsFileEntries tests that PackageMetadata contains FileEntries slice.
-func TestPackageMetadata_ContainsFileEntries(t *testing.T) {
+func runContainsSliceTest(t *testing.T, fieldName string, checkNil func(*PackageMetadata) bool, getLen func(*PackageMetadata) int, appendNil func(*PackageMetadata)) {
+	t.Helper()
 	pm := NewPackageMetadata()
-	if pm.FileEntries == nil {
-		t.Fatal("FileEntries is nil")
+	if checkNil(pm) {
+		t.Fatalf("%s is nil", fieldName)
 	}
-	if len(pm.FileEntries) != 0 {
-		t.Errorf("FileEntries length = %v, want 0", len(pm.FileEntries))
+	if getLen(pm) != 0 {
+		t.Errorf("%s length = %v, want 0", fieldName, getLen(pm))
 	}
-	// Test that we can append to FileEntries
-	pm.FileEntries = append(pm.FileEntries, nil)
-	if len(pm.FileEntries) != 1 {
-		t.Errorf("FileEntries length after append = %v, want 1", len(pm.FileEntries))
+	appendNil(pm)
+	if getLen(pm) != 1 {
+		t.Errorf("%s length after append = %v, want 1", fieldName, getLen(pm))
 	}
 }
 
-// TestPackageMetadata_ContainsPathMetadataEntries tests that PackageMetadata contains PathMetadataEntries slice.
-func TestPackageMetadata_ContainsPathMetadataEntries(t *testing.T) {
-	pm := NewPackageMetadata()
-	if pm.PathMetadataEntries == nil {
-		t.Fatal("PathMetadataEntries is nil")
-	}
-	if len(pm.PathMetadataEntries) != 0 {
-		t.Errorf("PathMetadataEntries length = %v, want 0", len(pm.PathMetadataEntries))
-	}
-	// Test that we can append to PathMetadataEntries
-	pm.PathMetadataEntries = append(pm.PathMetadataEntries, nil)
-	if len(pm.PathMetadataEntries) != 1 {
-		t.Errorf("PathMetadataEntries length after append = %v, want 1", len(pm.PathMetadataEntries))
+type containsSliceCase struct {
+	name      string
+	fieldName string
+	checkNil  func(*PackageMetadata) bool
+	getLen    func(*PackageMetadata) int
+	appendNil func(*PackageMetadata)
+}
+
+func makeContainsSliceCase(name, fieldName string, checkNil func(*PackageMetadata) bool, getLen func(*PackageMetadata) int, appendNil func(*PackageMetadata)) containsSliceCase {
+	return containsSliceCase{name, fieldName, checkNil, getLen, appendNil}
+}
+
+//nolint:dupl // two slice fields require separate case builders with different accessors
+func containsSliceCasesForTest() []containsSliceCase {
+	fileEntriesCase := makeContainsSliceCase("FileEntries", "FileEntries",
+		func(pm *PackageMetadata) bool { return pm.FileEntries == nil },
+		func(pm *PackageMetadata) int { return len(pm.FileEntries) },
+		func(pm *PackageMetadata) { pm.FileEntries = append(pm.FileEntries, nil) })
+	pathMetaCase := makeContainsSliceCase("PathMetadataEntries", "PathMetadataEntries",
+		func(pm *PackageMetadata) bool { return pm.PathMetadataEntries == nil },
+		func(pm *PackageMetadata) int { return len(pm.PathMetadataEntries) },
+		func(pm *PackageMetadata) { pm.PathMetadataEntries = append(pm.PathMetadataEntries, nil) })
+	return []containsSliceCase{fileEntriesCase, pathMetaCase}
+}
+
+// TestPackageMetadata_ContainsSlices tests that PackageMetadata contains FileEntries and PathMetadataEntries slices.
+func TestPackageMetadata_ContainsSlices(t *testing.T) {
+	for _, tt := range containsSliceCasesForTest() {
+		t.Run(tt.name, func(t *testing.T) {
+			runContainsSliceTest(t, tt.fieldName, tt.checkNil, tt.getLen, tt.appendNil)
+		})
 	}
 }
 

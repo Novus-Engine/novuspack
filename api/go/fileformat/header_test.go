@@ -10,21 +10,9 @@ import (
 	"github.com/novus-engine/novuspack/api/go/internal/testhelpers"
 )
 
-// TestPackageHeaderSize verifies the PackageHeader struct is exactly 112 bytes
-// Specification: package_file_format.md: 2.1 Header Structure
-func TestPackageHeaderSize(t *testing.T) {
-	var header PackageHeader
-	size := binary.Size(header)
-
-	if size != PackageHeaderSize {
-		t.Errorf("PackageHeader size = %d bytes, want %d bytes", size, PackageHeaderSize)
-	}
-}
-
-// TestPackageHeaderFieldTypes verifies all fields have correct types
-// Specification: package_file_format.md: 2.1 Header Structure
-func TestPackageHeaderFieldTypes(t *testing.T) {
-	header := PackageHeader{
+// packageHeaderMinimal returns a PackageHeader with minimal/default field values (Flags 0, ArchivePartInfo Part 1 of 1).
+func packageHeaderMinimal() PackageHeader {
+	return PackageHeader{
 		Magic:              NVPKMagic,
 		FormatVersion:      FormatVersion,
 		Flags:              0,
@@ -46,27 +34,18 @@ func TestPackageHeaderFieldTypes(t *testing.T) {
 		CommentStart:       0,
 		SignatureOffset:    0,
 	}
-
-	// Verify Magic is uint32
-	if header.Magic != NVPKMagic {
-		t.Errorf("Magic = 0x%X, want 0x%X", header.Magic, NVPKMagic)
-	}
-
-	// Verify FormatVersion is uint32
-	if header.FormatVersion != FormatVersion {
-		t.Errorf("FormatVersion = %d, want %d", header.FormatVersion, FormatVersion)
-	}
-
-	// Verify ArchivePartInfo default value
-	if header.ArchivePartInfo != 0x00010001 {
-		t.Errorf("ArchivePartInfo = 0x%X, want 0x00010001", header.ArchivePartInfo)
-	}
 }
 
-// TestPackageHeaderSerialization verifies binary serialization/deserialization
-// Specification: package_file_format.md: 2.1 Header Structure
-func TestPackageHeaderSerialization(t *testing.T) {
-	original := PackageHeader{
+// packageHeaderMinimalZeroPart returns a PackageHeader with minimal fields and ArchivePartInfo 0.
+func packageHeaderMinimalZeroPart() PackageHeader {
+	h := packageHeaderMinimal()
+	h.ArchivePartInfo = 0
+	return h
+}
+
+// packageHeaderForSerialization returns a full PackageHeader used in serialization/ReadFrom tests.
+func packageHeaderForSerialization() PackageHeader {
+	return PackageHeader{
 		Magic:              NVPKMagic,
 		FormatVersion:      FormatVersion,
 		Flags:              FlagHasSignatures | FlagHasCompressedFiles,
@@ -88,6 +67,98 @@ func TestPackageHeaderSerialization(t *testing.T) {
 		CommentStart:       0,
 		SignatureOffset:    0,
 	}
+}
+
+// packageHeaderWithAllFieldsSet returns a PackageHeader with all fields set (for WriteTo/ReadFrom tests).
+func packageHeaderWithAllFieldsSet() PackageHeader {
+	return packageHeaderFull(42, 17, 0xDEADBEEF, 0x00020003, 100, 0x0411)
+}
+
+// packageHeaderRoundTripFull returns a full PackageHeader for round-trip tests (different metadata values).
+func packageHeaderRoundTripFull() PackageHeader {
+	return packageHeaderFull(100, 50, 0xABCDEF00, 0x0005000A, 200, 0x0409)
+}
+
+func packageHeaderFull(pkgDataVer, metaVer, crc, partInfo, commentSize, localeID uint32) PackageHeader {
+	return PackageHeader{
+		Magic:              NVPKMagic,
+		FormatVersion:      FormatVersion,
+		Flags:              0x01FF,
+		PackageDataVersion: pkgDataVer,
+		MetadataVersion:    metaVer,
+		PackageCRC:         crc,
+		CreatedTime:        1638360000000000000,
+		ModifiedTime:       1638361000000000000,
+		LocaleID:           localeID,
+		Reserved:           0,
+		AppID:              730,
+		VendorID:           VendorIDSteam,
+		CreatorID:          0,
+		IndexStart:         8192,
+		IndexSize:          2048,
+		ArchiveChainID:     0x123456789ABCDEF0,
+		ArchivePartInfo:    partInfo,
+		CommentSize:        commentSize,
+		CommentStart:       6144,
+		SignatureOffset:    10240,
+	}
+}
+
+// headerGetterTestCase is a single test case for a getter on PackageHeader.
+type headerGetterTestCase[T comparable] struct {
+	name   string
+	header PackageHeader
+	want   T
+}
+
+// runHeaderGetterTests runs table-driven tests for a header getter; T must be comparable.
+func runHeaderGetterTests[T comparable](t *testing.T, tests []headerGetterTestCase[T], getter func(PackageHeader) T, format string) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getter(tt.header)
+			if got != tt.want {
+				t.Errorf(format, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPackageHeaderSize verifies the PackageHeader struct is exactly 112 bytes
+// Specification: package_file_format.md: 2.1 Header Structure
+func TestPackageHeaderSize(t *testing.T) {
+	var header PackageHeader
+	size := binary.Size(header)
+
+	if size != PackageHeaderSize {
+		t.Errorf("PackageHeader size = %d bytes, want %d bytes", size, PackageHeaderSize)
+	}
+}
+
+// TestPackageHeaderFieldTypes verifies all fields have correct types
+// Specification: package_file_format.md: 2.1 Header Structure
+func TestPackageHeaderFieldTypes(t *testing.T) {
+	header := packageHeaderMinimal()
+
+	// Verify Magic is uint32
+	if header.Magic != NVPKMagic {
+		t.Errorf("Magic = 0x%X, want 0x%X", header.Magic, NVPKMagic)
+	}
+
+	// Verify FormatVersion is uint32
+	if header.FormatVersion != FormatVersion {
+		t.Errorf("FormatVersion = %d, want %d", header.FormatVersion, FormatVersion)
+	}
+
+	// Verify ArchivePartInfo default value
+	if header.ArchivePartInfo != 0x00010001 {
+		t.Errorf("ArchivePartInfo = 0x%X, want 0x00010001", header.ArchivePartInfo)
+	}
+}
+
+// TestPackageHeaderSerialization verifies binary serialization/deserialization
+// Specification: package_file_format.md: 2.1 Header Structure
+func TestPackageHeaderSerialization(t *testing.T) {
+	original := packageHeaderForSerialization()
 
 	// Serialize to bytes
 	buf := new(bytes.Buffer)
@@ -136,7 +207,7 @@ func TestPackageHeaderMagicValidation(t *testing.T) {
 				Magic:         tt.magic,
 				FormatVersion: tt.version,
 			}
-			err := header.Validate()
+			err := header.validate()
 
 			if tt.wantErr && err == nil {
 				t.Error("Validate() expected error, got nil")
@@ -157,7 +228,7 @@ func TestPackageHeaderReservedFieldValidation(t *testing.T) {
 		Reserved:      1, // Non-zero reserved field
 	}
 
-	err := header.Validate()
+	err := header.validate()
 	if err == nil {
 		t.Error("Validate() expected error for non-zero reserved field, got nil")
 	}
@@ -183,7 +254,7 @@ func TestPackageHeaderFormatVersionValidation(t *testing.T) {
 				Magic:         NVPKMagic,
 				FormatVersion: tt.formatVersion,
 			}
-			err := header.Validate()
+			err := header.validate()
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
@@ -292,28 +363,15 @@ func TestPackageHeaderVersionFields(t *testing.T) {
 // TestPackageHeaderGetCompressionType verifies GetCompressionType extraction
 // Specification: package_file_format.md: 2.5 Package Features Flags
 func TestPackageHeaderGetCompressionType(t *testing.T) {
-	tests := []struct {
-		name            string
-		flags           uint32
-		wantCompression uint8
-	}{
-		{"No compression", 0x0000, CompressionNone},
-		{"Zstd compression", 0x0100, CompressionZstd},
-		{"LZ4 compression", 0x0200, CompressionLZ4},
-		{"LZMA compression", 0x0300, CompressionLZMA},
-		{"Zstd with features", 0x01FF, CompressionZstd},
-		{"LZ4 with features", 0x02FF, CompressionLZ4},
+	tests := []headerGetterTestCase[uint8]{
+		{"No compression", PackageHeader{Flags: 0x0000}, CompressionNone},
+		{"Zstd compression", PackageHeader{Flags: 0x0100}, CompressionZstd},
+		{"LZ4 compression", PackageHeader{Flags: 0x0200}, CompressionLZ4},
+		{"LZMA compression", PackageHeader{Flags: 0x0300}, CompressionLZMA},
+		{"Zstd with features", PackageHeader{Flags: 0x01FF}, CompressionZstd},
+		{"LZ4 with features", PackageHeader{Flags: 0x02FF}, CompressionLZ4},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			header := PackageHeader{Flags: tt.flags}
-			got := header.GetCompressionType()
-			if got != tt.wantCompression {
-				t.Errorf("GetCompressionType() = %d, want %d", got, tt.wantCompression)
-			}
-		})
-	}
+	runHeaderGetterTests(t, tests, func(h PackageHeader) uint8 { return h.getCompressionType() }, "getCompressionType() = %d, want %d")
 }
 
 // TestPackageHeaderSetCompressionType verifies SetCompressionType preserves features
@@ -338,10 +396,10 @@ func TestPackageHeaderSetCompressionType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			header := PackageHeader{Flags: tt.initialFlags}
-			header.SetCompressionType(tt.compressionType)
+			header.setCompressionType(tt.compressionType)
 
-			gotCompression := header.GetCompressionType()
-			gotFeatures := header.GetFeatures()
+			gotCompression := header.getCompressionType()
+			gotFeatures := header.getFeatures()
 
 			if gotCompression != tt.wantCompression {
 				t.Errorf("Compression type = %d, want %d", gotCompression, tt.wantCompression)
@@ -356,28 +414,15 @@ func TestPackageHeaderSetCompressionType(t *testing.T) {
 // TestPackageHeaderGetFeatures verifies GetFeatures extraction
 // Specification: package_file_format.md: 2.5 Package Features Flags
 func TestPackageHeaderGetFeatures(t *testing.T) {
-	tests := []struct {
-		name         string
-		flags        uint32
-		wantFeatures uint8
-	}{
-		{"No features", 0x0000, 0x00},
-		{"Has signatures", FlagHasSignatures, 0x01},
-		{"Has compressed files", FlagHasCompressedFiles, 0x02},
-		{"Has encrypted files", FlagHasEncryptedFiles, 0x04},
-		{"All features", 0x00FF, 0xFF},
-		{"Features with compression", 0x01FF, 0xFF},
+	tests := []headerGetterTestCase[uint8]{
+		{"No features", PackageHeader{Flags: 0x0000}, 0x00},
+		{"Has signatures", PackageHeader{Flags: FlagHasSignatures}, 0x01},
+		{"Has compressed files", PackageHeader{Flags: FlagHasCompressedFiles}, 0x02},
+		{"Has encrypted files", PackageHeader{Flags: FlagHasEncryptedFiles}, 0x04},
+		{"All features", PackageHeader{Flags: 0x00FF}, 0xFF},
+		{"Features with compression", PackageHeader{Flags: 0x01FF}, 0xFF},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			header := PackageHeader{Flags: tt.flags}
-			got := header.GetFeatures()
-			if got != tt.wantFeatures {
-				t.Errorf("GetFeatures() = 0x%02X, want 0x%02X", got, tt.wantFeatures)
-			}
-		})
-	}
+	runHeaderGetterTests(t, tests, func(h PackageHeader) uint8 { return h.getFeatures() }, "getFeatures() = 0x%02X, want 0x%02X")
 }
 
 // TestPackageHeaderHasFeature verifies HasFeature checking
@@ -399,7 +444,7 @@ func TestPackageHeaderHasFeature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := header.HasFeature(tt.flag)
+			got := header.hasFeature(tt.flag)
 			if got != tt.want {
 				t.Errorf("HasFeature(0x%08X) = %v, want %v", tt.flag, got, tt.want)
 			}
@@ -413,26 +458,26 @@ func TestPackageHeaderSetFeature(t *testing.T) {
 	header := PackageHeader{Flags: 0x0000}
 
 	// Set first feature
-	header.SetFeature(FlagHasSignatures)
-	if !header.HasFeature(FlagHasSignatures) {
+	header.setFeature(FlagHasSignatures)
+	if !header.hasFeature(FlagHasSignatures) {
 		t.Error("SetFeature(FlagHasSignatures) did not set the flag")
 	}
 
 	// Set additional feature
-	header.SetFeature(FlagHasCompressedFiles)
-	if !header.HasFeature(FlagHasSignatures) {
+	header.setFeature(FlagHasCompressedFiles)
+	if !header.hasFeature(FlagHasSignatures) {
 		t.Error("SetFeature(FlagHasCompressedFiles) cleared existing flag")
 	}
-	if !header.HasFeature(FlagHasCompressedFiles) {
+	if !header.hasFeature(FlagHasCompressedFiles) {
 		t.Error("SetFeature(FlagHasCompressedFiles) did not set the flag")
 	}
 
 	// Set multiple features
-	header.SetFeature(FlagHasEncryptedFiles | FlagHasPackageComment)
-	if !header.HasFeature(FlagHasEncryptedFiles) {
+	header.setFeature(FlagHasEncryptedFiles | FlagHasPackageComment)
+	if !header.hasFeature(FlagHasEncryptedFiles) {
 		t.Error("SetFeature did not set FlagHasEncryptedFiles")
 	}
-	if !header.HasFeature(FlagHasPackageComment) {
+	if !header.hasFeature(FlagHasPackageComment) {
 		t.Error("SetFeature did not set FlagHasPackageComment")
 	}
 }
@@ -443,74 +488,49 @@ func TestPackageHeaderClearFeature(t *testing.T) {
 	header := PackageHeader{Flags: FlagHasSignatures | FlagHasCompressedFiles | FlagHasEncryptedFiles}
 
 	// Clear one feature
-	header.ClearFeature(FlagHasSignatures)
-	if header.HasFeature(FlagHasSignatures) {
+	header.clearFeature(FlagHasSignatures)
+	if header.hasFeature(FlagHasSignatures) {
 		t.Error("ClearFeature(FlagHasSignatures) did not clear the flag")
 	}
-	if !header.HasFeature(FlagHasCompressedFiles) {
+	if !header.hasFeature(FlagHasCompressedFiles) {
 		t.Error("ClearFeature(FlagHasSignatures) cleared wrong flag")
 	}
-	if !header.HasFeature(FlagHasEncryptedFiles) {
+	if !header.hasFeature(FlagHasEncryptedFiles) {
 		t.Error("ClearFeature(FlagHasSignatures) cleared wrong flag")
 	}
 
 	// Clear multiple features
-	header.ClearFeature(FlagHasCompressedFiles | FlagHasEncryptedFiles)
-	if header.HasFeature(FlagHasCompressedFiles) {
+	header.clearFeature(FlagHasCompressedFiles | FlagHasEncryptedFiles)
+	if header.hasFeature(FlagHasCompressedFiles) {
 		t.Error("ClearFeature did not clear FlagHasCompressedFiles")
 	}
-	if header.HasFeature(FlagHasEncryptedFiles) {
+	if header.hasFeature(FlagHasEncryptedFiles) {
 		t.Error("ClearFeature did not clear FlagHasEncryptedFiles")
 	}
 }
 
-// TestPackageHeaderGetArchivePart verifies GetArchivePart extraction
+// TestPackageHeaderArchivePartInfoGetters verifies GetArchivePart and GetArchiveTotal extraction.
 // Specification: package_file_format.md: 2.6 ArchivePartInfo Field Specification
-func TestPackageHeaderGetArchivePart(t *testing.T) {
-	tests := []struct {
-		name     string
-		partInfo uint32
-		wantPart uint16
-	}{
-		{"Part 1 of 1", 0x00010001, 1},
-		{"Part 2 of 3", 0x00020003, 2},
-		{"Part 0 of 0", 0x00000000, 0},
-		{"Part 65535 of 65535", 0xFFFFFFFF, 65535},
-		{"Part 10 of 20", 0x000A0014, 10},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			header := PackageHeader{ArchivePartInfo: tt.partInfo}
-			got := header.GetArchivePart()
-			if got != tt.wantPart {
-				t.Errorf("GetArchivePart() = %d, want %d", got, tt.wantPart)
-			}
-		})
-	}
-}
-
-// TestPackageHeaderGetArchiveTotal verifies GetArchiveTotal extraction
-// Specification: package_file_format.md: 2.6 ArchivePartInfo Field Specification
-func TestPackageHeaderGetArchiveTotal(t *testing.T) {
+func TestPackageHeaderArchivePartInfoGetters(t *testing.T) {
 	tests := []struct {
 		name      string
-		partInfo  uint32
+		header    PackageHeader
+		wantPart  uint16
 		wantTotal uint16
 	}{
-		{"Part 1 of 1", 0x00010001, 1},
-		{"Part 2 of 3", 0x00020003, 3},
-		{"Part 0 of 0", 0x00000000, 0},
-		{"Part 65535 of 65535", 0xFFFFFFFF, 65535},
-		{"Part 10 of 20", 0x000A0014, 20},
+		{"Part 1 of 1", PackageHeader{ArchivePartInfo: 0x00010001}, 1, 1},
+		{"Part 2 of 3", PackageHeader{ArchivePartInfo: 0x00020003}, 2, 3},
+		{"Part 0 of 0", PackageHeader{ArchivePartInfo: 0x00000000}, 0, 0},
+		{"Part 65535 of 65535", PackageHeader{ArchivePartInfo: 0xFFFFFFFF}, 65535, 65535},
+		{"Part 10 of 20", PackageHeader{ArchivePartInfo: 0x000A0014}, 10, 20},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			header := PackageHeader{ArchivePartInfo: tt.partInfo}
-			got := header.GetArchiveTotal()
-			if got != tt.wantTotal {
-				t.Errorf("GetArchiveTotal() = %d, want %d", got, tt.wantTotal)
+			if got := tt.header.getArchivePart(); got != tt.wantPart {
+				t.Errorf("getArchivePart() = %d, want %d", got, tt.wantPart)
+			}
+			if got := tt.header.getArchiveTotal(); got != tt.wantTotal {
+				t.Errorf("getArchiveTotal() = %d, want %d", got, tt.wantTotal)
 			}
 		})
 	}
@@ -536,10 +556,10 @@ func TestPackageHeaderSetArchivePartInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			header := PackageHeader{}
-			header.SetArchivePartInfo(tt.part, tt.total)
+			header.setArchivePartInfo(tt.part, tt.total)
 
-			gotPart := header.GetArchivePart()
-			gotTotal := header.GetArchiveTotal()
+			gotPart := header.getArchivePart()
+			gotTotal := header.getArchiveTotal()
 
 			if gotPart != tt.wantPart {
 				t.Errorf("Part = %d, want %d", gotPart, tt.wantPart)
@@ -551,54 +571,36 @@ func TestPackageHeaderSetArchivePartInfo(t *testing.T) {
 	}
 }
 
-// TestPackageHeaderIsSigned verifies IsSigned checking
-// Specification: package_file_format.md: 2.9 Signed Package File Immutability and Incremental Signatures
-func TestPackageHeaderIsSigned(t *testing.T) {
-	tests := []struct {
-		name            string
-		signatureOffset uint64
-		want            bool
-	}{
-		{"Not signed", 0, false},
-		{"Signed", 4096, true},
-		{"Signed at offset 1", 1, true},
-		{"Signed at large offset", 0xFFFFFFFFFFFFFFFF, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			header := PackageHeader{SignatureOffset: tt.signatureOffset}
-			got := header.IsSigned()
-			if got != tt.want {
-				t.Errorf("IsSigned() = %v, want %v", got, tt.want)
-			}
-		})
+// isSignedGetterTestCases returns test cases for IsSigned().
+func isSignedGetterTestCases() []headerGetterTestCase[bool] {
+	return []headerGetterTestCase[bool]{
+		{"Not signed", PackageHeader{SignatureOffset: 0}, false},
+		{"Signed", PackageHeader{SignatureOffset: 4096}, true},
+		{"Signed at offset 1", PackageHeader{SignatureOffset: 1}, true},
+		{"Signed at large offset", PackageHeader{SignatureOffset: 0xFFFFFFFFFFFFFFFF}, true},
 	}
 }
 
-// TestPackageHeaderHasComment verifies HasComment checking
-// Specification: package_file_format.md: 7.1 Package Comment Format Specification
-func TestPackageHeaderHasComment(t *testing.T) {
-	tests := []struct {
-		name        string
-		commentSize uint32
-		want        bool
-	}{
-		{"No comment", 0, false},
-		{"Has comment", 100, true},
-		{"Has comment size 1", 1, true},
-		{"Has large comment", 0xFFFFFFFF, true},
+// hasCommentGetterTestCases returns test cases for HasComment().
+func hasCommentGetterTestCases() []headerGetterTestCase[bool] {
+	return []headerGetterTestCase[bool]{
+		{"No comment", PackageHeader{CommentSize: 0}, false},
+		{"Has comment", PackageHeader{CommentSize: 100}, true},
+		{"Has comment size 1", PackageHeader{CommentSize: 1}, true},
+		{"Has large comment", PackageHeader{CommentSize: 0xFFFFFFFF}, true},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			header := PackageHeader{CommentSize: tt.commentSize}
-			got := header.HasComment()
-			if got != tt.want {
-				t.Errorf("HasComment() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+// TestPackageHeaderIsSignedAndHasComment verifies IsSigned and HasComment checking.
+// Specification: package_file_format.md: 2.9 2.9 Signed Package File Immutability and Incremental Signatures
+// Specification: package_file_format.md: 7.1 7.1 Package Comment Format Specification
+func TestPackageHeaderIsSignedAndHasComment(t *testing.T) {
+	t.Run("IsSigned", func(t *testing.T) {
+		runHeaderGetterTests(t, isSignedGetterTestCases(), func(h PackageHeader) bool { return h.isSigned() }, "isSigned() = %v, want %v")
+	})
+	t.Run("HasComment", func(t *testing.T) {
+		runHeaderGetterTests(t, hasCommentGetterTestCases(), func(h PackageHeader) bool { return h.hasComment() }, "hasComment() = %v, want %v")
+	})
 }
 
 // TestNewPackageHeader verifies NewPackageHeader initializes correctly
@@ -645,97 +647,24 @@ func TestNewPackageHeader(t *testing.T) {
 	}
 
 	// Verify it passes validation
-	if err := header.Validate(); err != nil {
+	if err := header.validate(); err != nil {
 		t.Errorf("Validate() error = %v, want nil", err)
 	}
 }
 
 // TestPackageHeaderReadFrom verifies ReadFrom deserialization
 // Specification: package_file_format.md: 2.1 Header Structure
+//
+//nolint:gocognit // table-driven test
 func TestPackageHeaderReadFrom(t *testing.T) {
 	tests := []struct {
 		name    string
 		header  PackageHeader
 		wantErr bool
 	}{
-		{
-			"Valid header",
-			PackageHeader{
-				Magic:              NVPKMagic,
-				FormatVersion:      FormatVersion,
-				Flags:              FlagHasSignatures | FlagHasCompressedFiles,
-				PackageDataVersion: 1,
-				MetadataVersion:    1,
-				PackageCRC:         0x12345678,
-				CreatedTime:        1638360000000000000,
-				ModifiedTime:       1638360000000000000,
-				LocaleID:           0x0409,
-				Reserved:           0,
-				AppID:              730,
-				VendorID:           VendorIDSteam,
-				CreatorID:          0,
-				IndexStart:         4096,
-				IndexSize:          1024,
-				ArchiveChainID:     0,
-				ArchivePartInfo:    0x00010001,
-				CommentSize:        0,
-				CommentStart:       0,
-				SignatureOffset:    0,
-			},
-			false,
-		},
-		{
-			"Header with all fields set",
-			PackageHeader{
-				Magic:              NVPKMagic,
-				FormatVersion:      FormatVersion,
-				Flags:              0x01FF,
-				PackageDataVersion: 42,
-				MetadataVersion:    17,
-				PackageCRC:         0xDEADBEEF,
-				CreatedTime:        1638360000000000000,
-				ModifiedTime:       1638361000000000000,
-				LocaleID:           0x0411,
-				Reserved:           0,
-				AppID:              730,
-				VendorID:           VendorIDSteam,
-				CreatorID:          0,
-				IndexStart:         8192,
-				IndexSize:          2048,
-				ArchiveChainID:     0x123456789ABCDEF0,
-				ArchivePartInfo:    0x00020003,
-				CommentSize:        100,
-				CommentStart:       6144,
-				SignatureOffset:    10240,
-			},
-			false,
-		},
-		{
-			"Header with minimal fields",
-			PackageHeader{
-				Magic:              NVPKMagic,
-				FormatVersion:      FormatVersion,
-				Flags:              0,
-				PackageDataVersion: 1,
-				MetadataVersion:    1,
-				PackageCRC:         0,
-				CreatedTime:        0,
-				ModifiedTime:       0,
-				LocaleID:           0,
-				Reserved:           0,
-				AppID:              0,
-				VendorID:           0,
-				CreatorID:          0,
-				IndexStart:         0,
-				IndexSize:          0,
-				ArchiveChainID:     0,
-				ArchivePartInfo:    0,
-				CommentSize:        0,
-				CommentStart:       0,
-				SignatureOffset:    0,
-			},
-			false,
-		},
+		{"Valid header", packageHeaderForSerialization(), false},
+		{"Header with all fields set", packageHeaderWithAllFieldsSet(), false},
+		{"Header with minimal fields", packageHeaderMinimalZeroPart(), false},
 	}
 
 	for _, tt := range tests {
@@ -754,7 +683,7 @@ func TestPackageHeaderReadFrom(t *testing.T) {
 
 			// Deserialize using ReadFrom
 			var header PackageHeader
-			n, err := header.ReadFrom(buf)
+			n, err := header.readFrom(buf)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadFrom() error = %v, wantErr %v", err, tt.wantErr)
@@ -774,7 +703,7 @@ func TestPackageHeaderReadFrom(t *testing.T) {
 				}
 
 				// Verify validation passes
-				if err := header.Validate(); err != nil {
+				if err := header.validate(); err != nil {
 					t.Errorf("ReadFrom() header validation failed: %v", err)
 				}
 			}
@@ -800,7 +729,7 @@ func TestPackageHeaderReadFromInvalidMagic(t *testing.T) {
 
 	// Try to read
 	var header PackageHeader
-	_, err = header.ReadFrom(buf)
+	_, err = header.readFrom(buf)
 	if err == nil {
 		t.Error("ReadFrom() expected error for invalid magic, got nil")
 	} else if !strings.Contains(err.Error(), "magic") {
@@ -844,7 +773,7 @@ func TestPackageHeaderReadFromIncompleteData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var header PackageHeader
 			r := bytes.NewReader(tt.data)
-			_, err := header.ReadFrom(r)
+			_, err := header.readFrom(r)
 
 			// Check if this is a valid case (complete header with invalid magic)
 			isInvalidMagicCase := strings.Contains(tt.name, "Complete header with invalid magic")
@@ -867,19 +796,22 @@ func TestPackageHeaderReadFromIncompleteData(t *testing.T) {
 func TestPackageHeaderReadFromNonEOFError(t *testing.T) {
 	var header PackageHeader
 	r := testhelpers.NewErrorReader()
-	_, err := header.ReadFrom(r)
+	_, err := header.readFrom(r)
 
-	if err == nil {
+	switch {
+	case err == nil:
 		t.Error("ReadFrom() expected error for error reader, got nil")
-	} else if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "incomplete") {
+	case strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "incomplete"):
 		t.Errorf("ReadFrom() error = %q, want non-EOF error", err.Error())
-	} else if !strings.Contains(err.Error(), "failed to read header") {
+	case !strings.Contains(err.Error(), "failed to read header"):
 		t.Errorf("ReadFrom() error = %q, want error containing 'failed to read header'", err.Error())
 	}
 }
 
 // TestPackageHeaderWriteTo verifies WriteTo serialization
 // Specification: package_file_format.md: 2.1 Header Structure
+//
+//nolint:gocognit // table-driven test
 func TestPackageHeaderWriteTo(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -899,38 +831,13 @@ func TestPackageHeaderWriteTo(t *testing.T) {
 			},
 			false,
 		},
-		{
-			"Header with all fields",
-			PackageHeader{
-				Magic:              NVPKMagic,
-				FormatVersion:      FormatVersion,
-				Flags:              0x01FF,
-				PackageDataVersion: 42,
-				MetadataVersion:    17,
-				PackageCRC:         0xDEADBEEF,
-				CreatedTime:        1638360000000000000,
-				ModifiedTime:       1638361000000000000,
-				LocaleID:           0x0411,
-				Reserved:           0,
-				AppID:              730,
-				VendorID:           VendorIDSteam,
-				CreatorID:          0,
-				IndexStart:         8192,
-				IndexSize:          2048,
-				ArchiveChainID:     0x123456789ABCDEF0,
-				ArchivePartInfo:    0x00020003,
-				CommentSize:        100,
-				CommentStart:       6144,
-				SignatureOffset:    10240,
-			},
-			false,
-		},
+		{"Header with all fields", packageHeaderWithAllFieldsSet(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			n, err := tt.header.WriteTo(&buf)
+			n, err := tt.header.writeTo(&buf)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)
@@ -948,7 +855,7 @@ func TestPackageHeaderWriteTo(t *testing.T) {
 
 				// Verify we can read it back
 				var header PackageHeader
-				_, readErr := header.ReadFrom(&buf)
+				_, readErr := header.readFrom(&buf)
 				if readErr != nil {
 					t.Errorf("Failed to read back written data: %v", readErr)
 				}
@@ -980,44 +887,20 @@ func TestPackageHeaderRoundTrip(t *testing.T) {
 				ArchivePartInfo:    0x00010001,
 			},
 		},
-		{
-			"Full header",
-			PackageHeader{
-				Magic:              NVPKMagic,
-				FormatVersion:      FormatVersion,
-				Flags:              0x01FF,
-				PackageDataVersion: 100,
-				MetadataVersion:    50,
-				PackageCRC:         0xABCDEF00,
-				CreatedTime:        1638360000000000000,
-				ModifiedTime:       1638361000000000000,
-				LocaleID:           0x0409,
-				Reserved:           0,
-				AppID:              730,
-				VendorID:           VendorIDSteam,
-				CreatorID:          0,
-				IndexStart:         8192,
-				IndexSize:          2048,
-				ArchiveChainID:     0x123456789ABCDEF0,
-				ArchivePartInfo:    0x0005000A,
-				CommentSize:        200,
-				CommentStart:       6144,
-				SignatureOffset:    10240,
-			},
-		},
+		{"Full header", packageHeaderRoundTripFull()},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Write
 			var buf bytes.Buffer
-			if _, err := tt.header.WriteTo(&buf); err != nil {
+			if _, err := tt.header.writeTo(&buf); err != nil {
 				t.Fatalf("WriteTo() error = %v", err)
 			}
 
 			// Read
 			var header PackageHeader
-			if _, err := header.ReadFrom(&buf); err != nil {
+			if _, err := header.readFrom(&buf); err != nil {
 				t.Fatalf("ReadFrom() error = %v", err)
 			}
 
@@ -1029,7 +912,7 @@ func TestPackageHeaderRoundTrip(t *testing.T) {
 			}
 
 			// Validate
-			if err := header.Validate(); err != nil {
+			if err := header.validate(); err != nil {
 				t.Errorf("Round-trip header validation failed: %v", err)
 			}
 		})
@@ -1037,6 +920,8 @@ func TestPackageHeaderRoundTrip(t *testing.T) {
 }
 
 // TestPackageHeaderWriteToErrorPaths verifies WriteTo error handling
+//
+//nolint:gocognit // table-driven error paths
 func TestPackageHeaderWriteToErrorPaths(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -1073,7 +958,7 @@ func TestPackageHeaderWriteToErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.header.WriteTo(tt.writer)
+			_, err := tt.header.writeTo(tt.writer)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)

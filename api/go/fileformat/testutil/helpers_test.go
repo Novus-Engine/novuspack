@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,8 +36,7 @@ func TestCreateTestPackageFile(t *testing.T) {
 
 	// Read and validate header
 	header := fileformat.NewPackageHeader()
-	_, err = header.ReadFrom(file)
-	if err != nil {
+	if err := binary.Read(file, binary.LittleEndian, header); err != nil {
 		t.Fatalf("Failed to read header from created file: %v", err)
 	}
 
@@ -47,9 +47,24 @@ func TestCreateTestPackageFile(t *testing.T) {
 
 	// Read and validate file index
 	index := fileformat.NewFileIndex()
-	_, err = index.ReadFrom(file)
-	if err != nil {
-		t.Fatalf("Failed to read file index from created file: %v", err)
+	if err := binary.Read(file, binary.LittleEndian, &index.EntryCount); err != nil {
+		t.Fatalf("Failed to read index entry count from created file: %v", err)
+	}
+	if err := binary.Read(file, binary.LittleEndian, &index.Reserved); err != nil {
+		t.Fatalf("Failed to read index reserved from created file: %v", err)
+	}
+	if err := binary.Read(file, binary.LittleEndian, &index.FirstEntryOffset); err != nil {
+		t.Fatalf("Failed to read index first entry offset from created file: %v", err)
+	}
+	if index.EntryCount > 0 {
+		index.Entries = make([]fileformat.IndexEntry, 0, index.EntryCount)
+		for i := uint32(0); i < index.EntryCount; i++ {
+			var entry fileformat.IndexEntry
+			if err := binary.Read(file, binary.LittleEndian, &entry); err != nil {
+				t.Fatalf("Failed to read index entry %d from created file: %v", i, err)
+			}
+			index.Entries = append(index.Entries, entry)
+		}
 	}
 
 	// Verify index has zero entries (empty package)

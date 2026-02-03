@@ -2,8 +2,39 @@ package testhelpers
 
 import (
 	"errors"
+	"io"
 	"testing"
 )
+
+// assertReadResult checks n and err from a Read call; fails t if err != nil or n != wantN.
+func assertReadResult(t *testing.T, n int, err error, wantN int, op string) {
+	t.Helper()
+	if err != nil {
+		t.Errorf("%s should succeed, got error: %v", op, err)
+	}
+	if n != wantN {
+		t.Errorf("%s: expected %d bytes, got %d", op, wantN, n)
+	}
+}
+
+// testWriterTwoWrites performs two writes and checks n and err for each; used to reduce dupl in tests.
+func testWriterTwoWrites(t *testing.T, w io.Writer, first, second []byte, wantFirstN, wantSecondN int) {
+	t.Helper()
+	n, err := w.Write(first)
+	if err != nil {
+		t.Errorf("write should succeed, got error: %v", err)
+	}
+	if n != wantFirstN {
+		t.Errorf("expected %d bytes written, got %d", wantFirstN, n)
+	}
+	n, err = w.Write(second)
+	if err != nil {
+		t.Errorf("second write should succeed, got error: %v", err)
+	}
+	if n != wantSecondN {
+		t.Errorf("expected %d bytes written, got %d", wantSecondN, n)
+	}
+}
 
 func TestErrorWriter(t *testing.T) {
 	t.Run("default error", func(t *testing.T) {
@@ -40,50 +71,31 @@ func TestFailingWriter(t *testing.T) {
 	})
 
 	t.Run("fails after limit", func(t *testing.T) {
-		w := NewFailingWriter(5)
-		_, _ = w.Write([]byte("test"))
-		n, err := w.Write([]byte("more"))
-		if err == nil {
-			t.Error("second write should fail")
-		}
-		// Should write 1 byte (5-4=1) then fail
-		if n != 1 {
-			t.Errorf("expected 1 byte written, got %d", n)
-		}
+		testFailingWriterAtLimit(t, 5, 1)
 	})
 
 	t.Run("fails immediately when at limit", func(t *testing.T) {
-		w := NewFailingWriter(4)
-		_, _ = w.Write([]byte("test"))
-		n, err := w.Write([]byte("more"))
-		if err == nil {
-			t.Error("write at limit should fail")
-		}
-		if n != 0 {
-			t.Errorf("expected 0 bytes written, got %d", n)
-		}
+		testFailingWriterAtLimit(t, 4, 0)
 	})
+}
+
+// testFailingWriterAtLimit writes "test" then "more" to a FailingWriter with the given limit; expects write to fail and n to match expectedN.
+func testFailingWriterAtLimit(t *testing.T, limit, expectedN int) {
+	t.Helper()
+	w := NewFailingWriter(limit)
+	_, _ = w.Write([]byte("test"))
+	n, err := w.Write([]byte("more"))
+	if err == nil {
+		t.Error("second write should fail")
+	}
+	if n != expectedN {
+		t.Errorf("expected %d byte(s) written, got %d", expectedN, n)
+	}
 }
 
 func TestIncompleteWriter(t *testing.T) {
 	t.Run("writes partial data", func(t *testing.T) {
-		w := NewIncompleteWriter(10)
-
-		n, err := w.Write([]byte("hello"))
-		if err != nil {
-			t.Errorf("write should succeed, got error: %v", err)
-		}
-		if n != 5 {
-			t.Errorf("expected 5 bytes written, got %d", n)
-		}
-
-		n, err = w.Write([]byte("world"))
-		if err != nil {
-			t.Errorf("partial write should succeed, got error: %v", err)
-		}
-		if n != 5 {
-			t.Errorf("expected 5 bytes written (reaching limit), got %d", n)
-		}
+		testWriterTwoWrites(t, NewIncompleteWriter(10), []byte("hello"), []byte("world"), 5, 5)
 	})
 
 	t.Run("fails beyond limit", func(t *testing.T) {
@@ -100,25 +112,7 @@ func TestIncompleteWriter(t *testing.T) {
 
 func TestPartialWriter(t *testing.T) {
 	t.Run("writes until limit", func(t *testing.T) {
-		w := NewPartialWriter(10)
-
-		// First write succeeds
-		n, err := w.Write([]byte("test"))
-		if err != nil {
-			t.Errorf("write should succeed, got error: %v", err)
-		}
-		if n != 4 {
-			t.Errorf("expected 4 bytes, got %d", n)
-		}
-
-		// Write up to limit
-		n, err = w.Write([]byte("hello world"))
-		if err != nil {
-			t.Errorf("write should succeed, got error: %v", err)
-		}
-		if n != 6 {
-			t.Errorf("expected 6 bytes (to reach 10 total), got %d", n)
-		}
+		testWriterTwoWrites(t, NewPartialWriter(10), []byte("test"), []byte("hello world"), 4, 6)
 	})
 
 	t.Run("returns zero without error beyond limit", func(t *testing.T) {
@@ -165,30 +159,14 @@ func TestPartialReader(t *testing.T) {
 	t.Run("reads data then errors", func(t *testing.T) {
 		data := []byte("test data")
 		r := NewPartialReader(data)
-
-		// First read succeeds
 		buf := make([]byte, 5)
 		n, err := r.Read(buf)
-		if err != nil {
-			t.Errorf("first read should succeed, got error: %v", err)
+		assertReadResult(t, n, err, 5, "first read")
+		if string(buf[:n]) != "test " {
+			t.Errorf("expected 'test ', got %q", string(buf[:n]))
 		}
-		if n != 5 {
-			t.Errorf("expected 5 bytes, got %d", n)
-		}
-		if string(buf) != "test " {
-			t.Errorf("expected 'test ', got %q", string(buf))
-		}
-
-		// Second read gets remaining data
 		n, err = r.Read(buf)
-		if err != nil {
-			t.Errorf("second read should succeed, got error: %v", err)
-		}
-		if n != 4 {
-			t.Errorf("expected 4 bytes, got %d", n)
-		}
-
-		// Third read returns error
+		assertReadResult(t, n, err, 4, "second read")
 		n, err = r.Read(buf)
 		if err == nil {
 			t.Error("read beyond data should return error")

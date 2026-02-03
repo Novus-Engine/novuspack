@@ -11,6 +11,17 @@ import (
 	"github.com/novus-engine/novuspack/api/go/internal/testhelpers"
 )
 
+func runWriteMetaToFailingWriterTest(t *testing.T, errMsg string) {
+	t.Helper()
+	fe := NewFileEntry()
+	fe.FileID = 1
+	failingWriter := testhelpers.NewErrorWriter()
+	_, err := fe.WriteMetaTo(failingWriter)
+	if err == nil {
+		t.Error(errMsg)
+	}
+}
+
 // TestMarshalMeta tests MarshalMeta method
 func TestMarshalMeta(t *testing.T) {
 	tests := []struct {
@@ -74,16 +85,8 @@ func TestMarshalMeta(t *testing.T) {
 		})
 	}
 
-	// Test error path - failing writer
 	t.Run("failing writer", func(t *testing.T) {
-		fe := NewFileEntry()
-		fe.FileID = 1
-		// MarshalMeta uses WriteMetaTo internally, so test that path
-		failingWriter := testhelpers.NewErrorWriter()
-		_, err := fe.WriteMetaTo(failingWriter)
-		if err == nil {
-			t.Error("MarshalMeta() with failing writer should return error")
-		}
+		runWriteMetaToFailingWriterTest(t, "MarshalMeta() with failing writer should return error")
 	})
 }
 
@@ -104,10 +107,8 @@ func TestMarshalData(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "no data available",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:    "no data available",
+			setup:   NewFileEntry,
 			wantErr: true,
 		},
 	}
@@ -240,19 +241,14 @@ func TestWriteMetaTo(t *testing.T) {
 		})
 	}
 
-	// Test error path - failing writer
 	t.Run("failing writer", func(t *testing.T) {
-		fe := NewFileEntry()
-		fe.FileID = 1
-		failingWriter := testhelpers.NewErrorWriter()
-		_, err := fe.WriteMetaTo(failingWriter)
-		if err == nil {
-			t.Error("WriteMetaTo() with failing writer should return error")
-		}
+		runWriteMetaToFailingWriterTest(t, "WriteMetaTo() with failing writer should return error")
 	})
 }
 
 // TestWriteDataTo tests WriteDataTo method
+//
+//nolint:gocognit // table-driven write cases
 func TestWriteDataTo(t *testing.T) {
 	// Create a temporary source file
 	sourceFile, err := os.CreateTemp("", "novuspack-source-*")
@@ -284,17 +280,15 @@ func TestWriteDataTo(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "no data available",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:    "no data available",
+			setup:   NewFileEntry,
 			wantErr: true,
 		},
 		{
 			name: "data from source file",
 			setup: func() *FileEntry {
 				fe := NewFileEntry()
-				fe.SetSourceFile(sourceFile, 0, int64(len(testData)))
+				fe.setSourceFile(sourceFile, 0, int64(len(testData)))
 				return fe
 			},
 			wantErr: false,
@@ -336,7 +330,7 @@ func TestWriteDataTo(t *testing.T) {
 
 			// Cleanup temp file if created
 			if tt.name == "data from temp file" {
-				_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck
+				_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 			}
 		})
 	}
@@ -347,7 +341,7 @@ func TestWriteDataTo(t *testing.T) {
 		// Use a closed file to cause seek error
 		closedFile, _ := os.Open(os.DevNull)
 		_ = closedFile.Close()
-		fe.SetSourceFile(closedFile, 0, 10)
+		fe.setSourceFile(closedFile, 0, 10)
 		var buf bytes.Buffer
 		_, err := fe.WriteDataTo(&buf)
 		if err == nil {
@@ -367,7 +361,7 @@ func TestWriteDataTo(t *testing.T) {
 			_ = os.Remove(sourceFile.Name())
 		}()
 		// Request more data than available
-		fe.SetSourceFile(sourceFile, 0, 100)
+		fe.setSourceFile(sourceFile, 0, 100)
 		var buf bytes.Buffer
 		_, err = fe.WriteDataTo(&buf)
 		if err == nil {
@@ -379,7 +373,7 @@ func TestWriteDataTo(t *testing.T) {
 	t.Run("temp file open error", func(t *testing.T) {
 		fe := NewFileEntry()
 		// Set invalid temp file path
-		fe.SetTempPath("/invalid/path/that/does/not/exist")
+		fe.setTempPath("/invalid/path/that/does/not/exist")
 		var buf bytes.Buffer
 		_, err := fe.WriteDataTo(&buf)
 		// This might succeed if it falls back to other data sources, or fail

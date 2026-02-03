@@ -61,14 +61,20 @@ func TestPackageCommentValidation(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.comment.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	runCommentValidateTableTest(t, tests)
+}
+
+func runCommentValidateTableTest(t *testing.T, tests []struct {
+	name    string
+	comment PackageComment
+	wantErr bool
+}) {
+	t.Helper()
+	cases := make([]validateCase, len(tests))
+	for i := range tests {
+		cases[i] = validateCase{name: tests[i].name, subject: &tests[i].comment, wantErr: tests[i].wantErr}
 	}
+	runValidateTable(t, cases)
 }
 
 // TestPackageCommentSizeCalculation verifies size calculation
@@ -109,14 +115,16 @@ func TestPackageCommentIsEmpty(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.comment.IsEmpty() != tt.wantEmpty {
-				t.Errorf("IsEmpty() = %v, want %v", tt.comment.IsEmpty(), tt.wantEmpty)
+			if tt.comment.isEmpty() != tt.wantEmpty {
+				t.Errorf("isEmpty() = %v, want %v", tt.comment.isEmpty(), tt.wantEmpty)
 			}
 		})
 	}
 }
 
 // TestPackageCommentSetComment verifies SetComment function
+//
+//nolint:gocognit // table-driven set/comment cases
 func TestPackageCommentSetComment(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -139,7 +147,7 @@ func TestPackageCommentSetComment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var pc PackageComment
-			err := pc.SetComment(tt.comment)
+			err := pc.setComment(tt.comment)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetComment() error = %v, wantErr %v", err, tt.wantErr)
@@ -183,7 +191,7 @@ func TestPackageCommentGetComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.comment.GetComment()
+			got := tt.comment.getComment()
 			if got != tt.wantComment {
 				t.Errorf("GetComment() = %q, want %q", got, tt.wantComment)
 			}
@@ -214,7 +222,7 @@ func TestNewPackageComment(t *testing.T) {
 	}
 
 	// Verify it's equivalent to an empty comment state
-	if !pc.IsEmpty() {
+	if !pc.isEmpty() {
 		t.Errorf("IsEmpty() = false, want true for new PackageComment")
 	}
 
@@ -232,7 +240,7 @@ func TestPackageCommentClear(t *testing.T) {
 		Reserved:      [3]uint8{1, 2, 3},
 	}
 
-	pc.Clear()
+	pc.clear()
 
 	if pc.CommentLength != 0 {
 		t.Errorf("CommentLength = %d, want 0", pc.CommentLength)
@@ -266,7 +274,7 @@ func TestPackageCommentReadFrom(t *testing.T) {
 		{
 			"Simple comment",
 			[]byte{
-				0x05, 0x00, 0x00, 0x00, // CommentLength = 5
+				0x05, 0x00, 0x00, 0x00,
 				0x74, 0x65, 0x73, 0x74, 0x00, // "test\x00"
 				0x00, 0x00, 0x00, // Reserved
 			},
@@ -277,7 +285,7 @@ func TestPackageCommentReadFrom(t *testing.T) {
 		{
 			"Comment with newline",
 			[]byte{
-				0x0D, 0x00, 0x00, 0x00, // CommentLength = 13
+				0x0D, 0x00, 0x00, 0x00,
 				0x74, 0x65, 0x73, 0x74, 0x0A, 0x63, 0x6F, 0x6D, 0x6D, 0x65, 0x6E, 0x74, 0x00, // "test\ncomment\x00"
 				0x00, 0x00, 0x00, // Reserved
 			},
@@ -310,7 +318,7 @@ func TestPackageCommentReadFrom(t *testing.T) {
 					t.Errorf("CommentLength = %d, want %d", pc.CommentLength, tt.wantLen)
 				}
 
-				gotComment := pc.GetComment()
+				gotComment := pc.getComment()
 				if gotComment != tt.wantComment {
 					t.Errorf("GetComment() = %q, want %q", gotComment, tt.wantComment)
 				}
@@ -320,6 +328,8 @@ func TestPackageCommentReadFrom(t *testing.T) {
 }
 
 // TestPackageCommentWriteTo verifies WriteTo function
+//
+//nolint:gocognit // table-driven write cases
 func TestPackageCommentWriteTo(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -373,6 +383,8 @@ func TestPackageCommentWriteTo(t *testing.T) {
 }
 
 // TestPackageCommentRoundTrip verifies round-trip serialization
+//
+//nolint:gocognit // table-driven round-trip
 func TestPackageCommentRoundTrip(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -389,7 +401,7 @@ func TestPackageCommentRoundTrip(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var pc1 PackageComment
-			if err := pc1.SetComment(tt.comment); err != nil {
+			if err := pc1.setComment(tt.comment); err != nil {
 				t.Fatalf("SetComment() error = %v", err)
 			}
 
@@ -407,8 +419,8 @@ func TestPackageCommentRoundTrip(t *testing.T) {
 				t.Errorf("CommentLength mismatch: %d != %d", pc1.CommentLength, pc2.CommentLength)
 			}
 
-			if pc1.GetComment() != pc2.GetComment() {
-				t.Errorf("Comment mismatch: %q != %q", pc1.GetComment(), pc2.GetComment())
+			if pc1.getComment() != pc2.getComment() {
+				t.Errorf("Comment mismatch: %q != %q", pc1.getComment(), pc2.getComment())
 			}
 
 			// Validate the read comment
@@ -585,18 +597,11 @@ func TestPackageCommentReadFromIncompleteData(t *testing.T) {
 		{"Incomplete reserved", []byte{0x05, 0x00, 0x00, 0x00, 0x74, 0x65, 0x73, 0x74, 0x00, 0x00}},
 		{"Incomplete reserved bytes read", []byte{0x05, 0x00, 0x00, 0x00, 0x74, 0x65, 0x73, 0x74, 0x00, 0x00, 0x00}},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var pc PackageComment
-			r := bytes.NewReader(tt.data)
-			_, err := pc.ReadFrom(r)
-
-			if err == nil {
-				t.Errorf("ReadFrom() expected error for incomplete data, got nil")
-			}
-		})
-	}
+	runReadFromIncompleteExpectError(t, tests, func(data []byte) error {
+		var pc PackageComment
+		_, err := pc.ReadFrom(bytes.NewReader(data))
+		return err
+	})
 }
 
 // TestPackageCommentReadFromIncompleteReservedBytes tests incomplete reserved bytes read

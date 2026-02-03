@@ -425,28 +425,9 @@ func TestPackage_UpdateFilePathAssociations_MultiplePaths(t *testing.T) {
 // TestPackage_UpdateFilePathAssociations_CancelledContext tests UpdateFilePathAssociations with cancelled context.
 // Expected: Should return context error
 func TestPackage_UpdateFilePathAssociations_CancelledContext(t *testing.T) {
-	cancelledCtx := testhelpers.CancelledContext()
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-
-	// UpdateFilePathAssociations should fail with cancelled context
-	err = fpkg.UpdateFilePathAssociations(cancelledCtx)
-	if err == nil {
-		t.Fatal("UpdateFilePathAssociations should fail with cancelled context")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Error type = %v, want ErrTypeContext", pkgErr.Type)
-	}
+	runContextCancelledTest(t, func(fpkg *filePackage, ctx context.Context) error {
+		return fpkg.UpdateFilePathAssociations(ctx)
+	})
 }
 
 // =============================================================================
@@ -567,17 +548,7 @@ func TestPackage_GetFilePathAssociations_WithNilEntries(t *testing.T) {
 
 // TestPackage_GetFilePathAssociations_WithContext tests GetFilePathAssociations with cancelled context.
 func TestPackage_GetFilePathAssociations_WithContext(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	// Test with cancelled context
-	cancelledCtx := testhelpers.CancelledContext()
-	fpkg := pkg.(*filePackage)
-	_, err = fpkg.GetFilePathAssociations(cancelledCtx)
-	if err == nil {
-		t.Error("GetFilePathAssociations should fail with cancelled context")
-	}
+	runWithCancelledContext(t, func(fpkg *filePackage, ctx context.Context) (interface{}, error) {
+		return fpkg.GetFilePathAssociations(ctx)
+	}, "GetFilePathAssociations")
 }
