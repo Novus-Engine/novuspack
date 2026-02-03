@@ -8,6 +8,7 @@ This module provides common functions for:
 - Normalizing Go signatures and type names
 - Detecting example code (single lines and entire code blocks)
 """
+from __future__ import annotations
 
 import re
 from dataclasses import dataclass
