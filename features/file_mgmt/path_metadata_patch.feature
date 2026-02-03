@@ -28,10 +28,7 @@ Feature: PathMetadataPatch in AddFileOptions
   @REQ-FILEMGMT-412 @happy
   Scenario: PathMetadataPatch sets DestPath and DestPathWin
     Given an open NovusPack package
-    When AddFile is called with PathMetadataPatch{
-      DestPath: Option[string]{Value: "/unix/path"},
-      DestPathWin: Option[string]{Value: "C:\\win\\path"}
-    }
+    When AddFile is called with PathMetadataPatch{DestPath: Option[string]{Value: "/unix/path"}, DestPathWin: Option[string]{Value: "C:\\win\\path"}}
     Then PathMetadataEntry.DestPath is set to "/unix/path"
     And PathMetadataEntry.DestPathWin is set to "C:\\win\\path"
 
