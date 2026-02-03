@@ -49,7 +49,7 @@ This section describes file validation requirements for packages.
 - **Path normalization:** Paths are normalized according to [Path Rules](api_core.md#22-path-rules) (separators normalized to `/`, dot segments converted to canonical paths)
 - **Standardized path format:** All paths are stored in a consistent, normalized format as specified in [Package Path Semantics](api_core.md#2-package-path-semantics)
 - **Cross-platform compatibility:** Paths are handled consistently regardless of input platform per [Package Path Semantics](api_core.md#2-package-path-semantics)
-- **Path length:** Path length limits and portability warnings are specified in [api_core.md Path Length Limits](api_core.md#215-path-length-limits) and [ValidatePathLength Function](api_core.md#124-validatepathlength-function). **Go API**: `novuspack.ValidatePathLength(path string) ([]string, error)`. See [api_go_defs_index 5.4](api_go_defs_index.md#151-general-validation-functions).
+- **Path length:** Path length limits and portability warnings are specified in [api_core.md Path Length Limits](api_core.md#215-path-length-limits) and [ValidatePathLength Function](api_core.md#124-validatepathlength-function). **Go API**: `novuspack.ValidatePathLength(path string) ([]string, error)`. See [Go API Definitions Index - Package Helper Functions](api_go_defs_index.md#119-package-helper-functions).
 
 ### 1.4 Transparency Requirements
 

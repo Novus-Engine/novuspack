@@ -215,7 +215,7 @@ See [Case Sensitivity](api_core.md#221-case-sensitivity) for complete case sensi
 
 ExtractPath writes extracted content to the filesystem.
 To read file content into memory, use `ReadFile`.
-See [ReadFile Method Contract](api_core.md#122-packagereaderreadfile-method).
+See [ReadFile Method Contract](api_core.md#122-packagereadfile-method).
 
 ## 2. ExtractPathOptions Struct
 

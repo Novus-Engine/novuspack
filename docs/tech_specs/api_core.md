@@ -8,16 +8,16 @@
     - [1.1.1 filePackage Struct](#111-filepackage-struct)
     - [1.1.2 Basic Operations](#112-basic-operations)
     - [1.1.3 File Management Operations](#113-file-management-operations)
-  - [1.2 PackageReader Interface](#12-packagereader-interface)
-    - [1.2.1 PackageReader Contract](#121-packagereader-contract)
-    - [1.2.2 PackageReader.ReadFile Method](#122-packagereaderreadfile-method)
-    - [1.2.3 PackageReader.ListFiles Method](#123-packagereaderlistfiles-method)
+  - [1.2 Package Read Operations](#12-package-read-operations)
+    - [1.2.1 Read Operations Contract](#121-read-operations-contract)
+    - [1.2.2 Package.ReadFile Method](#122-packagereadfile-method)
+    - [1.2.3 Package.ListFiles Method](#123-packagelistfiles-method)
     - [1.2.4 FileInfo Structure](#124-fileinfo-structure)
-    - [1.2.5 PackageReader.GetInfo Method](#125-packagereadergetinfo-method)
-    - [1.2.6 PackageReader.GetMetadata Method](#126-packagereadergetmetadata-method)
-    - [1.2.7 PackageReader.Validate Method](#127-packagereadervalidate-method)
-    - [1.2.8 PackageReader Common Error Mapping Table](#128-packagereader-common-error-mapping-table)
-  - [1.3 PackageWriter Interface](#13-packagewriter-interface)
+    - [1.2.5 Package.GetInfo Method](#125-packagegetinfo-method)
+    - [1.2.6 Package.GetMetadata Method](#126-packagegetmetadata-method)
+    - [1.2.7 Package.Validate Method](#127-packagevalidate-method)
+    - [1.2.8 Common Read Error Mapping Table](#128-common-read-error-mapping-table)
+  - [1.3 Package Write Operations](#13-package-write-operations)
     - [1.3.1 Memory Versus Disk Side Effects](#131-memory-versus-disk-side-effects)
     - [1.3.2 Common Writer Error Mapping Table](#132-common-writer-error-mapping-table)
 - [2. Package Path Semantics](#2-package-path-semantics)
@@ -126,27 +126,29 @@ The NovusPack API is designed around core interfaces that provide clear separati
 
 The `Package` interface provides a unified API that combines:
 
-- **PackageReader** methods (embedded) - Read-only operations on opened packages
-- **PackageWriter** methods (embedded) - Write operations to persist package changes
+- **Read operations** - Read-only operations on opened packages (ReadFile, ListFiles, GetInfo, GetMetadata, Validate)
+- **Write operations** - Write operations to persist package changes (Write, SafeWrite, FastWrite)
 - **Lifecycle operations** - Package creation, opening, closing, and state management
 - **File management operations** - Adding, removing, and extracting files (see [File Management API](api_file_mgmt_index.md))
 - **Metadata operations** - Comment, AppID, and VendorID management (see [Package Metadata API](api_metadata.md))
 - **Compression operations** - Package-level compression and decompression (see [Package Compression API](api_package_compression.md))
 - **Session base management** - Automatic path derivation for file operations
 
-**Note on Embedded Interface Methods in Go**: When `Package` embeds `PackageReader` and `PackageWriter`, the methods from those interfaces become part of the `Package` interface. A single implementation satisfies both the embedded interface and the `Package` interface.
-For example, `Package.Validate` and `PackageReader.Validate` are the same method - there is no delegation or wrapper.
-The concrete `filePackage` type implements one `Validate` method that satisfies both interfaces.
-
 ```go
 // Package defines the main interface for NovusPack package operations.
-// Package combines PackageReader and PackageWriter interfaces, providing
-// complete package lifecycle management including opening, closing, and
-// defragmentation operations.
+// Package provides the v1 package API surface for both read and write operations.
 type Package interface {
-    // Embedded interfaces
-    PackageReader
-    PackageWriter
+    // Read operations (opened package)
+    ReadFile(ctx context.Context, path string) ([]byte, error)
+    ListFiles() ([]FileInfo, error)
+    GetMetadata() (*PackageMetadata, error)
+    Validate(ctx context.Context) error
+    GetInfo() (*PackageInfo, error)
+
+    // Write operations (persist to disk)
+    Write(ctx context.Context) error
+    SafeWrite(ctx context.Context, overwrite bool) error
+    FastWrite(ctx context.Context) error
 
     // Lifecycle operations
     SetTargetPath(ctx context.Context, path string) error
@@ -325,35 +327,24 @@ File management operations (adding, removing files):
 
 For complete documentation, see [File Management API](api_file_mgmt_index.md).
 
-### 1.2 PackageReader Interface
+### 1.2 Package Read Operations
 
-```go
-// PackageReader defines the interface for reading operations on a package.
-// PackageReader provides methods for reading files, listing files, retrieving
-// metadata, and validating package contents.
-type PackageReader interface {
-    ReadFile(ctx context.Context, path string) ([]byte, error)
-    ListFiles() ([]FileInfo, error)
-    GetMetadata() (*PackageMetadata, error)
-    Validate(ctx context.Context) error
-    GetInfo() (*PackageInfo, error)
-}
-```
+This section specifies the read operations that are part of the `Package` interface.
+These operations were previously documented as a separate read-only interface.
 
-#### 1.2.1 PackageReader Contract
+#### 1.2.1 Read Operations Contract
 
-`PackageReader` is the read-only interface for opened packages.
-It is embedded in the larger `Package` interface and describes read-only operations available on an opened package instance.
+The package read operations are available for opened packages.
 
 ##### 1.2.1.1 Reader Contract Scope
 
-`PackageReader` methods assume the package has already been opened (via `OpenPackage` or equivalent).
-`PackageReader` is not intended to represent header-only or lightweight on-disk inspection.
-Header-only inspection is handled by separate functions (for example, `ReadHeader` in [Basic Operations API](api_basic_operations.md)) rather than by a special `PackageReader` implementation.
+Package read operations assume the package has already been opened (via `OpenPackage` or equivalent).
+These operations are not intended to represent header-only or lightweight on-disk inspection.
+Header-only inspection is handled by separate functions (for example, `ReadHeader` in [Basic Operations API](api_basic_operations.md)) rather than by a separate reader interface or wrapper implementation.
 
 ##### 1.2.1.2 OpenPackage Eager Metadata Load
 
-`OpenPackage` MUST read into memory all package metadata required for `PackageReader` operations, including:
+`OpenPackage` MUST read into memory all package metadata required for package read operations, including:
 
 - Package header
 - File index
@@ -379,7 +370,7 @@ Operations that perform I/O retain `context.Context`:
 
 ##### 1.2.1.4 Unsupported Operations
 
-`PackageReader` should not include methods that are only meaningful for un-opened, on-disk inspection.
+Package read operations should not include methods that are only meaningful for un-opened, on-disk inspection.
 
 ##### 1.2.1.5 Code Reuse Requirement
 
@@ -390,23 +381,26 @@ For example, `internal.ReadAndValidateHeader` is shared by both `ReadHeader` (st
 
 See [ReadHeader](api_basic_operations.md) function as an example of a lightweight operation for header-only inspection.
 
-#### 1.2.2 PackageReader.ReadFile Method
+#### 1.2.2 Package.ReadFile Method
 
 Reads file content from the package, applying decryption and decompression as needed.
 
-The canonical signature for `ReadFile` is defined in the [PackageReader Interface](#12-packagereader-interface).
+```go
+// ReadFile reads file content from the package, applying decryption and decompression.
+func (p *Package) ReadFile(ctx context.Context, path string) ([]byte, error)
+```
 
-##### 1.2.2.1 PackageReader.ReadFile Parameters
+##### 1.2.2.1 Package.ReadFile Parameters
 
 - `ctx context.Context` - Context for cancellation and timeout handling
 - `path string` - Package-internal path to the file (see [Package Path Semantics](#2-package-path-semantics))
 
-##### 1.2.2.2 PackageReader.ReadFile Returns
+##### 1.2.2.2 Package.ReadFile Returns
 
 - `[]byte` - File content (decrypted and decompressed)
 - `error` - Returns `*PackageError` on failure
 
-##### 1.2.2.3 PackageReader.ReadFile Behavior
+##### 1.2.2.3 Package.ReadFile Behavior
 
 - Reads file data from disk
 - Locates the FileEntry by normalized package path.
@@ -416,30 +410,30 @@ The canonical signature for `ReadFile` is defined in the [PackageReader Interfac
 - Applies decompression if the file is compressed
 - Returns decrypted and decompressed content
 
-##### 1.2.2.4 PackageReader.ReadFile Error Conditions
+##### 1.2.2.4 Package.ReadFile Error Conditions
 
-See [Common Error Mapping Table](#128-packagereader-common-error-mapping-table).
+See [Common Read Error Mapping Table](#128-common-read-error-mapping-table).
 
-##### 1.2.2.5 PackageReader.ReadFile Concurrency
+##### 1.2.2.5 Package.ReadFile Concurrency
 
 Safe for concurrent reads from different goroutines.
 
-#### 1.2.3 PackageReader.ListFiles Method
+#### 1.2.3 Package.ListFiles Method
 
 Returns information about all files in the package.
 
-The canonical signature for `ListFiles` is defined in the [PackageReader Interface](#12-packagereader-interface).
+Note: The canonical signature for `ListFiles` is defined in [File Query and Inspection Operations - Package.ListFiles](api_file_mgmt_queries.md#112-packagelistfiles-method).
 
-##### 1.2.3.1 PackageReader.ListFiles Parameters
+##### 1.2.3.1 Package.ListFiles Parameters
 
 None (pure in-memory operation).
 
-##### 1.2.3.2 PackageReader.ListFiles Returns
+##### 1.2.3.2 Package.ListFiles Returns
 
 - `[]FileInfo` - Slice of file information, sorted by PrimaryPath alphabetically
 - `error` - Returns `*PackageError` on failure
 
-##### 1.2.3.3 PackageReader.ListFiles Behavior
+##### 1.2.3.3 Package.ListFiles Behavior
 
 - Results MUST be sorted by PrimaryPath (normalized package path), alphabetically
 - Results MUST be stable across calls when the in-memory package state has not changed
@@ -447,11 +441,11 @@ None (pure in-memory operation).
 - In-memory mutations (for example, via `AddFile` or `RemoveFile`) affect `ListFiles` results immediately, even before a write operation
 - For files with multiple paths, PrimaryPath is the first path (lexicographically) and all paths appear in the Paths array
 
-##### 1.2.3.4 PackageReader.ListFiles Error Conditions
+##### 1.2.3.4 Package.ListFiles Error Conditions
 
-See [Common Error Mapping Table](#128-packagereader-common-error-mapping-table).
+See [Common Read Error Mapping Table](#128-common-read-error-mapping-table).
 
-##### 1.2.3.5 PackageReader.ListFiles Concurrency
+##### 1.2.3.5 Package.ListFiles Concurrency
 
 Safe for concurrent calls from different goroutines.
 
@@ -665,100 +659,108 @@ unique := lo.UniqBy(files, func(f FileInfo) uint32 {
 _ = unique
 ```
 
-#### 1.2.5 PackageReader.GetInfo Method
+#### 1.2.5 Package.GetInfo Method
 
 Returns lightweight package information derived from header and computed package-level statistics.
 
-The canonical signature for `GetInfo` is defined in the [PackageReader Interface](#12-packagereader-interface).
+```go
+// GetInfo returns lightweight package information derived from already-loaded package state.
+func (p *Package) GetInfo() (*PackageInfo, error)
+```
 
-##### 1.2.5.1 PackageReader.GetInfo Parameters
+Note: See [Basic Operations API - Package.GetInfo](api_basic_operations.md#17-packagegetinfo-method) for usage context.
+
+##### 1.2.5.1 Package.GetInfo Parameters
 
 None (pure in-memory operation).
 
-##### 1.2.5.2 PackageReader.GetInfo Returns
+##### 1.2.5.2 Package.GetInfo Returns
 
 - `*PackageInfo` - Lightweight package information (see [PackageInfo Structure](api_metadata.md#71-packageinfo-structure))
 - `error` - Returns `*PackageError` on failure
 
-##### 1.2.5.3 PackageReader.GetInfo Scope
+##### 1.2.5.3 Package.GetInfo Scope
 
 Lightweight view over already-loaded package state.
 This method MUST NOT perform additional disk I/O.
 This method MUST NOT perform additional parsing beyond what `OpenPackage` already loaded.
 
-##### 1.2.5.4 PackageReader.GetInfo Error Conditions
+##### 1.2.5.4 Package.GetInfo Error Conditions
 
-See [Common Error Mapping Table](#128-packagereader-common-error-mapping-table).
+See [Common Read Error Mapping Table](#128-common-read-error-mapping-table).
 
-##### 1.2.5.5 PackageReader.GetInfo Concurrency
+##### 1.2.5.5 Package.GetInfo Concurrency
 
 - Go: Safe for concurrent calls from different goroutines.
 
-#### 1.2.6 PackageReader.GetMetadata Method
+#### 1.2.6 Package.GetMetadata Method
 
 Returns comprehensive metadata including all package information plus detailed file and metadata file contents.
 
-The canonical signature for `GetMetadata` is defined in the [PackageReader Interface](#12-packagereader-interface).
+```go
+// GetMetadata returns comprehensive package metadata.
+func (p *Package) GetMetadata() (*PackageMetadata, error)
+```
 
-##### 1.2.6.1 PackageReader.GetMetadata Parameters
+##### 1.2.6.1 Package.GetMetadata Parameters
 
 None (pure in-memory operation).
 
-##### 1.2.6.2 PackageReader.GetMetadata Returns
+##### 1.2.6.2 Package.GetMetadata Returns
 
 - `*PackageMetadata` - Comprehensive package metadata; see [Package Metadata API - PackageInfo Structure](api_metadata.md#71-packageinfo-structure)
 - `error` - Returns `*PackageError` on failure
 
-##### 1.2.6.3 PackageReader.GetMetadata Scope
+##### 1.2.6.3 Package.GetMetadata Scope
 
 Full metadata view over already-loaded package state.
 This method MUST NOT perform additional disk I/O.
 This method MUST NOT perform additional parsing beyond what `OpenPackage` already loaded.
 
-##### 1.2.6.4 PackageReader.GetMetadata Serialization
+##### 1.2.6.4 Package.GetMetadata Serialization
 
 See [Package Metadata API - Package Information Methods](api_metadata.md#74-package-information-methods).
 
-##### 1.2.6.5 PackageReader.GetMetadata Error Conditions
+##### 1.2.6.5 Package.GetMetadata Error Conditions
 
 `GetMetadata()` MUST still return an error for internal consistency failures (for example, metadata not loaded due to an invariant violation) even though `OpenPackage` is required to eagerly load metadata.
 `GetMetadata()` requires a fully opened package instance (it is not applicable to header-only inspection).
 
-##### 1.2.6.6 PackageReader.GetMetadata Concurrency
+##### 1.2.6.6 Package.GetMetadata Concurrency
 
 Safe for concurrent calls from different goroutines.
 
-#### 1.2.7 PackageReader.Validate Method
+#### 1.2.7 Package.Validate Method
 
 Validates package format, structure, and integrity.
 
-The canonical signature for `Validate` is defined in the [PackageReader Interface](#12-packagereader-interface).
+Note: The canonical signature for `Validate` is defined in [Basic Operations API - Package.Validate](api_basic_operations.md#15-packagevalidate-method).
 
-##### 1.2.7.1 PackageReader.Validate Parameters
+##### 1.2.7.1 Package.Validate Parameters
 
 - `ctx context.Context` - Context for cancellation and timeout handling
 
-##### 1.2.7.2 PackageReader.Validate Returns
+##### 1.2.7.2 Package.Validate Returns
 
 - `error` - Returns `*PackageError` on failure
 
-##### 1.2.7.3 PackageReader.Validate Behavior
+##### 1.2.7.3 Package.Validate Behavior
 
 - Performs comprehensive package validation
 - Can be non-trivial and should be cancellable
 - Validates format, structure, checksums, and integrity
 
-##### 1.2.7.4 PackageReader.Validate Error Conditions
+##### 1.2.7.4 Package.Validate Error Conditions
 
-See [Common Error Mapping Table](#128-packagereader-common-error-mapping-table).
+See [Common Read Error Mapping Table](#128-common-read-error-mapping-table).
 
-##### 1.2.7.5 PackageReader.Validate Concurrency
+##### 1.2.7.5 Package.Validate Concurrency
 
 - Go: Safe for concurrent calls from different goroutines.
 
-#### 1.2.8 PackageReader Common Error Mapping Table
+#### 1.2.8 Common Read Error Mapping Table
 
-The following error mapping applies to all `PackageReader` methods:
+The following error mapping applies to all package read operations:
 
 | Condition                              | Error Type          | Notes                                                                                           |
 | -------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------- |
@@ -768,22 +770,16 @@ The following error mapping applies to all `PackageReader` methods:
 | Package integrity check failed         | `ErrTypeCorruption` | Integrity failures are corruption.                                                              |
 | Context cancelled or deadline exceeded | `ErrTypeContext`    | Applies only to methods that accept `context.Context` (for example, `ReadFile` and `Validate`). |
 
-### 1.3 PackageWriter Interface
+### 1.3 Package Write Operations
 
-```go
-// PackageWriter defines the interface for writing packages to disk.
-type PackageWriter interface {
-    Write(ctx context.Context) error
-    SafeWrite(ctx context.Context, overwrite bool) error
-    FastWrite(ctx context.Context) error
-}
-```
+Package write operations are part of the `Package` interface.
+This section describes their high-level behavior and shared error mapping.
 
 #### 1.3.1 Memory Versus Disk Side Effects
 
-The `PackageWriter` interface provides methods for writing the in-memory package state to disk.
+Package write operations provide methods for writing the in-memory package state to disk.
 
-File management operations (add, remove) are part of the `Package` interface, not `PackageWriter`.
+File management operations (add, remove) are part of the `Package` interface, not a separate writer interface.
 See [File Management API](api_file_mgmt_index.md) for file operations.
 
 ##### 1.3.1.1 Write Operations
@@ -812,7 +808,7 @@ For detailed information about allowed target paths, overwrite behavior, path re
 
 #### 1.3.2 Common Writer Error Mapping Table
 
-The following error mapping applies to all `PackageWriter` methods:
+The following error mapping applies to all package write operations:
 
 | Condition                                                                         | Error Type        | Notes                                                                       |
 | --------------------------------------------------------------------------------- | ----------------- | --------------------------------------------------------------------------- |
@@ -1225,6 +1221,13 @@ const (
 )
 ```
 
+#### 10.2.1 ErrorType.String Method
+
+```go
+// String returns a human-readable name for the error type.
+func (t ErrorType) String() string
+```
+
 ### 10.3 ErrorType Categories
 
 - **ErrTypeValidation**: Input validation errors, invalid parameters, invalid file paths, invalid patterns
@@ -1292,6 +1295,13 @@ func (e *PackageError) Is(target error) bool
 - If a cause error exists, delegates to `errors.Is(e.Cause, target)` to check if the cause matches the target error
 - If no cause exists, returns `false`
 - This allows `PackageError` to participate in Go's standard error matching patterns
+
+#### 10.4.4 PackageError.WithContext Method
+
+```go
+// WithContext adds a key/value context entry and returns the updated error.
+func (e *PackageError) WithContext(key string, value any) *PackageError
+```
 
 ### 10.5 Error Helper Functions
 
@@ -1455,7 +1465,7 @@ if pkgErr, ok := AsPackageError(err); ok && pkgErr.Type == ErrTypeValidation {
 // - docs/tech_specs/api_file_mgmt_addition.md#21-addfile
 //
 // Example implementation pattern (not canonical):
-func exampleReadFileOperation(ctx context.Context, pkg PackageReader, filePath string) ([]byte, error) {
+func exampleReadFileOperation(ctx context.Context, pkg Package, filePath string) ([]byte, error) {
     // Implementation would wrap errors with structured context
     return nil, nil
 }
