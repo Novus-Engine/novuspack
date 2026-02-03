@@ -291,7 +291,7 @@ This license provides:
 - 🛡️ **Defensive termination** - deters frivolous patent litigation.
 - 🌍 **Industry standard** - widely recognized and trusted.
 
-For the complete license text, see [LICENSE](LICENSE).
+For the complete license text, see [LICENSE](LICENSE.txt).
 
 ## Security
 
@@ -308,4 +308,4 @@ For detailed security information, see the [Security Architecture](docs/tech_spe
 [workflow-go-ci]: https://github.com/novus-engine/novuspack/actions/workflows/go-ci.yml
 [workflow-go-bdd]: https://github.com/novus-engine/novuspack/actions/workflows/go-bdd.yml
 [workflow-python-lint]: https://github.com/novus-engine/novuspack/actions/workflows/python-lint.yml
-[license-file]: LICENSE
+[license-file]: LICENSE.txt
