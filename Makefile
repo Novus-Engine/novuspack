@@ -40,8 +40,8 @@ ci-go: ci-go-v1
 ci-go-v1:
 	/usr/bin/make -C api/go ci
 
-# Python venv for lint tooling - creates .venv and installs requirements-lint.txt
-# Run once (or after adding/updating requirements-lint.txt) so make lint-python uses the venv.
+# Python venv for lint tooling - creates .venv and installs scripts/requirements-lint.txt
+# Run once (or after adding/updating scripts/requirements-lint.txt) so make lint-python uses the venv.
 # Usage: make venv
 venv:
 	@command -v python3 >/dev/null 2>&1 || { \
@@ -50,7 +50,7 @@ venv:
 	}
 	@python3 -m venv .venv
 	@.venv/bin/pip install -q --upgrade pip
-	@.venv/bin/pip install -q -r requirements-lint.txt
+	@.venv/bin/pip install -q -r scripts/requirements-lint.txt
 	@echo "Created .venv with lint tooling. Use 'make lint-python' (it will use .venv when present)."
 
 # Markdown linting - performs same checks as GitHub Actions workflow
@@ -119,30 +119,28 @@ lint-python:
 		LINT_PATHS="scripts"; \
 	fi; \
 	if [ -d .venv ]; then PATH="$(CURDIR)/.venv/bin:$$PATH"; export PATH; fi; \
+	export PYTHONPATH="$(CURDIR)/scripts"; \
 	echo "Running flake8 on Python scripts..."; \
-	flake8 $$LINT_PATHS --jobs=1; \
+	flake8 $$LINT_PATHS --jobs=1; FLAKE8_RESULT=$$?; \
 	echo "Running pylint on Python scripts..."; \
-	pylint --rcfile=.pylintrc $$LINT_PATHS; \
+	pylint --rcfile=.pylintrc $$LINT_PATHS; PYLINT_RESULT=$$?; \
 	echo "Running radon complexity (non-gating)..."; \
 	radon cc -s -a $$LINT_PATHS || true; \
 	echo "Running xenon cyclomatic complexity check (fail if any block > C)..."; \
-	xenon -b C $$LINT_PATHS; \
+	xenon -b C $$LINT_PATHS; XENON_RESULT=$$?; \
 	echo "Running radon maintainability metrics (non-gating)..."; \
 	radon mi -s $$LINT_PATHS || true; \
 	echo "Running radon maintainability check (fail if any module MI rank C)..."; \
 	TMP_MI=$$(mktemp); \
 	radon mi -j $$LINT_PATHS -O $$TMP_MI; \
-	python3 -c "\
-		import sys, json; \
-		d=json.load(open(sys.argv[1])); \
-		bad=[k for k,v in d.items() if v.get('rank')=='C']; \
-		[print('MI rank C (low maintainability):', f) for f in bad]; \
-		sys.exit(1 if bad else 0)" $$TMP_MI; \
-	MI_RESULT=$$?; rm -f $$TMP_MI; [ $$MI_RESULT -ne 0 ] && exit $$MI_RESULT; \
+	python3 -c "import sys, json; d=json.load(open(sys.argv[1])); bad=[k for k,v in d.items() if v.get('rank')=='C']; [print('MI rank C (low maintainability):', f) for f in bad]; sys.exit(1 if bad else 0)" $$TMP_MI; \
+	MI_RESULT=$$?; rm -f $$TMP_MI; \
 	echo "Running vulture unused code detection (non-gating)..."; \
 	vulture $$LINT_PATHS --min-confidence 80 || true; \
 	echo "Running bandit security scan (non-gating)..."; \
-	bandit -r $$LINT_PATHS --exit-zero
+	bandit -r $$LINT_PATHS; BANDIT_RESULT=$$?; \
+	echo ""; echo "Lint exit codes: flake8=$$FLAKE8_RESULT pylint=$$PYLINT_RESULT xenon=$$XENON_RESULT radon_mi=$$MI_RESULT bandit=$$BANDIT_RESULT"; \
+	[ $$FLAKE8_RESULT -ne 0 ] || [ $$PYLINT_RESULT -ne 0 ] || [ $$XENON_RESULT -ne 0 ] || [ $$MI_RESULT -ne 0 ] || [ $$BANDIT_RESULT -ne 0 ] && exit 1; exit 0
 
 # Link validation - validates all internal markdown links and anchors
 # NOTE: This target must be kept in sync with .github/workflows/docs-check.yml.
@@ -212,29 +210,38 @@ apply-heading-corrections:
 	if [ -n "$(VERBOSE)" ]; then ARGS="$$ARGS --verbose"; fi; \
 	eval python3 scripts/apply_heading_corrections.py $$ARGS
 
-# Generate markdown anchor from heading text
-# NOTE: This is a utility script for generating markdown anchors from heading text.
+# Generate markdown anchors from markdown headings
+# NOTE: This is a utility wrapper for scripts/generate_anchor.py.
 #       Useful for creating links to specific sections in markdown files.
 #       Requires: Python 3
-# Usage: make generate-anchor TEXT="Heading Text"
-#        - TEXT: Heading text to convert to anchor
-#        - IMPORTANT: If TEXT contains backticks, you MUST use single quotes:
-#          make generate-anchor TEXT='Heading with `code` example'
-#          Using double quotes will cause the shell to process backticks as command
-#          substitution before make sees them, which will break the heading text.
+# Usage: make generate-anchor FILE="path/to/file.md"
+#        make generate-anchor LINE="path/to/file.md:224"
+#        - FILE: Print anchors for all headings in the file
+#        - LINE: Print anchor for the heading at a specific line in the file
 generate-anchor:
 	@command -v python3 >/dev/null 2>&1 || { \
 		echo "Error: python3 not found. Install Python 3 to generate anchor."; \
 		exit 1; \
 	}
-	@if [ -z "$(TEXT)" ]; then \
-		echo "Error: TEXT is required."; \
+	@if [ -z "$(FILE)" ] && [ -z "$(LINE)" ]; then \
+		echo "Error: FILE or LINE is required."; \
 		echo ""; \
-		echo "Usage: make generate-anchor TEXT=\"Heading Text\""; \
-		echo "       make generate-anchor TEXT='Heading with \`code\` example'  (use single quotes for backticks)"; \
+		echo "Usage: make generate-anchor FILE=\"path/to/file.md\""; \
+		echo "       make generate-anchor LINE=\"path/to/file.md:224\""; \
 		exit 1; \
 	fi
-	@python3 scripts/generate_anchor.py --text "$(TEXT)"
+	@if [ -n "$(FILE)" ] && [ -n "$(LINE)" ]; then \
+		echo "Error: FILE and LINE are mutually exclusive. Provide only one."; \
+		echo ""; \
+		echo "Usage: make generate-anchor FILE=\"path/to/file.md\""; \
+		echo "       make generate-anchor LINE=\"path/to/file.md:224\""; \
+		exit 1; \
+	fi
+	@if [ -n "$(LINE)" ]; then \
+		python3 scripts/generate_anchor.py --line "$(LINE)"; \
+	else \
+		python3 scripts/generate_anchor.py --file "$(FILE)"; \
+	fi
 
 # Requirement reference validation - validates REQ references in feature files
 # NOTE: This target must be kept in sync with .github/workflows/docs-check.yml.

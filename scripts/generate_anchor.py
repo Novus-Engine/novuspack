@@ -1,129 +1,125 @@
 #!/usr/bin/env python3
 """
-Generate markdown anchor from heading text.
+Generate markdown anchors from markdown headings.
 
-This script generates GitHub-style markdown anchors from heading text,
-which can be used in markdown links to reference specific sections.
+This script generates GitHub-style markdown anchors from markdown headings.
+It supports generating anchors for:
 
-Usage:
-    python3 scripts/generate_anchor.py "Heading Text"
-    python3 scripts/generate_anchor.py --text "Heading Text"
-    echo "Heading Text" | python3 scripts/generate_anchor.py
+- A specific heading line in a file (via --line)
+- All headings in a file (via --file)
 
 Options:
-    --text, -t TEXT    Heading text to convert to anchor
+    --file, -f FILE    Markdown file to scan and print anchors for all headings
+    --line, -l LINE    File + line reference in the format: path.md:224
     --help, -h         Show this help message
 
 Examples:
-    # From command line argument
-    python3 scripts/generate_anchor.py "1.2.3 AddFile Package Method"
-    # Output: #123-addfile-package-method
+    # Generate anchor for a specific heading line in a file
+    python3 scripts/generate_anchor.py --line docs/tech_specs/api_core.md:42
+    # Output: #some-heading-anchor
 
-    # From stdin
-    echo "1.2.3 AddFile Package Method" | python3 scripts/generate_anchor.py
-    # Output: #123-addfile-package-method
-
-    # Using --text switch
-    python3 scripts/generate_anchor.py --text "File Management"
-    # Output: #file-management
-
-    # Via Makefile
-    make generate-anchor TEXT="1.2.3 AddFile Package Method"
-    # Output: #123-addfile-package-method
-
-    # Headings with backticks (use single quotes to preserve backticks)
-    python3 scripts/generate_anchor.py '1.2.3 AddFile with `code` example'
-    # Output: #123-addfile-with-code-example
-
-    # Headings with backticks via --text (single quotes recommended)
-    python3 scripts/generate_anchor.py --text 'File Management with `Package` type'
-    # Output: #file-management-with-package-type
-
-    # Headings with backticks via Makefile (use single quotes)
-    make generate-anchor TEXT='1.2.3 AddFile with `code` example'
-    # Output: #123-addfile-with-code-example
-
-Note: When headings contain backticks (e.g., `code`), use single quotes
-      around the heading text to preserve the backticks. The script will
-      automatically remove backticks and their contents when generating
-      the anchor, as per GitHub markdown anchor generation rules.
+    # Print anchors for all headings in a file
+    python3 scripts/generate_anchor.py --file docs/tech_specs/api_core.md
+    # Output (one per heading):
+    # docs/tech_specs/api_core.md:1: H1 Title => #title
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+from typing import Tuple
 
-scripts_dir = Path(__file__).parent
-lib_dir = scripts_dir / "lib"
+from lib._validation_utils import extract_headings_from_file, generate_anchor_from_heading
 
-# Import shared utilities
-if str(scripts_dir) not in sys.path:
-    sys.path.insert(0, str(scripts_dir))
 
-from lib._validation_utils import (  # noqa: E402
-    generate_anchor_from_heading,
-)
+def _parse_line_ref(line_ref: str) -> Tuple[Path, int]:
+    """
+    Parse a file:line reference (e.g., "docs/x.md:224").
+    """
+    if not line_ref or ":" not in line_ref:
+        raise ValueError("LINE must be in the format: path.md:224")
+
+    path_str, line_str = line_ref.rsplit(":", 1)
+    path_str = path_str.strip()
+    line_str = line_str.strip()
+
+    if not path_str:
+        raise ValueError("LINE must include a file path before ':'")
+
+    try:
+        line_num = int(line_str)
+    except ValueError as e:
+        raise ValueError("LINE must end with an integer line number") from e
+
+    if line_num <= 0:
+        raise ValueError("LINE number must be >= 1")
+
+    return Path(path_str), line_num
+
+
+def _generate_anchor_for_line(file_path: Path, line_num: int) -> str:
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    headings = extract_headings_from_file(file_path, skip_code_blocks=True)
+    for heading_text, _level, heading_line in headings:
+        if heading_line == line_num:
+            return generate_anchor_from_heading(heading_text, include_hash=True)
+
+    raise ValueError(
+        f"No markdown heading found at {file_path}:{line_num} "
+        "(note: headings inside code blocks are ignored)"
+    )
+
+
+def _print_anchors_for_file(file_path: Path) -> None:
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    headings = extract_headings_from_file(file_path, skip_code_blocks=True)
+    for heading_text, level, line_num in headings:
+        anchor = generate_anchor_from_heading(heading_text, include_hash=True)
+        print(f"{file_path}:{line_num}: H{level} {heading_text} => {anchor}")
 
 
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
-        description='Generate markdown anchor from heading text.',
+        description='Generate markdown anchors from markdown headings.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
     Examples:
-        %(prog)s "1.2.3 AddFile Package Method"
-        echo "File Management" | %(prog)s
-        %(prog)s --text "File Management"
+        # Generate anchor for a specific heading line in a file
+        %(prog)s --line docs/tech_specs/api_core.md:42
 
-        # Headings with backticks (use single quotes to preserve backticks)
-        %(prog)s '1.2.3 AddFile with `code` example'
-        %(prog)s --text 'File Management with `Package` type'
-
-    Note: When headings contain backticks (e.g., `code`), use single quotes
-        around the heading text to preserve the backticks. The script will
-        automatically remove backticks and their contents when generating
-        the anchor, as per GitHub markdown anchor generation rules.
+        # Print anchors for all headings in a file
+        %(prog)s --file docs/tech_specs/api_core.md
     """
     )
-    parser.add_argument(
-        '--text', '-t',
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        '--file', '-f',
         type=str,
-        help='Heading text to convert to anchor (use single quotes if heading contains backticks)'
+        help='Markdown file to scan and print anchors for all headings'
     )
-    parser.add_argument(
-        'heading',
-        nargs='?',
+    group.add_argument(
+        '--line', '-l',
         type=str,
-        help=(
-            'Heading text to convert to anchor (alternative to --text; '
-            'use single quotes if heading contains backticks)'
-        )
+        help='File + line reference in the format: path.md:224'
     )
 
     args = parser.parse_args()
 
-    # Get heading text from argument, --text switch, or stdin
-    heading_text = None
-    if args.text:
-        heading_text = args.text
-    elif args.heading:
-        heading_text = args.heading
-    else:
-        # Read from stdin
-        try:
-            heading_text = sys.stdin.read().strip()
-        except (EOFError, KeyboardInterrupt):
-            parser.print_help()
-            sys.exit(1)
-
-    if not heading_text:
-        parser.print_help()
-        sys.exit(1)
-
-    # Generate and output anchor (with '#' prefix for CLI output)
-    anchor = generate_anchor_from_heading(heading_text, include_hash=True)
-    print(anchor)
+    try:
+        if args.line:
+            file_path, line_num = _parse_line_ref(args.line)
+            anchor = _generate_anchor_for_line(file_path, line_num)
+            print(anchor)
+        else:
+            _print_anchors_for_file(Path(args.file))
+    except (OSError, ValueError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
     return 0
 
