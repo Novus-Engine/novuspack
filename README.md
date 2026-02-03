@@ -298,10 +298,10 @@ For the complete license text, see [LICENSE](LICENSE.txt).
 NovusPack implements quantum-safe cryptography to protect against future quantum computing threats while maintaining compatibility with traditional cryptographic systems.
 For detailed security information, see the [Security Architecture](docs/tech_specs/security.md) documentation.
 
-[badge-docs-check]: https://github.com/novus-engine/novuspack/actions/workflows/docs-check.yml/badge.svg
-[badge-go-ci]: https://github.com/novus-engine/novuspack/actions/workflows/go-ci.yml/badge.svg
-[badge-go-bdd]: https://github.com/novus-engine/novuspack/actions/workflows/go-bdd.yml/badge.svg
-[badge-python-lint]: https://github.com/novus-engine/novuspack/actions/workflows/python-lint.yml/badge.svg
+[badge-docs-check]: https://github.com/novus-engine/novuspack/actions/workflows/docs-check.yml/badge.svg?branch=main
+[badge-go-ci]: https://github.com/novus-engine/novuspack/actions/workflows/go-ci.yml/badge.svg?branch=main
+[badge-go-bdd]: https://github.com/novus-engine/novuspack/actions/workflows/go-bdd.yml/badge.svg?branch=main
+[badge-python-lint]: https://github.com/novus-engine/novuspack/actions/workflows/python-lint.yml/badge.svg?branch=main
 [badge-license]: https://img.shields.io/badge/license-Apache%202.0-blue
 
 [workflow-docs-check]: https://github.com/novus-engine/novuspack/actions/workflows/docs-check.yml
