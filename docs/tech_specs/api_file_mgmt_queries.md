@@ -108,8 +108,8 @@ func (p *Package) FileExists(path string) (bool, error)
 #### 1.1.2 Package.ListFiles Method
 
 ```go
-// ListFiles returns all file entries in the package
-func (p *Package) ListFiles() ([]*FileEntry, error)
+// ListFiles returns lightweight file info for all files in the package
+func (p *Package) ListFiles() ([]FileInfo, error)
 ```
 
 ### 1.2 Purpose
@@ -118,8 +118,11 @@ Defines basic file existence checks and listing operations.
 
 ### 1.3 FileEntry Access
 
-Query functions return `*FileEntry` objects or `[]*FileEntry` arrays.
+Some query functions return full `*FileEntry` objects (or `[]*FileEntry` arrays).
 These objects provide comprehensive file information including metadata, compression status, encryption details, checksums, and timestamps.
+
+`ListFiles()` returns `[]FileInfo` for lightweight listing.
+Use `GetFileByPath()` or other single-entry lookups when full `*FileEntry` details are required.
 
 ### 1.4 Usage Notes
 

@@ -117,10 +117,11 @@
     - [8.1.6 ACLEntry Structure](#816-aclentry-structure)
     - [8.1.7 PathMetadataEntry Tag Management](#817-pathmetadataentry-tag-management)
     - [8.1.8 PathMetadataEntry Methods](#818-pathmetadataentry-methods)
-    - [8.1.9 `PathInfo` Structure](#819-pathinfo-structure)
-    - [8.1.10 `FilePathAssociation` Structure](#8110-filepathassociation-structure)
-    - [8.1.11 `DestPathOverride` Structure](#8111-destpathoverride-structure)
-    - [8.1.12 `DestPathInput` Interface](#8112-destpathinput-interface)
+    - [8.1.9 PathMetadataEntry Validation Methods](#819-pathmetadataentry-validation-methods)
+    - [8.1.10 `PathInfo` Structure](#8110-pathinfo-structure)
+    - [8.1.11 `FilePathAssociation` Structure](#8111-filepathassociation-structure)
+    - [8.1.12 `DestPathOverride` Structure](#8112-destpathoverride-structure)
+    - [8.1.13 `DestPathInput` Interface](#8113-destpathinput-interface)
   - [8.2 `PathMetadata` Management Methods](#82-pathmetadata-management-methods)
     - [8.2.1 Core `PathMetadata` CRUD Operations](#821-core-pathmetadata-crud-operations)
     - [Path Information Query Methods](#path-information-query-methods)
@@ -1654,7 +1655,18 @@ func (pme *PathMetadataEntry) AssociateWithFileEntry(fe *FileEntry) error
 func (pme *PathMetadataEntry) GetAssociatedFileEntries() []*FileEntry
 ```
 
-#### 8.1.9 PathInfo Structure
+#### 8.1.9 PathMetadataEntry Validation Methods
+
+This section defines validation behavior for PathMetadataEntry instances.
+
+##### 8.1.9.1 PathMetadataEntry.Validate Method
+
+```go
+// Validate validates the PathMetadataEntry state and returns an error on failure.
+func (pme *PathMetadataEntry) Validate() error
+```
+
+#### 8.1.10 PathInfo Structure
 
 ```go
 // PathInfo provides runtime path metadata information
@@ -1667,7 +1679,7 @@ type PathInfo struct {
 }
 ```
 
-#### 8.1.10 FilePathAssociation Structure
+#### 8.1.11 FilePathAssociation Structure
 
 ```go
 // FilePathAssociation links files to their path metadata
@@ -1680,7 +1692,7 @@ type FilePathAssociation struct {
 }
 ```
 
-#### 8.1.11 DestPathOverride Structure
+#### 8.1.12 DestPathOverride Structure
 
 ```go
 // DestPathOverride specifies destination extraction directory overrides.
@@ -1692,7 +1704,7 @@ type DestPathOverride struct {
 }
 ```
 
-#### 8.1.12 DestPathInput Interface
+#### 8.1.13 DestPathInput Interface
 
 ```go
 // DestPathInput is the allowed input type set for SetDestPath.

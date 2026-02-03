@@ -699,7 +699,14 @@ func (b *ConfigBuilder[T]) WithCompressionLevel(level int) *ConfigBuilder[T]
 func (b *ConfigBuilder[T]) WithStrategy(strategy Strategy[T, T]) *ConfigBuilder[T]
 ```
 
-##### 1.10.2.7 ConfigBuilder[T].Build Method
+##### 1.10.2.7 ConfigBuilder[T].WithValidator Method
+
+```go
+// WithValidator sets the validator for the configuration.
+func (b *ConfigBuilder[T]) WithValidator(validator Validator[T]) *ConfigBuilder[T]
+```
+
+##### 1.10.2.8 ConfigBuilder[T].Build Method
 
 ```go
 // Build constructs and returns the final configuration.

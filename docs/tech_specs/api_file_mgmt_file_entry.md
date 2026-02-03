@@ -918,6 +918,41 @@ func (fe *FileEntry) AssociateWithPathMetadata(pme *PathMetadataEntry) error
 func (fe *FileEntry) GetPathMetadataForPath(path string) *PathMetadataEntry
 ```
 
+### 5.7 FileEntry.GetPaths Method
+
+```go
+// GetPaths returns all paths associated with this FileEntry.
+func (fe *FileEntry) GetPaths() []generics.PathEntry
+```
+
+### 5.8 FileEntry.GetFileID Method
+
+```go
+// GetFileID returns the unique file identifier.
+func (fe *FileEntry) GetFileID() uint64
+```
+
+### 5.9 FileEntry.GetParentPath Method
+
+```go
+// GetParentPath returns the parent directory path for the primary path.
+func (fe *FileEntry) GetParentPath() string
+```
+
+### 5.10 FileEntry.GetDirectoryDepth Method
+
+```go
+// GetDirectoryDepth returns the depth of the primary path in the hierarchy.
+func (fe *FileEntry) GetDirectoryDepth() int
+```
+
+### 5.11 FileEntry.IsRootRelative Method
+
+```go
+// IsRootRelative returns true if the primary path is root-relative (no parent path).
+func (fe *FileEntry) IsRootRelative() bool
+```
+
 ## 6. Marshaling
 
 This section describes marshaling operations for FileEntry.
@@ -954,7 +989,7 @@ func (fe *FileEntry) MarshalData() ([]byte, error)
 // Marshal marshals both FileEntry metadata and data.
 // Returns metadata and data as separate byte slices for flexible writing.
 // Returns *PackageError on failure.
-func (fe *FileEntry) Marshal() (metadata []byte, data []byte, err error)
+func (fe *FileEntry) Marshal() (metadata, data []byte, err error)
 ```
 
 ### 6.2 WriteTo Methods
@@ -1006,6 +1041,48 @@ Provides marshaling methods for FileEntry metadata and data, supporting both byt
 - The writer-based methods (`WriteMetaTo`, `WriteDataTo`, `WriteTo`) provide memory-efficient streaming alternatives suitable for large files.
 - Writer methods follow the same pattern as `PackageComment.WriteTo` for consistency.
 - Choose byte-slice methods for simplicity, or writer methods for memory efficiency with large files.
+
+### 6.6 FileEntry Binary Format Methods
+
+This section describes FileEntry methods tied directly to the binary format contract.
+
+#### 6.6.1 FileEntry.ReadFrom Method
+
+```go
+// ReadFrom reads FileEntry metadata from a reader.
+// Implements io.ReaderFrom.
+// Returns *PackageError on failure.
+func (fe *FileEntry) ReadFrom(r io.Reader) (int64, error)
+```
+
+#### 6.6.2 FileEntry.Validate Method
+
+```go
+// Validate validates the FileEntry state.
+// Returns *PackageError on failure.
+func (fe *FileEntry) Validate() error
+```
+
+#### 6.6.3 FileEntry.FixedSize Method
+
+```go
+// FixedSize returns the size of the fixed FileEntry metadata section in bytes.
+func (fe *FileEntry) FixedSize() int
+```
+
+#### 6.6.4 FileEntry.VariableSize Method
+
+```go
+// VariableSize returns the size of the variable-length FileEntry metadata section in bytes.
+func (fe *FileEntry) VariableSize() int
+```
+
+#### 6.6.5 FileEntry.TotalSize Method
+
+```go
+// TotalSize returns the total size of the FileEntry metadata (fixed + variable) in bytes.
+func (fe *FileEntry) TotalSize() int
+```
 
 ## 7. FileEntry Properties
 

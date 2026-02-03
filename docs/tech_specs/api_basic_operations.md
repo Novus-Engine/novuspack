@@ -6,22 +6,22 @@
 - [0. Overview](#0-overview)
   - [0.1 Cross-References](#01-cross-references)
 - [1. Context Integration](#1-context-integration)
-- [2. Go API v1 Package Organization](#2-go-api-v1-package-organization)
+- [2. Go API V1 Package Organization](#2-go-api-v1-package-organization)
   - [2.1 Module Path](#21-module-path)
     - [2.1.1 API Package Structure](#211-api-package-structure)
     - [2.1.2 Root Package Purpose](#212-root-package-purpose)
     - [2.1.3 Root Package Example Import](#213-root-package-example-import)
-    - [2.1.4 File Format Package: `fileformat`](#214-file-format-package-fileformat)
+    - [2.1.4. File Format Package: Fileformat](#214-file-format-package-fileformat)
     - [2.1.5 File Format Package Key Types](#215-file-format-package-key-types)
     - [2.1.6 File Format Package Example Import](#216-file-format-package-example-import)
     - [2.1.7 Metadata Package Purpose](#217-metadata-package-purpose)
     - [2.1.8 Metadata Package Imports](#218-metadata-package-imports)
-    - [2.1.9 Generics Package: `generics`](#219-generics-package-generics)
+    - [2.1.9. Generics Package: Generics](#219-generics-package-generics)
     - [2.1.10 Generics Package Key Types](#2110-generics-package-key-types)
     - [2.1.11 Generics Package Example Import](#2111-generics-package-example-import)
     - [2.1.12 Error Handling Package Purpose](#2112-error-handling-package-purpose)
     - [2.1.13 Error Handling Package Imports](#2113-error-handling-package-imports)
-    - [2.1.14 Signatures Package: `signatures`](#2114-signatures-package-signatures)
+    - [2.1.14. Signatures Package: Signatures](#2114-signatures-package-signatures)
     - [2.1.15 Signatures Package Key Types](#2115-signatures-package-key-types)
     - [2.1.16 Signatures Package Example Import](#2116-signatures-package-example-import)
     - [2.1.17 Internal Package Purpose](#2117-internal-package-purpose)
@@ -34,9 +34,9 @@
 - [3. Package Structure and Loading](#3-package-structure-and-loading)
   - [3.1 Package Implementation Structure](#31-package-implementation-structure)
   - [3.2 Package Loading Process](#32-package-loading-process)
-    - [3.2.1 `Package.loadSpecialMetadataFiles` Method](#321-packageloadspecialmetadatafiles-method)
-    - [3.2.2 `Package.loadPathMetadata` Method](#322-packageloadpathmetadata-method)
-    - [3.2.3 `Package.updateFilePathAssociations` Method](#323-packageupdatefilepathassociations-method)
+    - [3.2.1 Package.loadSpecialMetadataFiles Method](#321-packageloadspecialmetadatafiles-method)
+    - [3.2.2 Package.loadPathMetadata Method](#322-packageloadpathmetadata-method)
+    - [3.2.3 Package.updateFilePathAssociations Method](#323-packageupdatefilepathassociations-method)
   - [3.3 Package Implementation Details](#33-package-implementation-details)
     - [3.3.1 Package Structure Implementation](#331-package-structure-implementation)
     - [3.3.2 Data Loading Strategies](#332-data-loading-strategies)
@@ -50,96 +50,96 @@
 - [5. Package Lifecycle Operations](#5-package-lifecycle-operations)
   - [5.1 Package Lifecycle - Always Use Defer for Cleanup](#51-package-lifecycle---always-use-defer-for-cleanup)
   - [5.2 Package Lifecycle - Check Package State Before Operations](#52-package-lifecycle---check-package-state-before-operations)
-  - [5.3 Package Lifecycle - Use appropriate context timeouts](#53-package-lifecycle---use-appropriate-context-timeouts)
-- [6. `NewPackage` Constructor Function](#6-newpackage-function)
+  - [5.3. Package Lifecycle - Use Appropriate Context Timeouts](#53-package-lifecycle---use-appropriate-context-timeouts)
+- [6. NewPackage Function](#6-newpackage-function)
   - [6.1 NewPackage Behavior](#61-newpackage-behavior)
   - [6.2 NewPackage Example Usage](#62-newpackage-example-usage)
-- [7. `NewPackageWithOptions` Constructor Function](#7-newpackagewithoptions-function)
+- [7. NewPackageWithOptions Function](#7-newpackagewithoptions-function)
   - [7.1 NewPackageWithOptions Parameters](#71-newpackagewithoptions-parameters)
   - [7.2 NewPackageWithOptions Behavior](#72-newpackagewithoptions-behavior)
   - [7.3 NewPackageWithOptions Error Conditions](#73-newpackagewithoptions-error-conditions)
   - [7.4 NewPackageWithOptions Example Usage](#74-newpackagewithoptions-example-usage)
   - [7.5 NewPackageWithOptions Without Path](#75-newpackagewithoptions-without-path)
-  - [7.6 `CreateOptions` Structure](#76-createoptions-structure)
-- [8. `Package.SetTargetPath` Method](#8-packagesettargetpath-method)
+  - [7.6 CreateOptions Structure](#76-createoptions-structure)
+- [8. Package.SetTargetPath Method](#8-packagesettargetpath-method)
   - [8.1 Package.SetTargetPath Parameters](#81-packagesettargetpath-parameters)
   - [8.2 Package.SetTargetPath Behavior](#82-packagesettargetpath-behavior)
   - [8.3 Package.SetTargetPath Method Error Conditions](#83-packagesettargetpath-method-error-conditions)
   - [8.4 Package.SetTargetPath Example Usage](#84-packagesettargetpath-example-usage)
-  - [8.5 Package.SetTargetPath vs NewPackageWithOptions](#85-packagesettargetpath-vs-newpackagewithoptions)
+  - [8.5. Package.SetTargetPath vs NewPackageWithOptions](#85-packagesettargetpath-vs-newpackagewithoptions)
 - [9. Package Configuration](#9-package-configuration)
-  - [9.1 `PackageConfig` Structure](#91-packageconfig-structure)
+  - [9.1 PackageConfig Structure](#91-packageconfig-structure)
     - [9.1.1 PackageConfig Fields](#911-packageconfig-fields)
   - [9.2 PackageConfig Backward Compatibility](#92-packageconfig-backward-compatibility)
-  - [9.3 `PathHandling` Type](#93-pathhandling-type)
-- [10. `OpenPackage`](#10-openpackage-function)
+  - [9.3 PathHandling Type](#93-pathhandling-type)
+- [10. OpenPackage Function](#10-openpackage-function)
   - [10.1 OpenPackage Parameters](#101-openpackage-parameters)
   - [10.2 OpenPackage Behavior](#102-openpackage-behavior)
   - [10.3 OpenPackage Method Error Conditions](#103-openpackage-method-error-conditions)
     - [10.3.1 OpenPackage Example Usage](#1031-openpackage-example-usage)
-- [11. Opening Packages as Read-Only](#11-opening-packages-as-read-only)
+- [11. Opening Packages As Read-Only](#11-opening-packages-as-read-only)
   - [11.1 Read-Only Enforcement Mechanism](#111-read-only-enforcement-mechanism)
     - [11.1.1 Mutating Methods That Must Be Rejected](#1111-mutating-methods-that-must-be-rejected)
-  - [11.2 `OpenPackageReadOnly` Function](#112-openpackagereadonly-function)
+  - [11.2 OpenPackageReadOnly Function](#112-openpackagereadonly-function)
     - [11.2.1 OpenPackageReadOnly Behavior](#1121-openpackagereadonly-behavior)
     - [11.2.2 OpenPackageReadOnly Method Error Conditions](#1122-openpackagereadonly-method-error-conditions)
-  - [11.3 `readOnlyPackage` Structure](#113-readonlypackage-struct)
-  - [11.4 `readOnlyPackage.readOnlyError` Helper](#114-readonlypackagereadonlyerror-method)
-  - [11.5 `ReadOnlyErrorContext` Structure](#115-readonlyerrorcontext-structure)
-  - [11.6 `readOnlyPackage` Implementation Methods](#116-readonlypackage-implementation-methods)
-- [12. `OpenBrokenPackage` Function](#12-openbrokenpackage-function)
-- [13. `Package.Close` Method](#13-packageclose-method)
-  - [13.1 `Package.Close` Behavior](#131-packageclose-behavior)
-  - [13.2 `Package.Close` Method Error Conditions](#132-packageclose-method-error-conditions)
-  - [13.3 `Package.Close` Example Usage](#133-packageclose-example-usage)
-- [14. `Package.CloseWithCleanup` Method](#14-packageclosewithcleanup-method)
-  - [14.1 `Package.CloseWithCleanup` Behavior](#141-packageclosewithcleanup-behavior)
-- [15. `Package.Validate` Method](#15-packagevalidate-method)
-  - [15.1 `Package.Validate` Behavior](#151-packagevalidate-behavior)
-  - [15.2 `Package.Validate` Method Error Conditions](#152-packagevalidate-method-error-conditions)
-  - [15.3 `Package.Validate` Example Usage](#153-packagevalidate-example-usage)
-- [16. `Package.Defragment` Method](#16-packagedefragment-method)
-  - [16.1 `Package.Defragment` Behavior](#161-packagedefragment-behavior)
-  - [16.2 `Package.Defragment` Error Conditions](#162-packagedefragment-error-conditions)
-  - [16.3 `Package.Defragment` Example Usage](#163-packagedefragment-example-usage)
-- [17. `Package.GetInfo` Method](#17-packagegetinfo-method)
-  - [17.1 `Package.GetInfo` Error Conditions](#171-packagegetinfo-error-conditions)
-  - [17.2 `Package.GetInfo` Example Usage](#172-packagegetinfo-example-usage)
+  - [11.3 readOnlyPackage Struct](#113-readonlypackage-struct)
+  - [11.4 readOnlyPackage.readOnlyError Method](#114-readonlypackagereadonlyerror-method)
+  - [11.5 ReadOnlyErrorContext Structure](#115-readonlyerrorcontext-structure)
+  - [11.6. ReadOnlyPackage Implementation Methods](#116-readonlypackage-implementation-methods)
+- [12. OpenBrokenPackage Function](#12-openbrokenpackage-function)
+- [13. Package.Close Method](#13-packageclose-method)
+  - [13.1 Package.Close Behavior](#131-packageclose-behavior)
+  - [13.2 Package.Close Method Error Conditions](#132-packageclose-method-error-conditions)
+  - [13.3 Package.Close Example Usage](#133-packageclose-example-usage)
+- [14. Package.CloseWithCleanup Method](#14-packageclosewithcleanup-method)
+  - [14.1 Package.CloseWithCleanup Behavior](#141-packageclosewithcleanup-behavior)
+- [15. Package.Validate Method](#15-packagevalidate-method)
+  - [15.1 Package.Validate Behavior](#151-packagevalidate-behavior)
+  - [15.2 Package.Validate Method Error Conditions](#152-packagevalidate-method-error-conditions)
+  - [15.3 Package.Validate Example Usage](#153-packagevalidate-example-usage)
+- [16. Package.Defragment Method](#16-packagedefragment-method)
+  - [16.1 Package.Defragment Behavior](#161-packagedefragment-behavior)
+  - [16.2 Package.Defragment Error Conditions](#162-packagedefragment-error-conditions)
+  - [16.3 Package.Defragment Example Usage](#163-packagedefragment-example-usage)
+- [17. Package.GetInfo Method](#17-packagegetinfo-method)
+  - [17.1 Package.GetInfo Error Conditions](#171-packagegetinfo-error-conditions)
+  - [17.2 Package.GetInfo Example Usage](#172-packagegetinfo-example-usage)
 - [18. Header Inspection](#18-header-inspection)
   - [18.1 Header Inspection Use Cases](#181-header-inspection-use-cases)
-  - [18.2 ReadHeader vs ReadHeaderFromPath](#182-readheader-vs-readheaderfrompath)
-  - [18.3 `ReadHeader` Function](#183-readheader-function)
-  - [18.4 `ReadHeaderFromPath` Function](#184-readheaderfrompath-function)
-    - [18.4.1 `ReadHeaderFromPath` Parameters](#1841-readheaderfrompath-parameters)
-    - [18.4.2 `ReadHeaderFromPath` Error Conditions](#1842-readheaderfrompath-error-conditions)
-    - [18.4.3 `ReadHeaderFromPath` Example Usage](#1843-readheaderfrompath-example-usage)
-  - [18.5 `Package.ReadHeader` Method](#185-packagereadheader-method)
-    - [18.5.1 `Package.ReadHeader` Parameters](#1851-packagereadheader-parameters)
-    - [18.5.2 `Package.ReadHeader` Error Conditions](#1852-packagereadheader-error-conditions)
-  - [18.6 `Package.IsOpen` Method](#186-packageisopen-method)
-  - [18.7 `Package.IsReadOnly` Method](#187-packageisreadonly-method)
-  - [18.8 `Package.GetPath` Method](#188-packagegetpath-method)
+  - [18.2. ReadHeader vs ReadHeaderFromPath](#182-readheader-vs-readheaderfrompath)
+  - [18.3 ReadHeader Function](#183-readheader-function)
+  - [18.4 ReadHeaderFromPath Function](#184-readheaderfrompath-function)
+    - [18.4.1 ReadHeaderFromPath Parameters](#1841-readheaderfrompath-parameters)
+    - [18.4.2 ReadHeaderFromPath Error Conditions](#1842-readheaderfrompath-error-conditions)
+    - [18.4.3 ReadHeaderFromPath Example Usage](#1843-readheaderfrompath-example-usage)
+  - [18.5 Package.ReadHeader Method](#185-packagereadheader-method)
+    - [18.5.1 Package.ReadHeader Parameters](#1851-packagereadheader-parameters)
+    - [18.5.2 Package.ReadHeader Error Conditions](#1852-packagereadheader-error-conditions)
+  - [18.6 Package.IsOpen Method](#186-packageisopen-method)
+  - [18.7 Package.IsReadOnly Method](#187-packageisreadonly-method)
+  - [18.8 Package.GetPath Method](#188-packagegetpath-method)
 - [19. Package Session Base Management](#19-package-session-base-management)
   - [19.1 Session Base for File Addition](#191-session-base-for-file-addition)
   - [19.2 Session Base for File Extraction](#192-session-base-for-file-extraction)
   - [19.3 Session Base Lifecycle](#193-session-base-lifecycle)
-  - [19.4 `Package.SetSessionBase` Method](#194-packagesetsessionbase-method)
-    - [19.4.1 `Package.SetSessionBase` Parameters](#1941-packagesetsessionbase-parameters)
+  - [19.4 Package.SetSessionBase Method](#194-packagesetsessionbase-method)
+    - [19.4.1 Package.SetSessionBase Parameters](#1941-packagesetsessionbase-parameters)
     - [19.4.2 Package.SetSessionBase Returns](#1942-packagesetsessionbase-returns)
     - [19.4.3 Package.SetSessionBase Example Usage](#1943-packagesetsessionbase-example-usage)
   - [19.5 Package.GetSessionBase Method](#195-packagegetsessionbase-method)
     - [19.5.1 Package.GetSessionBase Returns](#1951-packagegetsessionbase-returns)
     - [19.5.2 Package.GetSessionBase Example](#1952-packagegetsessionbase-example)
-  - [19.6 `Package.ClearSessionBase` Method](#196-packageclearsessionbase-method)
+  - [19.6 Package.ClearSessionBase Method](#196-packageclearsessionbase-method)
     - [19.6.1 Package.ClearSessionBase Example](#1961-packageclearsessionbase-example)
   - [19.7 Package.HasSessionBase Method](#197-packagehassessionbase-method)
     - [19.7.1 Package.HasSessionBase Returns](#1971-packagehassessionbase-returns)
     - [19.7.2 Package.HasSessionBase Example](#1972-packagehassessionbase-example)
 - [20. Structured Error System](#20-structured-error-system)
   - [20.1 Error Types Used](#201-error-types-used)
-  - [20.2 `PackageErrorContext` Structure](#202-packageerrorcontext-structure)
-  - [20.3 `SecurityErrorContext` Structure](#203-securityerrorcontext-structure)
-  - [20.4 `IOErrorContext` Structure](#204-ioerrorcontext-structure)
+  - [20.2 PackageErrorContext Structure](#202-packageerrorcontext-structure)
+  - [20.3 SecurityErrorContext Structure](#203-securityerrorcontext-structure)
+  - [20.4 IOErrorContext Structure](#204-ioerrorcontext-structure)
   - [20.5 Creating Errors with Context](#205-creating-errors-with-context)
   - [20.6 Error Inspection](#206-error-inspection)
 - [21. Error Handling Best Practices](#21-error-handling-best-practices)
@@ -452,7 +452,7 @@ The `Package` interface provides the public API for package operations, while `f
 
 The canonical `Package` interface definition is specified in [Core Package Interface API - Package Interface](api_core.md#11-package-interface).
 
-The `Package` interface provides a unified API that combines PackageReader, PackageWriter, lifecycle operations, file management, metadata operations, compression operations, and session base management.
+The `Package` interface provides a unified API that combines read operations, write operations, lifecycle operations, file management, metadata operations, compression operations, and session base management.
 
 For session base management (used for both file addition and extraction operations), see [Package Session Base Management](#19-package-session-base-management).
 
@@ -1053,7 +1053,7 @@ if err != nil {
 }
 ```
 
-### 8.5. Package.SetTargetPath Vs NewPackageWithOptions
+### 8.5. Package.SetTargetPath vs NewPackageWithOptions
 
 - `NewPackageWithOptions`: Used for initial package creation with configuration options, including optional path
 - `SetTargetPath`: Used to change the write path on an existing package (created or opened)
@@ -1194,7 +1194,7 @@ This can be achieved by returning a distinct wrapper type as the dynamic type be
 
 The wrapper must reject all methods that mutate package state in memory or write to disk.
 
-This includes all PackageWriter methods, all state-changing metadata setters, and lifecycle methods that change the target path or package configuration for writing.
+This includes all package write operations (Write, SafeWrite, FastWrite), all state-changing metadata setters, and lifecycle methods that change the target path or package configuration for writing.
 
 At minimum, the wrapper must reject Create, SetTargetPath, Defragment, AddFile, AddFileFromMemory, AddFilePattern, AddDirectory, RemoveFile, RemoveFilePattern, Write, SafeWrite, FastWrite, SetComment, ClearComment, SetAppID, ClearAppID, SetVendorID, ClearVendorID, SetPackageIdentity, and ClearPackageIdentity.
 
@@ -1436,10 +1436,7 @@ if err != nil {
 
 ## 17. Package.GetInfo Method
 
-```go
-// GetInfo gets basic package information
-func (p *Package) GetInfo() (*PackageInfo, error)
-```
+Note: The canonical signature for `GetInfo` is defined in [Core Package Interface API - Package.GetInfo](api_core.md#125-packagegetinfo-method).
 
 This function retrieves comprehensive information about the current package.
 
@@ -1480,7 +1477,7 @@ These are low-level functions for header-only inspection without opening the ful
 - Stream processing where only header information is needed
 - Quick validation of package files without full I/O overhead
 
-### 18.2. ReadHeader Vs ReadHeaderFromPath
+### 18.2. ReadHeader vs ReadHeaderFromPath
 
 - `ReadHeader`: Use when you have an existing `io.Reader` or need fine-grained control over file operations
 - `ReadHeaderFromPath`: Use when you want a simple, one-line header read from a file path with automatic file management
