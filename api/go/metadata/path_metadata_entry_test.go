@@ -458,38 +458,7 @@ func TestPathMetadataEntry_ParentPath(t *testing.T) {
 
 // TestPathMetadataEntry_GetInheritedTags tests the GetInheritedTags method.
 func TestPathMetadataEntry_GetInheritedTags(t *testing.T) {
-	// Create hierarchy: root -> parent -> child
-	root := &PathMetadataEntry{
-		Path: generics.PathEntry{PathLength: 1, Path: "/"},
-		Type: PathMetadataTypeDirectory,
-		Inheritance: &PathInheritance{
-			Enabled:  true,
-			Priority: 1,
-		},
-		Properties: []*generics.Tag[any]{
-			{
-				Key:   "root-tag",
-				Value: "root-value",
-				Type:  generics.TagValueTypeString,
-			},
-		},
-	}
-
-	parent := &PathMetadataEntry{
-		Path: generics.PathEntry{PathLength: 4, Path: "dir"},
-		Type: PathMetadataTypeDirectory,
-		Inheritance: &PathInheritance{
-			Enabled:  true,
-			Priority: 2,
-		},
-		Properties: []*generics.Tag[any]{
-			{
-				Key:   "parent-tag",
-				Value: "parent-value",
-				Type:  generics.TagValueTypeString,
-			},
-		},
-	}
+	root, parent := pathMetadataRootParentFixture()
 	parent.SetParentPath(root)
 
 	child := &PathMetadataEntry{

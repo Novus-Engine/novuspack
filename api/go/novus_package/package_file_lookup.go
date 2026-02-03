@@ -184,7 +184,7 @@ func (p *filePackage) FindEntriesByTag(tagKey string, tagValue any) ([]*metadata
 				// Parse tags from the data (JSON format)
 				// For now, we'll do a simple string match in the JSON data
 				// A full implementation would deserialize the JSON and compare properly
-				searchStr := fmt.Sprintf("\"%s\"", tagKey)
+				searchStr := fmt.Sprintf("%q", tagKey)
 				if bytes.Contains(optData.Data, []byte(searchStr)) {
 					matches = append(matches, entry)
 					break
@@ -239,7 +239,7 @@ func (p *filePackage) FindEntriesByType(fileType uint16) ([]*metadata.FileEntry,
 //   - int: Number of regular content files
 //   - error: *PackageError on failure
 //
-// Specification: api_file_mgmt_queries.md: 3.2.1 FindEntriesByType Package Method
+// Specification: api_file_mgmt_queries.md: 3.2.1 Package.FindEntriesByType Method
 func (p *filePackage) GetFileCount() (int, error) {
 	// This is a pure in-memory operation
 	if p.FileEntries == nil {

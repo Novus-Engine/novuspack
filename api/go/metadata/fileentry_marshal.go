@@ -18,6 +18,22 @@ import (
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
+// writeSliceToWriter writes slice entries to w using writeAt(i) for each index; updates totalWritten.
+func writeSliceToWriter(w io.Writer, totalWritten int64, n int, fieldName string, writeAt func(i int) (int64, error)) (int64, error) {
+	for i := 0; i < n; i++ {
+		written, err := writeAt(i)
+		if err != nil {
+			return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to write %s entry %d", fieldName, i), pkgerrors.ValidationErrorContext{
+				Field:    fieldName,
+				Value:    i,
+				Expected: "written successfully",
+			})
+		}
+		totalWritten += written
+	}
+	return totalWritten, nil
+}
+
 // MarshalMeta marshals the FileEntry metadata (header + variable data) to bytes.
 //
 // Marshals the complete FileEntry metadata structure including:
@@ -60,7 +76,7 @@ func (f *FileEntry) MarshalMeta() ([]byte, error) {
 //
 // Specification: api_file_mgmt_file_entry.md: 6. Marshaling
 func (f *FileEntry) MarshalData() ([]byte, error) {
-	if !f.IsDataLoaded && len(f.Data) == 0 {
+	if !f.IsDataLoaded {
 		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "file entry data not available", nil, pkgerrors.ValidationErrorContext{
 			Field:    "Data",
 			Value:    nil,
@@ -86,7 +102,7 @@ func (f *FileEntry) MarshalData() ([]byte, error) {
 //   - ErrTypeIO: I/O error during marshaling
 //
 // Specification: api_file_mgmt_file_entry.md: 6. Marshaling
-func (f *FileEntry) Marshal() (metadata []byte, data []byte, err error) {
+func (f *FileEntry) Marshal() (metadata, data []byte, err error) {
 	metadata, err = f.MarshalMeta()
 	if err != nil {
 		return nil, nil, err
@@ -133,40 +149,19 @@ func (f *FileEntry) WriteMetaTo(w io.Writer) (int64, error) {
 
 	hashSize := 0
 	for _, h := range f.Hashes {
-		hashSize += h.Size()
+		hashSize += h.size()
 	}
 	f.HashDataOffset = uint32(pathsSize)
 	f.HashDataLen = uint16(hashSize)
 
 	optionalDataSize := 0
 	for _, o := range f.OptionalData {
-		optionalDataSize += o.Size()
+		optionalDataSize += o.size()
 	}
 	f.OptionalDataOffset = uint32(pathsSize + hashSize)
 	f.OptionalDataLen = uint16(optionalDataSize)
 
 	// Write fixed section (64 bytes)
-	type FileEntryFixed struct {
-		FileID             uint64
-		OriginalSize       uint64
-		StoredSize         uint64
-		RawChecksum        uint32
-		StoredChecksum     uint32
-		FileVersion        uint32
-		MetadataVersion    uint32
-		PathCount          uint16
-		Type               uint16
-		CompressionType    uint8
-		CompressionLevel   uint8
-		EncryptionType     uint8
-		HashCount          uint8
-		HashDataOffset     uint32
-		HashDataLen        uint16
-		OptionalDataLen    uint16
-		OptionalDataOffset uint32
-		Reserved           uint32
-	}
-
 	fixed := FileEntryFixed{
 		FileID:             f.FileID,
 		OriginalSize:       f.OriginalSize,
@@ -198,42 +193,22 @@ func (f *FileEntry) WriteMetaTo(w io.Writer) (int64, error) {
 	totalWritten += FileEntryFixedSize
 
 	// Write path entries (starting at offset 0)
-	for i, path := range f.Paths {
-		n, err := path.WriteTo(w)
-		if err != nil {
-			return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to write path entry %d", i), pkgerrors.ValidationErrorContext{
-				Field:    "Paths",
-				Value:    i,
-				Expected: "written successfully",
-			})
-		}
-		totalWritten += n
+	var err error
+	totalWritten, err = writeSliceToWriter(w, totalWritten, len(f.Paths), "Paths", func(i int) (int64, error) { return f.Paths[i].WriteTo(w) })
+	if err != nil {
+		return totalWritten, err
 	}
 
 	// Write hash entries (starting at HashDataOffset)
-	for i, hash := range f.Hashes {
-		n, err := hash.WriteTo(w)
-		if err != nil {
-			return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to write hash entry %d", i), pkgerrors.ValidationErrorContext{
-				Field:    "Hashes",
-				Value:    i,
-				Expected: "written successfully",
-			})
-		}
-		totalWritten += n
+	totalWritten, err = writeSliceToWriter(w, totalWritten, len(f.Hashes), "Hashes", func(i int) (int64, error) { return f.Hashes[i].writeTo(w) })
+	if err != nil {
+		return totalWritten, err
 	}
 
 	// Write optional data entries (starting at OptionalDataOffset)
-	for i, opt := range f.OptionalData {
-		n, err := opt.WriteTo(w)
-		if err != nil {
-			return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to write optional data entry %d", i), pkgerrors.ValidationErrorContext{
-				Field:    "OptionalData",
-				Value:    i,
-				Expected: "written successfully",
-			})
-		}
-		totalWritten += n
+	totalWritten, err = writeSliceToWriter(w, totalWritten, len(f.OptionalData), "OptionalData", func(i int) (int64, error) { return f.OptionalData[i].writeTo(w) })
+	if err != nil {
+		return totalWritten, err
 	}
 
 	return totalWritten, nil
@@ -257,9 +232,11 @@ func (f *FileEntry) WriteMetaTo(w io.Writer) (int64, error) {
 // Follows Go's standard io.WriterTo pattern.
 //
 // Specification: api_file_mgmt_file_entry.md: 1. FileEntry Structure
+//
+//nolint:gocognit // branch count from data source and validation paths
 func (f *FileEntry) WriteDataTo(w io.Writer) (int64, error) {
 	// If data is in memory, write it directly
-	if f.IsDataLoaded && len(f.Data) > 0 {
+	if f.IsDataLoaded {
 		n, err := w.Write(f.Data)
 		if err != nil {
 			return int64(n), pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to write data", pkgerrors.ValidationErrorContext{

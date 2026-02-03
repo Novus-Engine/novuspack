@@ -1,12 +1,15 @@
 package metadata
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
 )
 
 // TestLoadData tests LoadData method
+//
+//nolint:gocognit,gocyclo // table-driven load cases
 func TestLoadData(t *testing.T) {
 	// Create a temporary source file
 	sourceFile, err := os.CreateTemp("", "novuspack-source-*")
@@ -29,10 +32,8 @@ func TestLoadData(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "no source file",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:    "no source file",
+			setup:   NewFileEntry,
 			wantErr: true,
 		},
 		{
@@ -48,7 +49,7 @@ func TestLoadData(t *testing.T) {
 			name: "successful load from source",
 			setup: func() *FileEntry {
 				fe := NewFileEntry()
-				fe.SetSourceFile(sourceFile, 0, int64(len(testData)))
+				fe.setSourceFile(sourceFile, 0, int64(len(testData)))
 				return fe
 			},
 			wantErr: false,
@@ -57,7 +58,7 @@ func TestLoadData(t *testing.T) {
 			name: "cancelled context",
 			setup: func() *FileEntry {
 				fe := NewFileEntry()
-				fe.SetSourceFile(sourceFile, 0, int64(len(testData)))
+				fe.setSourceFile(sourceFile, 0, int64(len(testData)))
 				return fe
 			},
 			wantErr: true,
@@ -100,7 +101,7 @@ func TestLoadData(t *testing.T) {
 	t.Run("incomplete read", func(t *testing.T) {
 		fe := NewFileEntry()
 		// Set source size larger than actual file content
-		fe.SetSourceFile(sourceFile, 0, int64(len(testData)+10))
+		fe.setSourceFile(sourceFile, 0, int64(len(testData)+10))
 		err := fe.LoadData(context.Background())
 		if err == nil {
 			t.Error("LoadData() with incomplete read should return error")
@@ -119,7 +120,7 @@ func TestLoadData(t *testing.T) {
 			t.Fatalf("Failed to open /dev/null: %v", err)
 		}
 		defer func() { _ = badFile.Close() }()
-		fe.SetSourceFile(badFile, 0, 100)
+		fe.setSourceFile(badFile, 0, 100)
 		err = fe.LoadData(context.Background())
 		if err == nil {
 			t.Error("LoadData() with read error should return error")
@@ -152,6 +153,8 @@ func TestUnloadData(t *testing.T) {
 }
 
 // TestGetData tests GetData method
+//
+//nolint:gocognit // table-driven get cases
 func TestGetData(t *testing.T) {
 	// Create a temporary source file
 	sourceFile, err := os.CreateTemp("", "novuspack-source-*")
@@ -183,17 +186,15 @@ func TestGetData(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "no data available",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:    "no data available",
+			setup:   NewFileEntry,
 			wantErr: true,
 		},
 		{
 			name: "load from source file",
 			setup: func() *FileEntry {
 				fe := NewFileEntry()
-				fe.SetSourceFile(sourceFile, 0, int64(len(testData)))
+				fe.setSourceFile(sourceFile, 0, int64(len(testData)))
 				return fe
 			},
 			wantErr: false,
@@ -233,14 +234,14 @@ func TestGetData(t *testing.T) {
 					t.Error("GetData() returned empty data")
 				}
 
-				if tt.name == "load from source file" && string(data) != string(testData) {
+				if tt.name == "load from source file" && !bytes.Equal(data, testData) {
 					t.Errorf("GetData() data = %q, want %q", string(data), string(testData))
 				}
 			}
 
 			// Cleanup temp file if created
 			if tt.name == "load from temp file" {
-				_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck
+				_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 			}
 		})
 	}
@@ -261,12 +262,12 @@ func TestSetData(t *testing.T) {
 		{
 			name:      "empty data",
 			data:      []byte{},
-			wantState: ProcessingStateIdle,
+			wantState: ProcessingStateComplete,
 		},
 		{
 			name:      "nil data",
 			data:      nil,
-			wantState: ProcessingStateIdle,
+			wantState: ProcessingStateComplete,
 		},
 	}
 
@@ -274,25 +275,26 @@ func TestSetData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fe := NewFileEntry()
 			fe.SetData(tt.data)
-
-			if len(tt.data) > 0 {
-				if !fe.IsDataLoaded {
-					t.Error("SetData() did not set IsDataLoaded flag")
-				}
-
-				if len(fe.Data) != len(tt.data) {
-					t.Errorf("SetData() Data length = %d, want %d", len(fe.Data), len(tt.data))
-				}
-			} else {
-				if fe.IsDataLoaded {
-					t.Error("SetData() with empty data should not set IsDataLoaded flag")
-				}
-			}
-
-			if fe.ProcessingState != tt.wantState {
-				t.Errorf("SetData() ProcessingState = %v, want %v", fe.ProcessingState, tt.wantState)
-			}
+			checkSetDataResult(t, fe, tt.data, tt.wantState)
 		})
+	}
+}
+
+// checkSetDataResult verifies FileEntry state after SetData; used to reduce TestSetData complexity.
+func checkSetDataResult(t *testing.T, fe *FileEntry, data []byte, wantState ProcessingState) {
+	t.Helper()
+	if !fe.IsDataLoaded {
+		t.Error("SetData() did not set IsDataLoaded flag")
+	}
+
+	if data == nil {
+		data = []byte{}
+	}
+	if len(fe.Data) != len(data) {
+		t.Errorf("SetData() Data length = %d, want %d", len(fe.Data), len(data))
+	}
+	if fe.ProcessingState != wantState {
+		t.Errorf("SetData() ProcessingState = %v, want %v", fe.ProcessingState, wantState)
 	}
 }
 
@@ -320,79 +322,79 @@ func TestSetProcessingState(t *testing.T) {
 	}
 }
 
-// TestSetSourceFile tests SetSourceFile method
+// TestSetSourceFile tests the internal setSourceFile helper.
 func TestSetSourceFile(t *testing.T) {
 	fe := NewFileEntry()
 	testFile, _ := os.Open(os.DevNull)
 	defer func() { _ = testFile.Close() }() //nolint:errcheck // Close on exit - error is non-critical
 
-	fe.SetSourceFile(testFile, 10, 100)
+	fe.setSourceFile(testFile, 10, 100)
 
 	if fe.SourceFile != testFile {
-		t.Error("SetSourceFile() did not set SourceFile")
+		t.Error("setSourceFile() did not set SourceFile")
 	}
 
 	if fe.SourceOffset != 10 {
-		t.Errorf("SetSourceFile() SourceOffset = %d, want 10", fe.SourceOffset)
+		t.Errorf("setSourceFile() SourceOffset = %d, want 10", fe.SourceOffset)
 	}
 
 	if fe.SourceSize != 100 {
-		t.Errorf("SetSourceFile() SourceSize = %d, want 100", fe.SourceSize)
+		t.Errorf("setSourceFile() SourceSize = %d, want 100", fe.SourceSize)
 	}
 }
 
-// TestGetSourceFile tests GetSourceFile method
+// TestGetSourceFile tests the internal getSourceFile helper.
 func TestGetSourceFile(t *testing.T) {
 	fe := NewFileEntry()
 	testFile, _ := os.Open(os.DevNull)
 	defer func() { _ = testFile.Close() }() //nolint:errcheck // Close on exit - error is non-critical
 
-	fe.SetSourceFile(testFile, 10, 100)
+	fe.setSourceFile(testFile, 10, 100)
 
-	file, offset, size := fe.GetSourceFile()
+	file, offset, size := fe.getSourceFile()
 	if file != testFile {
-		t.Error("GetSourceFile() returned wrong file")
+		t.Error("getSourceFile() returned wrong file")
 	}
 
 	if offset != 10 {
-		t.Errorf("GetSourceFile() offset = %d, want 10", offset)
+		t.Errorf("getSourceFile() offset = %d, want 10", offset)
 	}
 
 	if size != 100 {
-		t.Errorf("GetSourceFile() size = %d, want 100", size)
+		t.Errorf("getSourceFile() size = %d, want 100", size)
 	}
 }
 
-// TestSetTempPath tests SetTempPath method
+// TestSetTempPath tests the internal setTempPath helper.
 func TestSetTempPath(t *testing.T) {
 	fe := NewFileEntry()
 	testPath := "/tmp/test"
 
-	fe.SetTempPath(testPath)
+	fe.setTempPath(testPath)
 
 	if fe.TempFilePath != testPath {
-		t.Errorf("SetTempPath() TempFilePath = %q, want %q", fe.TempFilePath, testPath)
+		t.Errorf("setTempPath() TempFilePath = %q, want %q", fe.TempFilePath, testPath)
 	}
 
 	if !fe.IsTempFile {
-		t.Error("SetTempPath() did not set IsTempFile flag")
+		t.Error("setTempPath() did not set IsTempFile flag")
 	}
 
-	fe.SetTempPath("")
+	fe.setTempPath("")
 	if fe.IsTempFile {
-		t.Error("SetTempPath() with empty path did not clear IsTempFile flag")
+		t.Error("setTempPath() with empty path did not clear IsTempFile flag")
 	}
 }
 
-// TestGetTempPath tests GetTempPath method
+// TestGetTempPath tests the internal getTempPath helper.
 func TestGetTempPath(t *testing.T) {
 	fe := NewFileEntry()
 	testPath := "/tmp/test"
 
-	fe.SetTempPath(testPath)
+	fe.setTempPath(testPath)
 
-	if fe.GetTempPath() != testPath {
-		t.Errorf("GetTempPath() = %q, want %q", fe.GetTempPath(), testPath)
+	if fe.getTempPath() != testPath {
+		t.Errorf("getTempPath() = %q, want %q", fe.getTempPath(), testPath)
 	}
 }
 
@@ -446,6 +448,8 @@ func TestCreateTempFile(t *testing.T) {
 }
 
 // TestCleanupTempFile tests CleanupTempFile method
+//
+//nolint:gocognit // table-driven cleanup cases
 func TestCleanupTempFile(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -465,10 +469,8 @@ func TestCleanupTempFile(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "cleanup with no temp file",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
+			name:    "cleanup with no temp file",
+			setup:   NewFileEntry,
 			wantErr: false, // Should not error if no temp file
 		},
 		{
@@ -540,7 +542,7 @@ func TestStreamToTempFile(t *testing.T) {
 	}
 
 	fe := NewFileEntry()
-	fe.SetSourceFile(sourceFile, 0, int64(len(testData)))
+	fe.setSourceFile(sourceFile, 0, int64(len(testData)))
 
 	// Test successful streaming
 	err = fe.StreamToTempFile(context.Background())
@@ -566,25 +568,21 @@ func TestStreamToTempFile(t *testing.T) {
 		t.Fatalf("Failed to read temp file: %v", err)
 	}
 
-	if string(readData) != string(testData) {
+	if !bytes.Equal(readData, testData) {
 		t.Errorf("StreamToTempFile() data = %q, want %q", string(readData), string(testData))
 	}
 
 	// Cleanup
-	_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test with no source file
-	fe2 := NewFileEntry()
-	err = fe2.StreamToTempFile(context.Background())
-	if err == nil {
-		t.Error("StreamToTempFile() with no source file should return error")
-	}
+	testStreamToTempFileNoSource(t)
 
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	fe3 := NewFileEntry()
-	fe3.SetSourceFile(sourceFile, 0, int64(len(testData)))
+	fe3.setSourceFile(sourceFile, 0, int64(len(testData)))
 	err = fe3.StreamToTempFile(ctx)
 	if err == nil {
 		t.Error("StreamToTempFile() with cancelled context should return error")
@@ -597,7 +595,7 @@ func TestStreamToTempFile(t *testing.T) {
 		t.Fatalf("CreateTempFile() error = %v", err)
 	}
 	tempPath := fe4.TempFilePath
-	fe4.SetSourceFile(sourceFile, 0, int64(len(testData)))
+	fe4.setSourceFile(sourceFile, 0, int64(len(testData)))
 	err = fe4.StreamToTempFile(context.Background())
 	if err != nil {
 		t.Fatalf("StreamToTempFile() with existing temp file error = %v", err)
@@ -605,29 +603,47 @@ func TestStreamToTempFile(t *testing.T) {
 	if fe4.TempFilePath != tempPath {
 		t.Error("StreamToTempFile() should reuse existing temp file path")
 	}
-	_ = fe4.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe4.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test seek error
 	fe5 := NewFileEntry()
 	// Use a closed file to cause seek error
 	closedFile, _ := os.Open(os.DevNull)
 	_ = closedFile.Close()
-	fe5.SetSourceFile(closedFile, 0, 10)
+	fe5.setSourceFile(closedFile, 0, 10)
 	err = fe5.StreamToTempFile(context.Background())
 	if err == nil {
 		t.Error("StreamToTempFile() with seek error should return error")
 	}
 
 	// Test copy error (incomplete copy)
-	fe6 := NewFileEntry()
-	fe6.SetSourceFile(sourceFile, 0, int64(len(testData)+100)) // Request more than available
-	err = fe6.StreamToTempFile(context.Background())
+	testStreamToTempFileIncompleteCopy(t, sourceFile, testData)
+}
+
+// testStreamToTempFileNoSource verifies StreamToTempFile returns error when no source file is set.
+func testStreamToTempFileNoSource(t *testing.T) {
+	t.Helper()
+	fe := NewFileEntry()
+	err := fe.StreamToTempFile(context.Background())
+	if err == nil {
+		t.Error("StreamToTempFile() with no source file should return error")
+	}
+}
+
+// testStreamToTempFileIncompleteCopy verifies StreamToTempFile returns error when copy is incomplete.
+func testStreamToTempFileIncompleteCopy(t *testing.T, sourceFile *os.File, testData []byte) {
+	t.Helper()
+	fe := NewFileEntry()
+	fe.setSourceFile(sourceFile, 0, int64(len(testData)+100)) // Request more than available
+	err := fe.StreamToTempFile(context.Background())
 	if err == nil {
 		t.Error("StreamToTempFile() with incomplete copy should return error")
 	}
 }
 
 // TestWriteToTempFile tests WriteToTempFile method
+//
+//nolint:gocognit,gocyclo // table-driven write cases
 func TestWriteToTempFile(t *testing.T) {
 	fe := NewFileEntry()
 	testData := []byte("test data to write")
@@ -656,12 +672,12 @@ func TestWriteToTempFile(t *testing.T) {
 		t.Fatalf("Failed to read temp file: %v", err)
 	}
 
-	if string(readData) != string(testData) {
+	if !bytes.Equal(readData, testData) {
 		t.Errorf("WriteToTempFile() data = %q, want %q", string(readData), string(testData))
 	}
 
 	// Cleanup
-	_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -686,7 +702,7 @@ func TestWriteToTempFile(t *testing.T) {
 	if fe3.TempFilePath != tempPath {
 		t.Error("WriteToTempFile() should reuse existing temp file path")
 	}
-	_ = fe3.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe3.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test write error (simulate by using invalid temp file path after creation)
 	fe4 := NewFileEntry()
@@ -709,7 +725,7 @@ func TestWriteToTempFile(t *testing.T) {
 			t.Errorf("WriteToTempFile() ProcessingState = %v, want ProcessingStateError", fe4.ProcessingState)
 		}
 	}
-	_ = fe4.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe4.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test file open error (use invalid directory path)
 	fe5 := NewFileEntry()
@@ -742,7 +758,7 @@ func TestReadFromTempFile(t *testing.T) {
 		t.Fatalf("ReadFromTempFile() error = %v", err)
 	}
 
-	if string(readData) != string(testData) {
+	if !bytes.Equal(readData, testData) {
 		t.Errorf("ReadFromTempFile() data = %q, want %q", string(readData), string(testData))
 	}
 
@@ -767,7 +783,7 @@ func TestReadFromTempFile(t *testing.T) {
 	}
 
 	// Cleanup
-	_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test with no temp file
 	fe2 := NewFileEntry()
@@ -788,7 +804,7 @@ func TestReadFromTempFile(t *testing.T) {
 	if err == nil {
 		t.Error("ReadFromTempFile() with cancelled context should return error")
 	}
-	_ = fe3.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe3.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test read beyond file size
 	fe4 := NewFileEntry()
@@ -800,7 +816,7 @@ func TestReadFromTempFile(t *testing.T) {
 	if err == nil {
 		t.Error("ReadFromTempFile() beyond file size should return error")
 	}
-	_ = fe4.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe4.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 
 	// Test invalid offset
 	fe5 := NewFileEntry()
@@ -812,5 +828,5 @@ func TestReadFromTempFile(t *testing.T) {
 	if err == nil {
 		t.Error("ReadFromTempFile() with invalid offset should return error")
 	}
-	_ = fe5.CleanupTempFile(context.Background()) //nolint:errcheck
+	_ = fe5.CleanupTempFile(context.Background()) //nolint:errcheck // cleanup best-effort in test
 }

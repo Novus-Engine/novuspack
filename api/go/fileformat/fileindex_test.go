@@ -11,6 +11,34 @@ import (
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
+// fileIndexWithManyEntries returns a FileIndex with 5 entries for use in tests.
+func fileIndexWithManyEntries() FileIndex {
+	return FileIndex{
+		EntryCount: 5,
+		Reserved:   0,
+		Entries: []IndexEntry{
+			{FileID: 1, Offset: 112},
+			{FileID: 2, Offset: 256},
+			{FileID: 3, Offset: 512},
+			{FileID: 4, Offset: 1024},
+			{FileID: 5, Offset: 2048},
+		},
+	}
+}
+
+// compareFileIndexEntries compares index.Entries with want.Entries and reports mismatches via t.
+func compareFileIndexEntries(t *testing.T, index, want FileIndex) {
+	t.Helper()
+	for i, entry := range index.Entries {
+		if entry.FileID != want.Entries[i].FileID {
+			t.Errorf("Entry[%d].FileID = %d, want %d", i, entry.FileID, want.Entries[i].FileID)
+		}
+		if entry.Offset != want.Entries[i].Offset {
+			t.Errorf("Entry[%d].Offset = %d, want %d", i, entry.Offset, want.Entries[i].Offset)
+		}
+	}
+}
+
 // TestIndexEntrySize verifies IndexEntry is exactly 16 bytes
 func TestIndexEntrySize(t *testing.T) {
 	var entry IndexEntry
@@ -82,7 +110,7 @@ func TestFileIndexValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.index.Validate()
+			err := tt.index.validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -109,8 +137,8 @@ func TestFileIndexSizeCalculation(t *testing.T) {
 				Entries:    make([]IndexEntry, tt.entryCount),
 			}
 
-			if index.Size() != tt.wantSize {
-				t.Errorf("Size() = %d, want %d", index.Size(), tt.wantSize)
+			if index.size() != tt.wantSize {
+				t.Errorf("size() = %d, want %d", index.size(), tt.wantSize)
 			}
 		})
 	}
@@ -139,6 +167,8 @@ func TestNewFileIndex(t *testing.T) {
 
 // TestFileIndexReadFrom verifies ReadFrom deserialization
 // Specification: package_file_format.md: 6 File Index Section
+//
+//nolint:gocognit // table-driven test with multiple cases
 func TestFileIndexReadFrom(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -168,17 +198,7 @@ func TestFileIndexReadFrom(t *testing.T) {
 		},
 		{
 			"Index with many entries",
-			FileIndex{
-				EntryCount: 5,
-				Reserved:   0,
-				Entries: []IndexEntry{
-					{FileID: 1, Offset: 112},
-					{FileID: 2, Offset: 256},
-					{FileID: 3, Offset: 512},
-					{FileID: 4, Offset: 1024},
-					{FileID: 5, Offset: 2048},
-				},
-			},
+			fileIndexWithManyEntries(),
 			false,
 		},
 	}
@@ -200,7 +220,7 @@ func TestFileIndexReadFrom(t *testing.T) {
 
 			// Deserialize using ReadFrom
 			var index FileIndex
-			n, err := index.ReadFrom(buf)
+			n, err := index.readFrom(buf)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadFrom() error = %v, wantErr %v", err, tt.wantErr)
@@ -208,7 +228,7 @@ func TestFileIndexReadFrom(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				expectedSize := tt.index.Size()
+				expectedSize := tt.index.size()
 				if n != int64(expectedSize) {
 					t.Errorf("ReadFrom() read %d bytes, want %d", n, expectedSize)
 				}
@@ -225,17 +245,10 @@ func TestFileIndexReadFrom(t *testing.T) {
 				}
 
 				// Verify entries match
-				for i, entry := range index.Entries {
-					if entry.FileID != tt.index.Entries[i].FileID {
-						t.Errorf("Entry[%d].FileID = %d, want %d", i, entry.FileID, tt.index.Entries[i].FileID)
-					}
-					if entry.Offset != tt.index.Entries[i].Offset {
-						t.Errorf("Entry[%d].Offset = %d, want %d", i, entry.Offset, tt.index.Entries[i].Offset)
-					}
-				}
+				compareFileIndexEntries(t, index, tt.index)
 
 				// Verify validation passes
-				if err := index.Validate(); err != nil {
+				if err := index.validate(); err != nil {
 					t.Errorf("ReadFrom() index validation failed: %v", err)
 				}
 			}
@@ -268,7 +281,7 @@ func TestFileIndexReadFromIncompleteData(t *testing.T) {
 		}()},
 		{"Header with EntryCount>0 but no entries", func() []byte {
 			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(2)) // EntryCount = 2
+			_ = binary.Write(buf, binary.LittleEndian, uint32(2))
 			_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // Reserved
 			_ = binary.Write(buf, binary.LittleEndian, uint64(0)) // FirstEntryOffset
 			// Only 16 bytes, but EntryCount says 2 entries needed (32 more bytes)
@@ -276,7 +289,7 @@ func TestFileIndexReadFromIncompleteData(t *testing.T) {
 		}()},
 		{"Header with EntryCount>0 but incomplete first entry", func() []byte {
 			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(2)) // EntryCount = 2
+			_ = binary.Write(buf, binary.LittleEndian, uint32(2))
 			_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // Reserved
 			_ = binary.Write(buf, binary.LittleEndian, uint64(0)) // FirstEntryOffset
 			_ = binary.Write(buf, binary.LittleEndian, uint64(1)) // First entry FileID
@@ -285,7 +298,7 @@ func TestFileIndexReadFromIncompleteData(t *testing.T) {
 		}()},
 		{"Header with EntryCount>0 but incomplete second entry", func() []byte {
 			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(2))                 // EntryCount = 2
+			_ = binary.Write(buf, binary.LittleEndian, uint32(2))
 			_ = binary.Write(buf, binary.LittleEndian, uint32(0))                 // Reserved
 			_ = binary.Write(buf, binary.LittleEndian, uint64(0))                 // FirstEntryOffset
 			_ = binary.Write(buf, binary.LittleEndian, uint64(1))                 // First entry FileID
@@ -300,7 +313,7 @@ func TestFileIndexReadFromIncompleteData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var index FileIndex
 			r := bytes.NewReader(tt.data)
-			_, err := index.ReadFrom(r)
+			_, err := index.readFrom(r)
 
 			if err == nil {
 				t.Errorf("ReadFrom() expected error for incomplete data, got nil")
@@ -311,6 +324,8 @@ func TestFileIndexReadFromIncompleteData(t *testing.T) {
 
 // TestFileIndexWriteTo verifies WriteTo serialization
 // Specification: package_file_format.md: 6 File Index Section
+//
+//nolint:gocognit // table-driven test
 func TestFileIndexWriteTo(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -351,17 +366,7 @@ func TestFileIndexWriteTo(t *testing.T) {
 		},
 		{
 			"Index with many entries",
-			FileIndex{
-				EntryCount: 5,
-				Reserved:   0,
-				Entries: []IndexEntry{
-					{FileID: 1, Offset: 112},
-					{FileID: 2, Offset: 256},
-					{FileID: 3, Offset: 512},
-					{FileID: 4, Offset: 1024},
-					{FileID: 5, Offset: 2048},
-				},
-			},
+			fileIndexWithManyEntries(),
 			false,
 		},
 		{
@@ -446,7 +451,7 @@ func TestFileIndexWriteTo(t *testing.T) {
 			tt.index.EntryCount = uint32(len(tt.index.Entries))
 
 			var buf bytes.Buffer
-			n, err := tt.index.WriteTo(&buf)
+			n, err := tt.index.writeTo(&buf)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)
@@ -454,7 +459,7 @@ func TestFileIndexWriteTo(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				expectedSize := tt.index.Size()
+				expectedSize := tt.index.size()
 				if n != int64(expectedSize) {
 					t.Errorf("WriteTo() wrote %d bytes, want %d", n, expectedSize)
 				}
@@ -465,7 +470,7 @@ func TestFileIndexWriteTo(t *testing.T) {
 
 				// Verify we can read it back
 				var index FileIndex
-				_, readErr := index.ReadFrom(&buf)
+				_, readErr := index.readFrom(&buf)
 				if readErr != nil {
 					t.Errorf("Failed to read back written data: %v", readErr)
 				}
@@ -479,6 +484,8 @@ func TestFileIndexWriteTo(t *testing.T) {
 }
 
 // TestFileIndexWriteToErrorPaths verifies WriteTo error handling
+//
+//nolint:gocognit // table-driven error paths
 func TestFileIndexWriteToErrorPaths(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -591,7 +598,7 @@ func TestFileIndexWriteToErrorPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.index.EntryCount = uint32(len(tt.index.Entries))
-			_, err := tt.index.WriteTo(tt.writer)
+			_, err := tt.index.writeTo(tt.writer)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)
@@ -611,6 +618,8 @@ func TestFileIndexWriteToErrorPaths(t *testing.T) {
 }
 
 // TestFileIndexRoundTrip verifies round-trip serialization
+//
+//nolint:gocognit // table-driven round-trip
 func TestFileIndexRoundTrip(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -664,13 +673,13 @@ func TestFileIndexRoundTrip(t *testing.T) {
 
 			// Write
 			var buf bytes.Buffer
-			if _, err := tt.index.WriteTo(&buf); err != nil {
+			if _, err := tt.index.writeTo(&buf); err != nil {
 				t.Fatalf("WriteTo() error = %v", err)
 			}
 
 			// Read
 			var index FileIndex
-			if _, err := index.ReadFrom(&buf); err != nil {
+			if _, err := index.readFrom(&buf); err != nil {
 				t.Fatalf("ReadFrom() error = %v", err)
 			}
 
@@ -686,17 +695,10 @@ func TestFileIndexRoundTrip(t *testing.T) {
 			}
 
 			// Compare entries
-			for i, entry := range index.Entries {
-				if entry.FileID != tt.index.Entries[i].FileID {
-					t.Errorf("Entry[%d].FileID mismatch: %d != %d", i, entry.FileID, tt.index.Entries[i].FileID)
-				}
-				if entry.Offset != tt.index.Entries[i].Offset {
-					t.Errorf("Entry[%d].Offset mismatch: %d != %d", i, entry.Offset, tt.index.Entries[i].Offset)
-				}
-			}
+			compareFileIndexEntries(t, index, tt.index)
 
 			// Validate
-			if err := index.Validate(); err != nil {
+			if err := index.validate(); err != nil {
 				t.Errorf("Round-trip index validation failed: %v", err)
 			}
 
@@ -778,68 +780,62 @@ func TestFileIndexReadFrom_OOMPrevention(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Skip tests that require very large allocations if they might cause issues
 			if tt.entryCount > 1000000 && testing.Short() {
 				t.Skip("Skipping large allocation test in short mode")
 			}
-
 			header := createIndexHeader(tt.entryCount)
 			r := bytes.NewReader(header)
-
 			var index FileIndex
-			_, err := index.ReadFrom(r)
-
-			if tt.errorSubstr != "" {
-				// This test case should fail with a specific error
-				if err == nil {
-					t.Errorf("ReadFrom() expected error containing %q, got nil", tt.errorSubstr)
-					return
-				}
-
-				errStr := err.Error()
-				if !strings.Contains(errStr, tt.errorSubstr) {
-					t.Errorf("ReadFrom() error = %q, want error containing %q", errStr, tt.errorSubstr)
-				}
-
-				// Verify it's a validation error
-				var pkgErr *pkgerrors.PackageError
-				if !pkgerrors.As(err, &pkgErr) {
-					t.Errorf("ReadFrom() error is not a PackageError: %T", err)
-					return
-				}
-				if pkgErr.Type != pkgerrors.ErrTypeValidation {
-					t.Errorf("ReadFrom() error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
-				}
-			} else if tt.allowAnyValidationError {
-				// This test case should fail with any validation error (OOM prevention)
-				if err == nil {
-					t.Errorf("ReadFrom() expected validation error for OOM prevention, got nil")
-					return
-				}
-
-				// Verify it's a validation error
-				var pkgErr *pkgerrors.PackageError
-				if !pkgerrors.As(err, &pkgErr) {
-					t.Errorf("ReadFrom() error is not a PackageError: %T", err)
-					return
-				}
-				if pkgErr.Type != pkgerrors.ErrTypeValidation {
-					t.Errorf("ReadFrom() error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
-				}
-			} else {
-				// This test case may pass or fail depending on system constraints
-				// Just verify it doesn't panic and handles the case gracefully
-				if err != nil {
-					// If it fails, it should be a validation error
-					var pkgErr *pkgerrors.PackageError
-					if pkgerrors.As(err, &pkgErr) {
-						if pkgErr.Type != pkgerrors.ErrTypeValidation {
-							t.Errorf("ReadFrom() error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
-						}
-					}
-				}
-			}
+			_, err := index.readFrom(r)
+			assertOOMPreventionResult(t, err, tt.errorSubstr, tt.allowAnyValidationError)
 		})
+	}
+}
+
+func assertOOMPreventionResult(t *testing.T, err error, errorSubstr string, allowAnyValidationError bool) {
+	t.Helper()
+	if errorSubstr != "" {
+		assertOOMPreventionErrorWithSubstr(t, err, errorSubstr)
+		return
+	}
+	if allowAnyValidationError {
+		assertOOMPreventionValidationError(t, err)
+		return
+	}
+	if err != nil {
+		assertOOMPreventionValidationErrorIfPresent(t, err)
+	}
+}
+
+func assertOOMPreventionErrorWithSubstr(t *testing.T, err error, substr string) {
+	t.Helper()
+	if err == nil {
+		t.Errorf("ReadFrom() expected error containing %q, got nil", substr)
+		return
+	}
+	if !strings.Contains(err.Error(), substr) {
+		t.Errorf("ReadFrom() error = %q, want error containing %q", err.Error(), substr)
+	}
+	assertOOMPreventionValidationError(t, err)
+}
+
+func assertOOMPreventionValidationError(t *testing.T, err error) {
+	t.Helper()
+	var pkgErr *pkgerrors.PackageError
+	if !pkgerrors.As(err, &pkgErr) {
+		t.Errorf("ReadFrom() error is not a PackageError: %T", err)
+		return
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeValidation {
+		t.Errorf("ReadFrom() error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
+	}
+}
+
+func assertOOMPreventionValidationErrorIfPresent(t *testing.T, err error) {
+	t.Helper()
+	var pkgErr *pkgerrors.PackageError
+	if pkgerrors.As(err, &pkgErr) && pkgErr.Type != pkgerrors.ErrTypeValidation {
+		t.Errorf("ReadFrom() error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
 	}
 }
 
@@ -857,7 +853,7 @@ func TestFileIndexReadFrom_OOMPrevention_MaxIntBoundary(t *testing.T) {
 	_ = binary.Write(buf, binary.LittleEndian, uint64(0)) // FirstEntryOffset
 
 	var index FileIndex
-	_, err := index.ReadFrom(buf)
+	_, err := index.readFrom(buf)
 
 	// maxUint32 should trigger one of the validation errors
 	// (likely multiplication overflow or maxInt/int(IndexEntrySize) check)
@@ -891,7 +887,7 @@ func TestFileIndexReadFrom_OOMPrevention_MultiplicationOverflow(t *testing.T) {
 	_ = binary.Write(buf, binary.LittleEndian, uint64(0)) // FirstEntryOffset
 
 	var index FileIndex
-	_, err := index.ReadFrom(buf)
+	_, err := index.readFrom(buf)
 
 	if err == nil {
 		t.Error("ReadFrom() expected error for multiplication overflow, got nil")
@@ -900,7 +896,8 @@ func TestFileIndexReadFrom_OOMPrevention_MultiplicationOverflow(t *testing.T) {
 
 	// Check if it's the multiplication overflow error
 	errStr := err.Error()
-	if strings.Contains(errStr, "calculation overflow") {
+	switch {
+	case strings.Contains(errStr, "calculation overflow"):
 		// This is the correct error path
 		var pkgErr *pkgerrors.PackageError
 		if !pkgerrors.As(err, &pkgErr) {
@@ -910,10 +907,10 @@ func TestFileIndexReadFrom_OOMPrevention_MultiplicationOverflow(t *testing.T) {
 		if pkgErr.Type != pkgerrors.ErrTypeValidation {
 			t.Errorf("ReadFrom() error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
 		}
-	} else if strings.Contains(errStr, "exceeds maximum allocation size") {
+	case strings.Contains(errStr, "exceeds maximum allocation size"):
 		// This is also acceptable - it means we hit the maxInt/int(IndexEntrySize) check first
 		// Both are valid OOM prevention paths
-	} else {
+	default:
 		// Any validation error is acceptable for OOM prevention
 		var pkgErr *pkgerrors.PackageError
 		if pkgerrors.As(err, &pkgErr) && pkgErr.Type == pkgerrors.ErrTypeValidation {

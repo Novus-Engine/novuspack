@@ -13,28 +13,7 @@ import (
 )
 
 func TestPackage_WriteFile_ContextCancellation(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("content"), nil)
-	if err != nil {
-		t.Fatalf("AddFileFromMemory failed: %v", err)
-	}
-
-	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
-	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
-		t.Fatalf("SetTargetPath failed: %v", err)
-	}
-
-	cancelledCtx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	if err := pkg.Write(cancelledCtx); err == nil {
-		t.Error("Write with cancelled context should fail")
-	}
+	runWriteContextCancelled(t)
 }
 
 func TestPackage_RemoveFile_ContextCancellation(t *testing.T) {
@@ -58,28 +37,7 @@ func TestPackage_RemoveFile_ContextCancellation(t *testing.T) {
 }
 
 func TestPackage_Write_ContextCancellation(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("content"), nil)
-	if err != nil {
-		t.Fatalf("AddFileFromMemory failed: %v", err)
-	}
-
-	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
-	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
-		t.Fatalf("SetTargetPath failed: %v", err)
-	}
-
-	cancelledCtx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	if err := pkg.Write(cancelledCtx); err == nil {
-		t.Error("Write with cancelled context should fail")
-	}
+	runWriteContextCancelled(t)
 }
 
 func TestPackage_SafeWrite_ContextCancellation(t *testing.T) {
@@ -125,7 +83,7 @@ func TestPackage_SafeWrite_FileExistsNoOverwrite(t *testing.T) {
 	}
 
 	// Create existing file
-	if err := os.WriteFile(tmpPkg, []byte("existing"), 0644); err != nil {
+	if err := os.WriteFile(tmpPkg, []byte("existing"), 0o644); err != nil {
 		t.Fatalf("Failed to create existing file: %v", err)
 	}
 
@@ -136,42 +94,11 @@ func TestPackage_SafeWrite_FileExistsNoOverwrite(t *testing.T) {
 }
 
 func TestPackage_WritePackageToFile_WithComment(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("content"), nil)
-	if err != nil {
-		t.Fatalf("AddFileFromMemory failed: %v", err)
-	}
-
-	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
-	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
-		t.Fatalf("SetTargetPath failed: %v", err)
-	}
-
-	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
-	}
+	runWriteWithContent(t, []byte("content"), false)
 }
 
 func TestPackage_WritePackageToFile_EmptyPackageWithComment(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-	tmpPkg := filepath.Join(t.TempDir(), "empty.pkg")
-	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
-		t.Fatalf("SetTargetPath failed: %v", err)
-	}
-
-	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
-	}
+	runWriteEmptyPackage(t)
 }
 
 func TestPackage_WritePackageToFile_MultipleFilesVariousSizes(t *testing.T) {
@@ -202,88 +129,16 @@ func TestPackage_WritePackageToFile_MultipleFilesVariousSizes(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
+		t.Fatalf("Write failed: %v", err)
 	}
 }
 
 func TestPackage_RemoveFile_AllPaths(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-
-	// Add file with first path
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	entry1, err := pkg.AddFile(ctx, testFile, nil)
-	if err != nil {
-		t.Fatalf("AddFile failed: %v", err)
-	}
-
-	// Add same file with different path (deduplication)
-	opts := &AddFileOptions{}
-	opts.StoredPath.Set("/path2.txt")
-	entry2, err := pkg.AddFile(ctx, testFile, opts)
-	if err != nil {
-		t.Fatalf("AddFile with different path failed: %v", err)
-	}
-
-	// Should be same entry
-	if entry1.FileID != entry2.FileID {
-		t.Error("Deduplication should reuse same FileEntry")
-	}
-
-	// Remove file (removes all paths)
-	err = pkg.RemoveFile(ctx, entry1.Paths[0].Path)
-	if err != nil {
-		t.Fatalf("RemoveFile failed: %v", err)
-	}
+	runAddTwoPathsThenRemove(t, "/path2.txt")
 }
 
 func TestPackage_RemoveFile_OnePath(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-
-	// Add file with first path
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	entry1, err := pkg.AddFile(ctx, testFile, nil)
-	if err != nil {
-		t.Fatalf("AddFile failed: %v", err)
-	}
-
-	// Add same file with different path (deduplication)
-	opts := &AddFileOptions{}
-	opts.StoredPath.Set("/path2.txt")
-	entry2, err := pkg.AddFile(ctx, testFile, opts)
-	if err != nil {
-		t.Fatalf("AddFile with different path failed: %v", err)
-	}
-
-	// Should be same entry with multiple paths
-	if entry1.FileID != entry2.FileID {
-		t.Error("Deduplication should reuse same FileEntry")
-	}
-
-	// Remove one path (file should still exist with other path)
-	err = pkg.RemoveFile(ctx, entry1.Paths[0].Path)
-	if err != nil {
-		t.Fatalf("RemoveFile failed: %v", err)
-	}
+	runAddTwoPathsThenRemove(t, "/path2.txt")
 }
 
 func TestPackage_WriteFile_PathValidation(t *testing.T) {
@@ -314,26 +169,7 @@ func TestPackage_WriteFile_PathValidation(t *testing.T) {
 }
 
 func TestPackage_SafeWrite_TempFileCreation(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("content"), nil)
-	if err != nil {
-		t.Fatalf("AddFileFromMemory failed: %v", err)
-	}
-
-	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
-	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
-		t.Fatalf("SetTargetPath failed: %v", err)
-	}
-
-	// SafeWrite creates temp file then renames
-	if err := pkg.SafeWrite(ctx, true); err != nil {
-		t.Logf("SafeWrite failed: %v (implementation may be incomplete)", err)
-	}
+	runSafeWriteWithContent(t)
 }
 
 func TestPackage_Write_UpdatesInfo(t *testing.T) {
@@ -365,8 +201,7 @@ func TestPackage_Write_UpdatesInfo(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
-		return
+		t.Fatalf("Write failed: %v", err)
 	}
 
 	// Info should reflect file count

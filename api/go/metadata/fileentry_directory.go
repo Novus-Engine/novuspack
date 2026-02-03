@@ -21,7 +21,7 @@ import (
 // Returns:
 //   - string: Parent path string (empty if root-relative or not set)
 //
-// Specification: api_file_mgmt_file_entry.md: 1 FileEntry Structure
+// Specification: api_file_mgmt_file_entry.md: 5.9 FileEntry.GetParentPath Method
 func (f *FileEntry) GetParentPath() string {
 	// Get parent path by deriving it from the path string
 	for _, pme := range f.PathMetadataEntries {
@@ -49,7 +49,7 @@ func (f *FileEntry) GetParentPath() string {
 // Returns:
 //   - int: Path depth (0 for root-relative files)
 //
-// Specification: api_metadata.md: 8.1.8 Path Management Methods
+// Specification: api_file_mgmt_file_entry.md: 5.10 FileEntry.GetDirectoryDepth Method
 func (f *FileEntry) GetDirectoryDepth() int {
 	// Get depth from the first associated PathMetadataEntry
 	for _, pme := range f.PathMetadataEntries {
@@ -69,7 +69,7 @@ func (f *FileEntry) GetDirectoryDepth() int {
 // Returns:
 //   - bool: True if file is root-relative, false otherwise
 //
-// Specification: api_file_mgmt_file_entry.md: 1 FileEntry Structure
+// Specification: api_file_mgmt_file_entry.md: 5.11 FileEntry.IsRootRelative Method
 func (f *FileEntry) IsRootRelative() bool {
 	// Check if any associated PathMetadataEntry has a parent path
 	for _, pme := range f.PathMetadataEntries {

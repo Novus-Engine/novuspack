@@ -93,7 +93,7 @@ func TestValidationRule_String(t *testing.T) {
 	// Valid case
 	rule := &ValidationRule[string]{
 		Name:      "non-empty",
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 

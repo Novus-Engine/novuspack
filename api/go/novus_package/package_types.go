@@ -28,7 +28,7 @@ import (
 // All fields are populated from FileEntry static section (no variable-length data).
 // Paths have leading `/` stripped via internal.ToDisplayPath for user presentation.
 //
-// Specification: api_core.md: 1.1.4.7 FileInfo Structure
+// Specification: api_core.md: 1.2.4 FileInfo Structure
 type FileInfo struct {
 	// Basic Identification
 	PrimaryPath  string   // Primary display path (leading '/' removed, first path lexicographically)
@@ -92,7 +92,7 @@ const (
 // All fields use Option[T] types for optional configuration. Unset options use
 // implementation-defined defaults.
 //
-// Specification: api_file_mgmt_addition.md: 2.8 AddFileOptions Configuration
+// Specification: api_file_mgmt_addition.md: 2.8 AddFileOptions Struct
 type AddFileOptions struct {
 	// Path determination options
 	StoredPath    generics.Option[string] // Explicit path override for storage location
@@ -136,12 +136,55 @@ type AddFileOptions struct {
 	ProgressCallback generics.Option[func(int64, int64)] // Progress callback (bytesProcessed, totalBytes)
 }
 
+// RemoveDirectoryOptions configures directory removal behavior.
+//
+// Specification: api_file_mgmt_removal.md: 4.4 RemoveDirectoryOptions Struct
+type RemoveDirectoryOptions struct {
+	// Recursive controls whether to remove files in subdirectories (default: true).
+	Recursive generics.Option[bool]
+
+	// Pattern filters which files to remove (default: all files).
+	Pattern generics.Option[string]
+
+	// RemoveEmptyDirs controls whether to remove directory metadata entries
+	// when all files in a directory are removed (default: true).
+	RemoveEmptyDirs generics.Option[bool]
+}
+
 // CompressionType represents the type of compression to use.
 //
-// This type is used by PackageWriter interface methods.
+// This type is used by package write operations.
 // Use constants from fileformat package (CompressionNone, CompressionZstd, etc.)
 // via the novuspack package re-exports.
 type CompressionType uint8
+
+// EncryptionAlgorithm represents the encryption algorithm identifier.
+//
+// Specification: api_security.md: 3.1.1 EncryptionAlgorithm Type
+type EncryptionAlgorithm int
+
+const (
+	EncryptionAlgorithmNone EncryptionAlgorithm = iota
+	EncryptionAlgorithmAES256GCM
+	EncryptionAlgorithmChaCha20Poly1305
+	EncryptionAlgorithmMLKEM512
+	EncryptionAlgorithmMLKEM768
+	EncryptionAlgorithmMLKEM1024
+)
+
+// EncryptionType is a v1 alias of EncryptionAlgorithm.
+//
+// Specification: api_security.md: 3.1.2 EncryptionType Alias
+type EncryptionType = EncryptionAlgorithm
+
+const (
+	EncryptionNone             EncryptionType = EncryptionAlgorithmNone
+	EncryptionAES256GCM        EncryptionType = EncryptionAlgorithmAES256GCM
+	EncryptionChaCha20Poly1305 EncryptionType = EncryptionAlgorithmChaCha20Poly1305
+	EncryptionMLKEM512         EncryptionType = EncryptionAlgorithmMLKEM512
+	EncryptionMLKEM768         EncryptionType = EncryptionAlgorithmMLKEM768
+	EncryptionMLKEM1024        EncryptionType = EncryptionAlgorithmMLKEM1024
+)
 
 // EncryptionKey represents an encryption key for file encryption.
 //

@@ -95,7 +95,7 @@ func (p *filePackage) SavePathMetadataFile(ctx context.Context) error {
 		specialFile.FileID = nextFileID // Sequential, unique FileID
 		specialFile.Type = 65001
 		specialFile.Paths = []generics.PathEntry{
-			{Path: "__NVPK_PATH_65001__.nvpkpath", PathLength: 27},
+			{PathLength: uint16(len("/__NVPK_PATH_65001__.nvpkpath")), Path: "/__NVPK_PATH_65001__.nvpkpath"},
 		}
 		specialFile.CompressionType = 0 // No compression (uncompressed)
 		specialFile.EncryptionType = 0  // No encryption

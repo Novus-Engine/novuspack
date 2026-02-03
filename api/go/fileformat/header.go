@@ -129,7 +129,7 @@ type PackageHeader struct {
 // Returns an error if any validation check fails.
 //
 // Specification: package_file_format.md: 2.1 Header Structure
-func (h *PackageHeader) Validate() error {
+func (h *PackageHeader) validate() error {
 	// Validate magic number
 	if h.Magic != NVPKMagic {
 		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid magic number", nil, pkgerrors.ValidationErrorContext{
@@ -169,7 +169,7 @@ func (h *PackageHeader) Validate() error {
 //   - 3: LZMA compression
 //
 // Specification: package_file_format.md: 2.5 Package Features Flags
-func (h *PackageHeader) GetCompressionType() uint8 {
+func (h *PackageHeader) getCompressionType() uint8 {
 	return uint8((h.Flags & FlagsMaskCompressionType) >> FlagsShiftCompressionType)
 }
 
@@ -179,7 +179,7 @@ func (h *PackageHeader) GetCompressionType() uint8 {
 // Preserves existing feature flags (bits 0-7).
 //
 // Specification: package_file_format.md: 2.5 Package Features Flags
-func (h *PackageHeader) SetCompressionType(compressionType uint8) {
+func (h *PackageHeader) setCompressionType(compressionType uint8) {
 	// Clear compression type bits
 	h.Flags &= ^uint32(FlagsMaskCompressionType)
 	// Set new compression type
@@ -191,28 +191,28 @@ func (h *PackageHeader) SetCompressionType(compressionType uint8) {
 // Returns the feature flags (bits 0-7) as a bitmask.
 //
 // Specification: package_file_format.md: 2.5 Package Features Flags
-func (h *PackageHeader) GetFeatures() uint8 {
+func (h *PackageHeader) getFeatures() uint8 {
 	return uint8(h.Flags & FlagsMaskFeatures)
 }
 
 // HasFeature checks if a specific feature flag is set.
 //
 // Specification: package_file_format.md: 2.5 Package Features Flags
-func (h *PackageHeader) HasFeature(flag uint32) bool {
+func (h *PackageHeader) hasFeature(flag uint32) bool {
 	return (h.Flags & flag) != 0
 }
 
 // SetFeature sets a specific feature flag.
 //
 // Specification: package_file_format.md: 2.5 Package Features Flags
-func (h *PackageHeader) SetFeature(flag uint32) {
+func (h *PackageHeader) setFeature(flag uint32) {
 	h.Flags |= flag
 }
 
 // ClearFeature clears a specific feature flag.
 //
 // Specification: package_file_format.md: 2.5 Package Features Flags
-func (h *PackageHeader) ClearFeature(flag uint32) {
+func (h *PackageHeader) clearFeature(flag uint32) {
 	h.Flags &= ^flag
 }
 
@@ -221,7 +221,7 @@ func (h *PackageHeader) ClearFeature(flag uint32) {
 // Returns the part number (bits 31-16).
 //
 // Specification: package_file_format.md: 2.6 ArchivePartInfo Field Specification
-func (h *PackageHeader) GetArchivePart() uint16 {
+func (h *PackageHeader) getArchivePart() uint16 {
 	return uint16(h.ArchivePartInfo >> 16)
 }
 
@@ -230,28 +230,28 @@ func (h *PackageHeader) GetArchivePart() uint16 {
 // Returns the total parts (bits 15-0).
 //
 // Specification: package_file_format.md: 2.6 ArchivePartInfo Field Specification
-func (h *PackageHeader) GetArchiveTotal() uint16 {
+func (h *PackageHeader) getArchiveTotal() uint16 {
 	return uint16(h.ArchivePartInfo & 0xFFFF)
 }
 
 // SetArchivePartInfo sets both part number and total parts in ArchivePartInfo.
 //
 // Specification: package_file_format.md: 2.6 ArchivePartInfo Field Specification
-func (h *PackageHeader) SetArchivePartInfo(part, total uint16) {
+func (h *PackageHeader) setArchivePartInfo(part, total uint16) {
 	h.ArchivePartInfo = (uint32(part) << 16) | uint32(total)
 }
 
 // IsSigned returns true if the package has signatures.
 //
 // Specification: package_file_format.md: 2.9 Signed Package File Immutability and Incremental Signatures
-func (h *PackageHeader) IsSigned() bool {
+func (h *PackageHeader) isSigned() bool {
 	return h.SignatureOffset > 0
 }
 
 // HasComment returns true if the package has a comment.
 //
 // Specification: package_file_format.md: 7.1 Package Comment Format Specification
-func (h *PackageHeader) HasComment() bool {
+func (h *PackageHeader) hasComment() bool {
 	return h.CommentSize > 0
 }
 
@@ -306,7 +306,7 @@ func NewPackageHeader() *PackageHeader {
 // If the magic number is invalid, returns a validation error.
 //
 // Specification: package_file_format.md: 2.1 Header Structure
-func (h *PackageHeader) ReadFrom(r io.Reader) (int64, error) {
+func (h *PackageHeader) readFrom(r io.Reader) (int64, error) {
 	var totalRead int64
 
 	// Read all fields in order using binary.Read for proper little-endian handling
@@ -347,7 +347,7 @@ func (h *PackageHeader) ReadFrom(r io.Reader) (int64, error) {
 // Returns the number of bytes written and any error encountered.
 //
 // Specification: package_file_format.md: 2.1 Header Structure
-func (h *PackageHeader) WriteTo(w io.Writer) (int64, error) {
+func (h *PackageHeader) writeTo(w io.Writer) (int64, error) {
 	var totalWritten int64
 
 	// Write all fields in order using binary.Write for proper little-endian handling

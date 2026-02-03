@@ -7,6 +7,7 @@ package novus_package
 
 import (
 	"context"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,8 @@ import (
 // =============================================================================
 // TEST: Create Operations
 // =============================================================================
+
+const testCommentLifecycle = "test comment"
 
 // TestPackage_Create_Basic tests basic package creation.
 func TestPackage_Create_Basic(t *testing.T) {
@@ -161,7 +164,7 @@ func TestPackage_Create_WithValidPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create parent directory if needed
-			if err := os.MkdirAll(filepath.Dir(tt.path), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(tt.path), 0o755); err != nil {
 				t.Fatalf("Failed to create parent dir: %v", err)
 			}
 
@@ -247,23 +250,18 @@ func TestPackage_Create_WithWhitespacePath(t *testing.T) {
 	}
 }
 
-// TestPackage_Create_WithEmptyPath tests Create with empty path.
-func TestPackage_Create_WithEmptyPath(t *testing.T) {
+func runCreateExpectValidationError(t *testing.T, path, desc string) {
+	t.Helper()
 	ctx := context.Background()
-
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
-
-	// Try to create with empty path
 	fpkg := pkg.(*filePackage)
-	err = fpkg.Create(ctx, "")
+	err = fpkg.Create(ctx, path)
 	if err == nil {
-		t.Fatal("Create() should fail with empty path")
+		t.Fatalf("Create() should fail with %s", desc)
 	}
-
-	// Verify error type
 	pkgErr := &pkgerrors.PackageError{}
 	if !asPackageError(err, pkgErr) {
 		t.Fatalf("Expected PackageError, got: %T", err)
@@ -273,30 +271,14 @@ func TestPackage_Create_WithEmptyPath(t *testing.T) {
 	}
 }
 
+// TestPackage_Create_WithEmptyPath tests Create with empty path.
+func TestPackage_Create_WithEmptyPath(t *testing.T) {
+	runCreateExpectValidationError(t, "", "empty path")
+}
+
 // TestPackage_Create_WithTabOnlyPath tests Create with tab-only path.
 func TestPackage_Create_WithTabOnlyPath(t *testing.T) {
-	ctx := context.Background()
-
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-
-	// Try to create with tab-only path (whitespace-only)
-	fpkg := pkg.(*filePackage)
-	err = fpkg.Create(ctx, "\t\t\t")
-	if err == nil {
-		t.Fatal("Create() should fail with whitespace-only path (tabs)")
-	}
-
-	// Verify error type
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeValidation {
-		t.Errorf("Expected error type Validation, got: %v", pkgErr.Type)
-	}
+	runCreateExpectValidationError(t, "\t\t\t", "whitespace-only path (tabs)")
 }
 
 // TestPackage_Create_WithReadOnlyDirectory tests Create in read-only directory.
@@ -310,11 +292,11 @@ func TestPackage_Create_WithReadOnlyDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Make directory read-only
-	if err := os.Chmod(tempDir, 0444); err != nil {
+	if err := os.Chmod(tempDir, 0o444); err != nil {
 		t.Fatalf("Failed to make directory read-only: %v", err)
 	}
 	defer func() {
-		_ = os.Chmod(tempDir, 0755) // Restore permissions for cleanup
+		_ = os.Chmod(tempDir, 0o755) // Restore permissions for cleanup
 	}()
 
 	pkg, err := NewPackage()
@@ -381,7 +363,7 @@ func TestPackage_Open_ValidatesMagicNumber(t *testing.T) {
 	invalidPath := filepath.Join(tmpDir, "invalid.nvpk")
 
 	// Setup: Create an invalid file (not a NovusPack file)
-	err := os.WriteFile(invalidPath, []byte("This is not a NovusPack file"), 0644)
+	err := os.WriteFile(invalidPath, []byte("This is not a NovusPack file"), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -396,82 +378,47 @@ func TestPackage_Open_ValidatesMagicNumber(t *testing.T) {
 	}
 }
 
-// TestPackage_Open_LoadsHeader tests that Open loads the package header.
-func TestPackage_Open_LoadsHeader(t *testing.T) {
-	ctx := context.Background()
+func runOpenPackageWithTestFile(t *testing.T, ctx context.Context, verify func(t *testing.T, pkg Package)) {
+	t.Helper()
 	tmpDir := t.TempDir()
 	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-
-	// Setup: Create a package
 	pkg1, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
 	fpkg1 := pkg1.(*filePackage)
-	err = fpkg1.Create(ctx, pkgPath)
-	if err != nil {
+	if err := fpkg1.Create(ctx, pkgPath); err != nil {
 		t.Fatalf("Create() failed: %v", err)
 	}
 	_ = pkg1.Close()
-
-	// Create the file manually since Create() no longer writes to disk
 	testutil.CreateTestPackageFile(t, pkgPath)
-
-	// Test: Open and verify header is loaded
 	pkg2, err := OpenPackage(ctx, pkgPath)
 	if err != nil {
 		t.Fatalf("OpenPackage() failed: %v", err)
 	}
 	defer func() { _ = pkg2.Close() }()
+	verify(t, pkg2)
+}
 
-	info, err := pkg2.GetInfo()
+func assertOpenPackageLoadsInfo(t *testing.T, pkg Package) {
+	t.Helper()
+	info, err := pkg.GetInfo()
 	if err != nil {
 		t.Errorf("GetInfo() failed: %v", err)
 	}
-
 	if info == nil {
 		t.Error("Info should not be nil after Open")
 	}
 }
 
+// TestPackage_Open_LoadsHeader tests that Open loads the package header.
+func TestPackage_Open_LoadsHeader(t *testing.T) {
+	runOpenPackageWithTestFile(t, context.Background(), assertOpenPackageLoadsInfo)
+}
+
 // TestPackage_Open_LoadsFileIndex tests that Open loads the file index.
 func TestPackage_Open_LoadsFileIndex(t *testing.T) {
-	ctx := context.Background()
-	tmpDir := t.TempDir()
-	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-
-	// Setup: Create a package
-	pkg1, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	fpkg1 := pkg1.(*filePackage)
-	err = fpkg1.Create(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("Create() failed: %v", err)
-	}
-	_ = pkg1.Close()
-
-	// Create the file manually since Create() no longer writes to disk
-	testutil.CreateTestPackageFile(t, pkgPath)
-
-	// Test: Open and verify file index is accessible
-	pkg2, err := OpenPackage(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("OpenPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg2.Close() }()
-
-	// Verify through GetInfo (which should reflect index data)
-	info, err := pkg2.GetInfo()
-	if err != nil {
-		t.Errorf("GetInfo() failed: %v", err)
-	}
-
-	// File count should be available (0 for empty package)
-	if info == nil {
-		t.Error("Info should not be nil after Open")
-	}
+	runOpenPackageWithTestFile(t, context.Background(), assertOpenPackageLoadsInfo)
 }
 
 // TestPackage_Open_ErrorConditions tests various error conditions for Open.
@@ -507,23 +454,27 @@ func TestPackage_Open_ErrorConditions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pkg, err := OpenPackage(ctx, tt.path)
-
-			if tt.shouldError {
-				if err == nil {
-					t.Error("Expected error but got none")
-					if pkg != nil {
-						_ = pkg.Close()
-					}
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error: %v", err)
-				}
-				if pkg != nil {
-					_ = pkg.Close()
-				}
-			}
+			assertOpenResult(t, tt.shouldError, pkg, err, "Expected error but got none", "Unexpected error: %v", err)
 		})
+	}
+}
+
+func assertOpenResult(t *testing.T, wantErr bool, pkg Package, err error, errNoneMsg, errUnexpectedFmt string, errUnexpectedArgs ...interface{}) {
+	t.Helper()
+	if wantErr {
+		if err == nil {
+			t.Error(errNoneMsg)
+		}
+		if pkg != nil {
+			_ = pkg.Close()
+		}
+		return
+	}
+	if err != nil {
+		t.Errorf(errUnexpectedFmt, errUnexpectedArgs...)
+	}
+	if pkg != nil {
+		_ = pkg.Close()
 	}
 }
 
@@ -567,22 +518,7 @@ func TestPackage_Open_WithContext(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pkg, err := OpenPackage(tt.ctx, pkgPath)
-
-			if tt.shouldError {
-				if err == nil {
-					t.Error("Expected error for cancelled context")
-					if pkg != nil {
-						_ = pkg.Close()
-					}
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error: %v", err)
-				}
-				if pkg != nil {
-					_ = pkg.Close()
-				}
-			}
+			assertOpenResult(t, tt.shouldError, pkg, err, "Expected error for cancelled context", "Unexpected error: %v", err)
 		})
 	}
 }
@@ -654,11 +590,10 @@ func TestPackage_OpenPackage_WithWhitespacePath(t *testing.T) {
 	}
 }
 
-// TestPackage_OpenPackage_WithCancelledContext tests OpenPackage with cancelled context.
-func TestPackage_OpenPackage_WithCancelledContext(t *testing.T) {
+// runCreatePackageThenWithCancelledContext creates a package file, then runs fn with a cancelled context; fails if fn returns nil error.
+func runCreatePackageThenWithCancelledContext(t *testing.T, fn func(context.Context, string) error) {
+	t.Helper()
 	ctx := context.Background()
-
-	// Create a valid package first
 	tempFile := filepath.Join(t.TempDir(), "test.nvpk")
 	pkg, err := NewPackage()
 	if err != nil {
@@ -668,13 +603,19 @@ func TestPackage_OpenPackage_WithCancelledContext(t *testing.T) {
 	if err := fpkg.Create(ctx, tempFile); err != nil {
 		t.Fatalf("Create() failed: %v", err)
 	}
-
-	// Try to open with cancelled context
 	cancelledCtx := testhelpers.CancelledContext()
-	_, err = OpenPackage(cancelledCtx, tempFile)
+	err = fn(cancelledCtx, tempFile)
 	if err == nil {
-		t.Error("OpenPackage() should return error for cancelled context")
+		t.Error("expected error for cancelled context")
 	}
+}
+
+// TestPackage_OpenPackage_WithCancelledContext tests OpenPackage with cancelled context.
+func TestPackage_OpenPackage_WithCancelledContext(t *testing.T) {
+	runCreatePackageThenWithCancelledContext(t, func(ctx context.Context, path string) error {
+		_, err := OpenPackage(ctx, path)
+		return err
+	})
 }
 
 // TestPackage_OpenPackage_WithDirectory tests opening a directory instead of a file.
@@ -724,7 +665,7 @@ func TestPackage_OpenPackage_WithCorruptedIndex(t *testing.T) {
 	testutil.CreateTestPackageFile(t, tempFile)
 
 	// Now corrupt the index by writing invalid data
-	file, err := os.OpenFile(tempFile, os.O_RDWR, 0644)
+	file, err := os.OpenFile(tempFile, os.O_RDWR, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to open file for corruption: %v", err)
 	}
@@ -818,14 +759,14 @@ func TestPackage_OpenPackage_SeekFailure(t *testing.T) {
 	testutil.CreateTestPackageFile(t, tempFile)
 
 	// Modify the header to have an invalid index offset (beyond file size)
-	file, err := os.OpenFile(tempFile, os.O_RDWR, 0644)
+	file, err := os.OpenFile(tempFile, os.O_RDWR, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
 
 	// Read the header
 	header := fileformat.NewPackageHeader()
-	if _, err := header.ReadFrom(file); err != nil {
+	if err := headerIO(t, file, header, headerIORead); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to read header: %v", err)
 	}
@@ -838,7 +779,7 @@ func TestPackage_OpenPackage_SeekFailure(t *testing.T) {
 		_ = file.Close()
 		t.Fatalf("Failed to seek to start: %v", err)
 	}
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write modified header: %v", err)
 	}
@@ -875,7 +816,7 @@ func TestPackage_OpenPackage_SeekError(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.IndexStart = 999999 // Invalid index start (beyond file size)
 	header.IndexSize = 100
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -911,7 +852,7 @@ func TestPackage_OpenPackage_IndexReadError(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.IndexStart = uint64(fileformat.PackageHeaderSize)
 	header.IndexSize = 1000 // Claim large index but file is too small
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -959,14 +900,14 @@ func TestPackage_OpenPackage_IndexValidationError(t *testing.T) {
 		{FileID: 1, Offset: 100},
 		{FileID: 2, Offset: 200},
 	}
-	header.IndexSize = uint64(index.Size())
+	header.IndexSize = fileIndexSize(index)
 
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
 	// Write index with mismatched count
-	if _, err := index.WriteTo(file); err != nil {
+	if err := writeTestIndex(t, file, index); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write index: %v", err)
 	}
@@ -1004,7 +945,7 @@ func TestPackage_OpenPackage_NoIndex(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.IndexStart = 0 // No index
 	header.IndexSize = 0
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -1070,7 +1011,7 @@ func TestPackage_OpenPackage_WithIndexValidateError(t *testing.T) {
 
 	// Now corrupt the index data to make Validate() fail
 	// Open the file and corrupt the index section
-	file, err := os.OpenFile(tempFile, os.O_RDWR, 0644)
+	file, err := os.OpenFile(tempFile, os.O_RDWR, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
@@ -1115,7 +1056,7 @@ func TestPackage_OpenPackage_WithIndexReadFromError(t *testing.T) {
 
 	// Corrupt the file by truncating it right after the header
 	// This will cause index.ReadFrom to fail
-	file, err := os.OpenFile(tempFile, os.O_RDWR, 0644)
+	file, err := os.OpenFile(tempFile, os.O_RDWR, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
@@ -1159,7 +1100,7 @@ func TestPackage_OpenPackage_WithInvalidHeaderVersion(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.Magic = fileformat.NVPKMagic // Correct magic
 	header.FormatVersion = 999          // Invalid version (too high)
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write invalid header: %v", err)
 	}
@@ -1195,7 +1136,7 @@ func TestPackage_CreateWithOptions(t *testing.T) {
 
 	fpkg := pkg.(*filePackage)
 	options := &CreateOptions{
-		Comment:  "test comment",
+		Comment:  testCommentLifecycle,
 		VendorID: 1,
 		AppID:    100,
 	}
@@ -1212,7 +1153,7 @@ func TestPackage_CreateWithOptions(t *testing.T) {
 	}
 
 	// Verify options were applied in memory (using methods that don't require package to be open)
-	if !pkg.HasComment() || pkg.GetComment() != "test comment" {
+	if !pkg.HasComment() || pkg.GetComment() != testCommentLifecycle {
 		t.Errorf("Comment not set: HasComment=%v, Comment=%v", pkg.HasComment(), pkg.GetComment())
 	}
 	if pkg.GetVendorID() != 1 {
@@ -1275,66 +1216,51 @@ func TestPackage_CreateWithOptions_CommentOnly(t *testing.T) {
 	}
 }
 
-// TestPackage_CreateWithOptions_VendorIDOnly tests CreateWithOptions with only VendorID set.
-func TestPackage_CreateWithOptions_VendorIDOnly(t *testing.T) {
+func runCreateWithOptionsSingleIdentity(t *testing.T, options *CreateOptions, assertFn func(t *testing.T, pkg Package)) {
+	t.Helper()
 	ctx := context.Background()
 	pkg, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
 	}
-
 	fpkg := pkg.(*filePackage)
-	options := &CreateOptions{
-		VendorID: 42,
-	}
-
 	tempFile := filepath.Join(t.TempDir(), "test.nvpk")
 	err = fpkg.CreateWithOptions(ctx, tempFile, options)
 	if err != nil {
 		t.Fatalf("CreateWithOptions() failed: %v", err)
 	}
+	assertFn(t, pkg)
+}
 
-	// Verify VendorID was set (using methods that don't require package to be open)
-	if pkg.GetVendorID() != 42 {
-		t.Errorf("VendorID = %v, want 42", pkg.GetVendorID())
+func assertCreateWithOptionsSingleIdentityFields(t *testing.T, pkg Package, wantVendorID uint32, wantAppID uint64) {
+	t.Helper()
+	if pkg.GetVendorID() != wantVendorID {
+		t.Errorf("VendorID = %v, want %v", pkg.GetVendorID(), wantVendorID)
+	}
+	if pkg.GetAppID() != wantAppID {
+		t.Errorf("AppID = %v, want %v", pkg.GetAppID(), wantAppID)
 	}
 	if pkg.HasComment() {
 		t.Error("HasComment should be false when Comment is empty")
 	}
-	if pkg.GetAppID() != 0 {
-		t.Errorf("AppID should be 0, got %v", pkg.GetAppID())
-	}
+}
+
+func assertCreateWithOptionsVendorIDOnly(t *testing.T, pkg Package) {
+	assertCreateWithOptionsSingleIdentityFields(t, pkg, 42, 0)
+}
+
+func assertCreateWithOptionsAppIDOnly(t *testing.T, pkg Package) {
+	assertCreateWithOptionsSingleIdentityFields(t, pkg, 0, 999)
+}
+
+// TestPackage_CreateWithOptions_VendorIDOnly tests CreateWithOptions with only VendorID set.
+func TestPackage_CreateWithOptions_VendorIDOnly(t *testing.T) {
+	runCreateWithOptionsSingleIdentity(t, &CreateOptions{VendorID: 42}, assertCreateWithOptionsVendorIDOnly)
 }
 
 // TestPackage_CreateWithOptions_AppIDOnly tests CreateWithOptions with only AppID set.
 func TestPackage_CreateWithOptions_AppIDOnly(t *testing.T) {
-	ctx := context.Background()
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-
-	fpkg := pkg.(*filePackage)
-	options := &CreateOptions{
-		AppID: 999,
-	}
-
-	tempFile := filepath.Join(t.TempDir(), "test.nvpk")
-	err = fpkg.CreateWithOptions(ctx, tempFile, options)
-	if err != nil {
-		t.Fatalf("CreateWithOptions() failed: %v", err)
-	}
-
-	// Verify AppID was set (using methods that don't require package to be open)
-	if pkg.GetAppID() != 999 {
-		t.Errorf("AppID = %v, want 999", pkg.GetAppID())
-	}
-	if pkg.HasComment() {
-		t.Error("HasComment should be false when Comment is empty")
-	}
-	if pkg.GetVendorID() != 0 {
-		t.Errorf("VendorID should be 0, got %v", pkg.GetVendorID())
-	}
+	runCreateWithOptionsSingleIdentity(t, &CreateOptions{AppID: 999}, assertCreateWithOptionsAppIDOnly)
 }
 
 // TestPackage_CreateWithOptions_CancelledContext tests CreateWithOptions with cancelled context.
@@ -1662,16 +1588,11 @@ func TestPackage_CloseWithCleanup_CloseErrorPropagation(t *testing.T) {
 // TEST: Close Operations
 // =============================================================================
 
-// TestPackage_Close_Basic tests basic package closing.
-//
-// Expected behavior (Red Phase - should FAIL):
-// - Close method does not exist
-func TestPackage_Close_Basic(t *testing.T) {
+func runCloseSucceedsAndClearsOpen(t *testing.T) {
+	t.Helper()
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-
-	// Setup: Create and open a package
 	pkg1, err := NewPackage()
 	if err != nil {
 		t.Fatalf("NewPackage() failed: %v", err)
@@ -1681,17 +1602,21 @@ func TestPackage_Close_Basic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() failed: %v", err)
 	}
-
-	// Test: Close should succeed
 	err = pkg1.Close()
 	if err != nil {
 		t.Errorf("Close() failed: %v", err)
 	}
-
-	// Test: Package should not be open after Close
 	if pkg1.IsOpen() {
 		t.Error("Package should not be open after Close")
 	}
+}
+
+// TestPackage_Close_Basic tests basic package closing.
+//
+// Expected behavior (Red Phase - should FAIL):
+// - Close method does not exist
+func TestPackage_Close_Basic(t *testing.T) {
+	runCloseSucceedsAndClearsOpen(t)
 }
 
 // TestPackage_Close_ClosesFileHandle tests that Close releases file handle.
@@ -1831,31 +1756,7 @@ func TestPackage_Close_Multiple(t *testing.T) {
 // Expected behavior (Red Phase - should FAIL):
 // - Resource cleanup not implemented
 func TestPackage_Close_ResourceCleanup(t *testing.T) {
-	ctx := context.Background()
-	tmpDir := t.TempDir()
-	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	fpkg := pkg.(*filePackage)
-	err = fpkg.Create(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("Create() failed: %v", err)
-	}
-
-	// Close should release all resources
-	err = pkg.Close()
-	if err != nil {
-		t.Errorf("Close() failed: %v", err)
-	}
-
-	// Test: State should be cleared
-	if pkg.IsOpen() {
-		t.Error("IsOpen should return false after Close")
-	}
-
+	runCloseSucceedsAndClearsOpen(t)
 	// Note: We can't directly verify memory/buffer cleanup without instrumentation,
 	// but we verify the package is unusable after Close
 }
@@ -2080,6 +1981,8 @@ func TestPackage_OpenPackageReadOnly(t *testing.T) {
 }
 
 // TestPackage_OpenPackageReadOnly_RejectsMutation tests that OpenPackageReadOnly rejects mutation operations.
+//
+//nolint:gocognit // table-driven mutation cases
 func TestPackage_OpenPackageReadOnly_RejectsMutation(t *testing.T) {
 	ctx := context.Background()
 	tempFile := filepath.Join(t.TempDir(), "test.nvpk")
@@ -2453,7 +2356,7 @@ func TestPackage_OpenPackage_ResourceCleanupOnError(t *testing.T) {
 		t.Fatalf("Failed to create file: %v", err)
 	}
 	// Write invalid header
-	_, _ = file.Write([]byte("INVALID"))
+	_, _ = file.WriteString("INVALID")
 	_ = file.Close()
 
 	_, err = OpenPackage(ctx, tempFile)
@@ -2482,7 +2385,7 @@ func TestPackage_OpenPackage_IndexStartZero(t *testing.T) {
 	header.IndexStart = 0
 	header.IndexSize = 0
 
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -2515,7 +2418,7 @@ func TestPackage_OpenPackage_IndexReadFailure(t *testing.T) {
 	header.IndexStart = uint64(fileformat.PackageHeaderSize)
 	header.IndexSize = 20 // Claim index exists (16 bytes header + at least 16 bytes for 1 entry)
 
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -2575,13 +2478,13 @@ func TestPackage_OpenPackage_IndexValidationFailure(t *testing.T) {
 		{FileID: 1, Offset: 100},
 		{FileID: 1, Offset: 200}, // Duplicate FileID - will fail validation
 	}
-	header.IndexSize = uint64(index.Size())
+	header.IndexSize = fileIndexSize(index)
 
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
-	if _, err := index.WriteTo(file); err != nil {
+	if err := writeTestIndex(t, file, index); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write index: %v", err)
 	}
@@ -2621,7 +2524,7 @@ func TestPackage_OpenBrokenPackage_ValidHeader(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.IndexStart = uint64(fileformat.PackageHeaderSize)
 	header.IndexSize = 100
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -2701,7 +2604,7 @@ func TestPackage_OpenBrokenPackage_NoIndex(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.IndexStart = 0
 	header.IndexSize = 0
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -2743,7 +2646,7 @@ func TestPackage_OpenBrokenPackage_ReadFileDoesNotPanic(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.IndexStart = 0
 	header.IndexSize = 0
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -2880,7 +2783,7 @@ func TestPackage_ReadHeader_ValidatesMagic(t *testing.T) {
 	invalidPath := filepath.Join(tmpDir, "invalid.nvpk")
 
 	// Setup: Create invalid file
-	err := os.WriteFile(invalidPath, []byte("Not a NovusPack file"), 0644)
+	err := os.WriteFile(invalidPath, []byte("Not a NovusPack file"), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -2894,24 +2797,10 @@ func TestPackage_ReadHeader_ValidatesMagic(t *testing.T) {
 
 // TestPackage_ReadHeader_WithCancelledContext tests ReadHeader with cancelled context.
 func TestPackage_ReadHeader_WithCancelledContext(t *testing.T) {
-	ctx := context.Background()
-	// Create a valid package
-	tempFile := filepath.Join(t.TempDir(), "test.nvpk")
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	fpkg := pkg.(*filePackage)
-	if err := fpkg.Create(ctx, tempFile); err != nil {
-		t.Fatalf("Create() failed: %v", err)
-	}
-
-	// Try to read header with cancelled context
-	cancelledCtx := testhelpers.CancelledContext()
-	_, err = ReadHeaderFromPath(cancelledCtx, tempFile)
-	if err == nil {
-		t.Error("ReadHeader() should return error for cancelled context")
-	}
+	runCreatePackageThenWithCancelledContext(t, func(ctx context.Context, path string) error {
+		_, err := ReadHeaderFromPath(ctx, path)
+		return err
+	})
 }
 
 // TestPackage_ReadHeader_WithInvalidMagic tests ReadHeader with invalid magic number.
@@ -2934,7 +2823,7 @@ func TestPackage_ReadHeader_WithInvalidMagic(t *testing.T) {
 	testutil.CreateTestPackageFile(t, tempFile)
 
 	// Now modify just the magic number
-	file, err := os.OpenFile(tempFile, os.O_RDWR, 0644)
+	file, err := os.OpenFile(tempFile, os.O_RDWR, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
@@ -3115,7 +3004,7 @@ func TestReadAndValidateHeader_UnsupportedVersion(t *testing.T) {
 	testutil.CreateTestPackageFile(t, tempFile)
 
 	// Modify the file to have unsupported version
-	file, err := os.OpenFile(tempFile, os.O_RDWR, 0644)
+	file, err := os.OpenFile(tempFile, os.O_RDWR, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
@@ -3203,7 +3092,7 @@ func TestReadAndValidateHeader_WithHeaderValidateError(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.Magic = fileformat.NVPKMagic
 	header.FormatVersion = 999 // Invalid version that might fail validation
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -3281,7 +3170,7 @@ func TestReadAndValidateHeader_WithMagicCheckAfterReadFrom(t *testing.T) {
 	// Write a header with wrong magic (but valid header structure)
 	header := fileformat.NewPackageHeader()
 	header.Magic = 0xDEADBEEF // Wrong magic
-	if _, err := header.WriteTo(file); err != nil {
+	if err := headerIO(t, file, header, headerIOWrite); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
@@ -3351,4 +3240,42 @@ func TestReadAndValidateHeader_WithReadFromMagicError(t *testing.T) {
 	if pkgErr.Type != pkgerrors.ErrTypeValidation {
 		t.Errorf("Expected validation error, got: %v", pkgErr.Type)
 	}
+}
+
+type headerIOOp uint8
+
+const (
+	headerIORead headerIOOp = iota
+	headerIOWrite
+)
+
+func headerIO(t *testing.T, file *os.File, header *fileformat.PackageHeader, op headerIOOp) error {
+	t.Helper()
+	switch op {
+	case headerIORead:
+		return binary.Read(file, binary.LittleEndian, header)
+	case headerIOWrite:
+		return binary.Write(file, binary.LittleEndian, header)
+	default:
+		return nil
+	}
+}
+
+func writeTestIndex(t *testing.T, file *os.File, index *fileformat.FileIndex) error {
+	t.Helper()
+	if err := binary.Write(file, binary.LittleEndian, index.EntryCount); err != nil {
+		return err
+	}
+	if err := binary.Write(file, binary.LittleEndian, index.Reserved); err != nil {
+		return err
+	}
+	if err := binary.Write(file, binary.LittleEndian, index.FirstEntryOffset); err != nil {
+		return err
+	}
+	for i := range index.Entries {
+		if err := binary.Write(file, binary.LittleEndian, index.Entries[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }

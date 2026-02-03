@@ -31,7 +31,7 @@ func TestAddFile_BasicSuccess(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
 	testContent := []byte("Hello, World!")
-	if err := os.WriteFile(testFile, testContent, 0644); err != nil {
+	if err := os.WriteFile(testFile, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -72,7 +72,7 @@ func TestAddFile_WithStoredPath(t *testing.T) {
 	// Create temp test file
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "source.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -112,12 +112,12 @@ func TestAddFile_Deduplication(t *testing.T) {
 	testContent := []byte("duplicate content")
 
 	file1 := filepath.Join(tmpDir, "file1.txt")
-	if err := os.WriteFile(file1, testContent, 0644); err != nil {
+	if err := os.WriteFile(file1, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to create file1: %v", err)
 	}
 
 	file2 := filepath.Join(tmpDir, "file2.txt")
-	if err := os.WriteFile(file2, testContent, 0644); err != nil {
+	if err := os.WriteFile(file2, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to create file2: %v", err)
 	}
 
@@ -158,12 +158,12 @@ func TestAddFile_AllowDuplicate(t *testing.T) {
 	testContent := []byte("duplicate content")
 
 	file1 := filepath.Join(tmpDir, "file1.txt")
-	if err := os.WriteFile(file1, testContent, 0644); err != nil {
+	if err := os.WriteFile(file1, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to create file1: %v", err)
 	}
 
 	file2 := filepath.Join(tmpDir, "file2.txt")
-	if err := os.WriteFile(file2, testContent, 0644); err != nil {
+	if err := os.WriteFile(file2, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to create file2: %v", err)
 	}
 
@@ -190,12 +190,14 @@ func TestAddFile_AllowDuplicate(t *testing.T) {
 }
 
 // TestAddFile_Symlinks tests symlink handling with FollowSymlinks option.
+//
+//nolint:gocognit // table-driven symlink cases
 func TestAddFile_Symlinks(t *testing.T) {
 	// Create temp test file and symlink
 	tmpDir := t.TempDir()
 	targetFile := filepath.Join(tmpDir, "target.txt")
 	testContent := []byte("symlink target")
-	if err := os.WriteFile(targetFile, testContent, 0644); err != nil {
+	if err := os.WriteFile(targetFile, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to create target file: %v", err)
 	}
 
@@ -268,6 +270,8 @@ func TestAddFile_Symlinks(t *testing.T) {
 }
 
 // TestAddFile_ErrorCases tests various error conditions for AddFile.
+//
+//nolint:gocognit // table-driven error cases
 func TestAddFile_ErrorCases(t *testing.T) {
 	pkg, err := NewPackage()
 	if err != nil {
@@ -307,7 +311,7 @@ func TestAddFile_ErrorCases(t *testing.T) {
 			name: "Directory instead of file",
 			setupFunc: func() string {
 				dirPath := filepath.Join(tmpDir, "testdir")
-				_ = os.Mkdir(dirPath, 0755)
+				_ = os.Mkdir(dirPath, 0o755)
 				return dirPath
 			},
 			wantErrType: pkgerrors.ErrTypeValidation,
@@ -355,7 +359,7 @@ func TestAddFile_ContextCancellation(t *testing.T) {
 	// Create temp test file
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -522,24 +526,34 @@ func TestAddFileFromMemory_ErrorCases(t *testing.T) {
 		},
 	}
 
+	runPathValidationTests(t, pkg, tests, ctx, func(pkg Package, ctx context.Context, path string) error {
+		_, err := pkg.AddFileFromMemory(ctx, path, testData, nil)
+		return err
+	}, "AddFileFromMemory")
+}
+
+func runPathValidationTests(t *testing.T, pkg Package, tests []struct {
+	name        string
+	path        string
+	wantErrType pkgerrors.ErrorType
+	wantErrMsg  string
+}, ctx context.Context, fn func(Package, context.Context, string) error, opName string) {
+	t.Helper()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := pkg.AddFileFromMemory(ctx, tt.path, testData, nil)
+			err := fn(pkg, ctx, tt.path)
 			if err == nil {
-				t.Errorf("AddFileFromMemory(%q) succeeded, want error", tt.path)
+				t.Errorf("%s(%q) succeeded, want error", opName, tt.path)
 				return
 			}
-
 			pkgErr, ok := err.(*pkgerrors.PackageError)
 			if !ok {
 				t.Errorf("Error type = %T, want *pkgerrors.PackageError", err)
 				return
 			}
-
 			if pkgErr.Type != tt.wantErrType {
 				t.Errorf("Error type = %v, want %v", pkgErr.Type, tt.wantErrType)
 			}
-
 			if tt.wantErrMsg != "" && pkgErr.Message != tt.wantErrMsg {
 				t.Errorf("Error message = %q, want %q", pkgErr.Message, tt.wantErrMsg)
 			}
@@ -623,50 +637,18 @@ func TestRemoveFile_ErrorCases(t *testing.T) {
 	}
 
 	ctx := context.Background()
-
 	tests := []struct {
 		name        string
 		path        string
 		wantErrType pkgerrors.ErrorType
 		wantErrMsg  string
 	}{
-		{
-			name:        "Empty path",
-			path:        "",
-			wantErrType: pkgerrors.ErrTypeValidation,
-			wantErrMsg:  "path cannot be empty or whitespace-only",
-		},
-		{
-			name:        "Whitespace-only path",
-			path:        "   ",
-			wantErrType: pkgerrors.ErrTypeValidation,
-			wantErrMsg:  "path cannot be empty or whitespace-only",
-		},
+		{"Empty path", "", pkgerrors.ErrTypeValidation, "path cannot be empty or whitespace-only"},
+		{"Whitespace-only path", "   ", pkgerrors.ErrTypeValidation, "path cannot be empty or whitespace-only"},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := pkg.RemoveFile(ctx, tt.path)
-			if err == nil {
-				t.Errorf("RemoveFile(%q) succeeded, want error", tt.path)
-				return
-			}
-
-			pkgErr, ok := err.(*pkgerrors.PackageError)
-			if !ok {
-				t.Errorf("Error type = %T, want *pkgerrors.PackageError", err)
-				return
-			}
-
-			if pkgErr.Type != tt.wantErrType {
-				t.Errorf("Error type = %v, want %v", pkgErr.Type, tt.wantErrType)
-			}
-
-			if tt.wantErrMsg != "" && pkgErr.Message != tt.wantErrMsg {
-				t.Errorf("Error message = %q, want %q", pkgErr.Message, tt.wantErrMsg)
-			}
-		})
-	}
+	runPathValidationTests(t, pkg, tests, ctx, func(pkg Package, ctx context.Context, path string) error {
+		return pkg.RemoveFile(ctx, path)
+	}, "RemoveFile")
 }
 
 // ====================
@@ -729,12 +711,12 @@ func TestAddFile_WithBasePath(t *testing.T) {
 	// Create test file in nested directory
 	tmpDir := t.TempDir()
 	nestedDir := filepath.Join(tmpDir, "project", "src")
-	if err := os.MkdirAll(nestedDir, 0755); err != nil {
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
 		t.Fatalf("Failed to create nested dir: %v", err)
 	}
 
 	testFile := filepath.Join(nestedDir, "main.go")
-	if err := os.WriteFile(testFile, []byte("package main"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("package main"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -772,12 +754,12 @@ func TestAddFile_WithPreserveDepth(t *testing.T) {
 	// Create test file in nested directory
 	tmpDir := t.TempDir()
 	nestedDir := filepath.Join(tmpDir, "a", "b", "c")
-	if err := os.MkdirAll(nestedDir, 0755); err != nil {
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
 		t.Fatalf("Failed to create nested dir: %v", err)
 	}
 
 	testFile := filepath.Join(nestedDir, "file.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -807,12 +789,12 @@ func TestAddFile_WithFlattenPaths(t *testing.T) {
 	// Create test file in nested directory
 	tmpDir := t.TempDir()
 	nestedDir := filepath.Join(tmpDir, "deep", "nested", "path")
-	if err := os.MkdirAll(nestedDir, 0755); err != nil {
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
 		t.Fatalf("Failed to create nested dir: %v", err)
 	}
 
 	testFile := filepath.Join(nestedDir, "file.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -846,12 +828,12 @@ func TestAddFile_WithSessionBase(t *testing.T) {
 	// Create test file in nested directory
 	tmpDir := t.TempDir()
 	projectDir := filepath.Join(tmpDir, "myproject")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatalf("Failed to create project dir: %v", err)
 	}
 
 	testFile := filepath.Join(projectDir, "readme.txt")
-	if err := os.WriteFile(testFile, []byte("README"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("README"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -891,7 +873,7 @@ func TestAddFile_MultiplePathsForSameFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "shared.txt")
 	testContent := []byte("shared content")
-	if err := os.WriteFile(testFile, testContent, 0644); err != nil {
+	if err := os.WriteFile(testFile, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 

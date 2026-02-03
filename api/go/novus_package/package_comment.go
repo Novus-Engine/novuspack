@@ -8,8 +8,12 @@
 package novus_package
 
 import (
+	"fmt"
+	"unicode/utf8"
+
 	"github.com/novus-engine/novuspack/api/go/fileformat"
 	"github.com/novus-engine/novuspack/api/go/metadata"
+	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
 // SetComment sets or updates the package comment.
@@ -27,16 +31,8 @@ import (
 // Specification: api_metadata.md: 1. Comment Management
 func (p *filePackage) SetComment(comment string) error {
 
-	// Create PackageComment instance
-	pc := metadata.NewPackageComment()
-
-	// Set comment using PackageComment.SetComment which handles validation
-	if err := pc.SetComment(comment); err != nil {
-		return err
-	}
-
-	// Validate the comment
-	if err := pc.Validate(); err != nil {
+	pc, err := buildPackageComment(comment)
+	if err != nil {
 		return err
 	}
 
@@ -48,16 +44,16 @@ func (p *filePackage) SetComment(comment string) error {
 
 	// Update header flags (bit 4 = FlagHasPackageComment)
 	if pc.CommentLength > 0 {
-		p.header.SetFeature(fileformat.FlagHasPackageComment)
+		p.header.Flags |= fileformat.FlagHasPackageComment
 	} else {
-		p.header.ClearFeature(fileformat.FlagHasPackageComment)
+		p.header.Flags &^= fileformat.FlagHasPackageComment
 	}
 
 	// Update PackageInfo
 	// HasComment should be true only if there's actual comment text (not just null terminator)
-	commentText := pc.GetComment()
+	commentText := extractCommentText(pc)
 	if p.Info != nil {
-		p.Info.HasComment = len(commentText) > 0
+		p.Info.HasComment = commentText != ""
 		p.Info.Comment = commentText
 		// Increment MetadataVersion in PackageInfo (metadata changed)
 		p.Info.MetadataVersion++
@@ -98,7 +94,7 @@ func (p *filePackage) ClearComment() error {
 	p.header.CommentStart = 0
 
 	// Clear header flags (bit 4 = FlagHasPackageComment)
-	p.header.ClearFeature(fileformat.FlagHasPackageComment)
+	p.header.Flags &^= fileformat.FlagHasPackageComment
 
 	// Update PackageInfo
 	if p.Info != nil {
@@ -125,4 +121,65 @@ func (p *filePackage) HasComment() bool {
 		return false
 	}
 	return p.Info.HasComment
+}
+
+func buildPackageComment(comment string) (*metadata.PackageComment, error) {
+	pc := metadata.NewPackageComment()
+	if comment != "" && !utf8.ValidString(comment) {
+		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "comment is not valid UTF-8", nil, pkgerrors.ValidationErrorContext{
+			Field:    "Comment",
+			Value:    comment,
+			Expected: "valid UTF-8 string",
+		})
+	}
+
+	commentBytes := []byte(comment)
+	if len(commentBytes) > 0 && commentBytes[len(commentBytes)-1] == 0x00 {
+		commentBytes = commentBytes[:len(commentBytes)-1]
+	}
+	for i, b := range commentBytes {
+		if b == 0x00 {
+			return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, fmt.Sprintf("comment contains embedded null character at position %d", i), nil, pkgerrors.ValidationErrorContext{
+				Field:    "Comment",
+				Value:    i,
+				Expected: "no embedded null characters",
+			})
+		}
+	}
+
+	length := uint32(len(commentBytes) + 1)
+	if length > metadata.MaxCommentLength {
+		return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "comment length exceeds maximum", nil, pkgerrors.ValidationErrorContext{
+			Field:    "CommentLength",
+			Value:    length,
+			Expected: fmt.Sprintf("<= %d", metadata.MaxCommentLength),
+		})
+	}
+
+	if len(commentBytes) > 0 {
+		pc.Comment = string(commentBytes) + "\x00"
+	} else {
+		pc.Comment = "\x00"
+	}
+	pc.CommentLength = length
+	pc.Reserved = [3]uint8{0, 0, 0}
+
+	if err := pc.Validate(); err != nil {
+		return nil, err
+	}
+
+	return pc, nil
+}
+
+func extractCommentText(pc *metadata.PackageComment) string {
+	if pc == nil || pc.CommentLength == 0 || pc.Comment == "" {
+		return ""
+	}
+
+	commentBytes := []byte(pc.Comment)
+	if len(commentBytes) > 0 && commentBytes[len(commentBytes)-1] == 0x00 {
+		return string(commentBytes[:len(commentBytes)-1])
+	}
+
+	return pc.Comment
 }

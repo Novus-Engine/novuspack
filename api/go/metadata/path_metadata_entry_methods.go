@@ -235,6 +235,8 @@ func (pme *PathMetadataEntry) GetAncestors() []*PathMetadataEntry {
 //   - error: *PackageError on failure
 //
 // Specification: api_metadata.md: 8.1.2 PathMetadataEntry Structure
+//
+//nolint:gocognit // hierarchy walk and tag merge branches
 func (pme *PathMetadataEntry) GetInheritedTags() ([]*generics.Tag[any], error) {
 	if pme.ParentPath == nil {
 		return []*generics.Tag[any]{}, nil
@@ -318,6 +320,8 @@ func (pme *PathMetadataEntry) GetInheritedTags() ([]*generics.Tag[any], error) {
 //   - error: *PackageError on failure
 //
 // Specification: api_metadata.md: 8.1.2 PathMetadataEntry Structure
+//
+//nolint:gocognit // inheritance and merge logic branches
 func (pme *PathMetadataEntry) GetEffectiveTags() ([]*generics.Tag[any], error) {
 	tagMap := make(map[string]*generics.Tag[any])
 

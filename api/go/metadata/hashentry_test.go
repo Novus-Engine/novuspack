@@ -2,7 +2,6 @@ package metadata
 
 import (
 	"bytes"
-	"io"
 	"testing"
 
 	"github.com/novus-engine/novuspack/api/go/fileformat"
@@ -11,142 +10,44 @@ import (
 
 // TestHashEntry_WriteTo tests the WriteTo method.
 func TestHashEntry_WriteTo(t *testing.T) {
-	tests := []struct {
-		name    string
-		entry   HashEntry
-		wantErr bool
-	}{
-		{
-			name: "valid hash entry",
-			entry: HashEntry{
-				HashType:    fileformat.HashTypeSHA256,
-				HashPurpose: fileformat.HashPurposeContentVerification,
-				HashLength:  32,
-				HashData:    make([]byte, 32),
-			},
-			wantErr: false,
-		},
-		{
-			name: "empty hash data",
-			entry: HashEntry{
-				HashType:    fileformat.HashTypeSHA256,
-				HashPurpose: fileformat.HashPurposeContentVerification,
-				HashLength:  0,
-				HashData:    []byte{},
-			},
-			wantErr: false,
-		},
-		{
-			name: "hash length mismatch",
-			entry: HashEntry{
-				HashType:    fileformat.HashTypeSHA256,
-				HashPurpose: fileformat.HashPurposeContentVerification,
-				HashLength:  32,
-				HashData:    make([]byte, 16), // Mismatch
-			},
-			wantErr: true,
-		},
-		{
-			name: "empty hash length",
-			entry: HashEntry{
-				HashType:    fileformat.HashTypeSHA256,
-				HashPurpose: fileformat.HashPurposeContentVerification,
-				HashLength:  0,
-				HashData:    []byte{},
-			},
-			wantErr: false,
-		},
-		{
-			name: "incomplete write",
-			entry: HashEntry{
-				HashType:    fileformat.HashTypeSHA256,
-				HashPurpose: fileformat.HashPurposeContentVerification,
-				HashLength:  32,
-				HashData:    make([]byte, 32),
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			n, err := tt.entry.WriteTo(&buf)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if !tt.wantErr {
-				if n == 0 {
-					t.Error("WriteTo() wrote 0 bytes")
-				}
-
-				// Verify minimum size: HashType (1) + HashPurpose (1) + HashLength (2) + HashData
-				minSize := int64(4 + len(tt.entry.HashData))
-				if n < minSize {
-					t.Errorf("WriteTo() wrote %d bytes, want at least %d", n, minSize)
-				}
-			}
-		})
-	}
+	runWriteToEntryTable(t, []writeToCase{
+		{"valid hash entry", &HashEntry{
+			HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification,
+			HashLength: 32, HashData: make([]byte, 32),
+		}, false, 36},
+		{"empty hash data", &HashEntry{
+			HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification,
+			HashLength: 0, HashData: []byte{},
+		}, false, 4},
+		{"hash length mismatch", &HashEntry{
+			HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification,
+			HashLength: 32, HashData: make([]byte, 16),
+		}, true, 0},
+		{"empty hash length", &HashEntry{
+			HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification,
+			HashLength: 0, HashData: []byte{},
+		}, false, 4},
+		{"incomplete write", &HashEntry{
+			HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification,
+			HashLength: 32, HashData: make([]byte, 32),
+		}, false, 36},
+	})
 }
 
 // TestHashEntry_WriteTo_ErrorPaths tests error paths in WriteTo method.
 func TestHashEntry_WriteTo_ErrorPaths(t *testing.T) {
-	entry := HashEntry{
+	entry := &HashEntry{
 		HashType:    fileformat.HashTypeSHA256,
 		HashPurpose: fileformat.HashPurposeContentVerification,
 		HashLength:  32,
 		HashData:    make([]byte, 32),
 	}
-
-	tests := []struct {
-		name    string
-		writer  io.Writer
-		wantErr bool
-	}{
-		{
-			name:    "write error on HashType",
-			writer:  testhelpers.NewErrorWriter(),
-			wantErr: true,
-		},
-		{
-			name:    "write error on HashPurpose",
-			writer:  testhelpers.NewFailingWriter(1), // Fails after writing HashType
-			wantErr: true,
-		},
-		{
-			name:    "write error on HashLength",
-			writer:  testhelpers.NewFailingWriter(2), // Fails after writing HashType and HashPurpose
-			wantErr: true,
-		},
-		{
-			name:    "write error on HashData",
-			writer:  testhelpers.NewFailingWriter(4), // Fails after writing HashType, HashPurpose, and HashLength
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := entry.WriteTo(tt.writer)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if tt.wantErr {
-				if err == nil {
-					t.Error("WriteTo() expected error but got nil")
-				}
-				// Note: errorWriter returns error immediately, so bytes written may be 0
-				// failingWriter may write some bytes before failing
-			}
-		})
-	}
+	runWriteToErrorPathsTable(t, entry, []writeToErrorCase{
+		{"write error on HashType", testhelpers.NewErrorWriter(), true},
+		{"write error on HashPurpose", testhelpers.NewFailingWriter(1), true},
+		{"write error on HashLength", testhelpers.NewFailingWriter(2), true},
+		{"write error on HashData", testhelpers.NewFailingWriter(4), true},
+	})
 }
 
 // TestHashEntry_ReadFrom tests the ReadFrom method.
@@ -160,12 +61,12 @@ func TestHashEntry_ReadFrom(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if _, err := entry.WriteTo(&buf); err != nil {
+	if _, err := entry.writeTo(&buf); err != nil {
 		t.Fatalf("Failed to write test data: %v", err)
 	}
 
 	var readEntry HashEntry
-	n, err := readEntry.ReadFrom(&buf)
+	n, err := readEntry.readFrom(&buf)
 
 	if err != nil {
 		t.Fatalf("ReadFrom() error = %v", err)
@@ -194,10 +95,7 @@ func TestHashEntry_ReadFrom(t *testing.T) {
 
 // TestHashEntry_ReadFrom_IncompleteData tests error handling for incomplete data.
 func TestHashEntry_ReadFrom_IncompleteData(t *testing.T) {
-	tests := []struct {
-		name string
-		data []byte
-	}{
+	tests := []readFromIncompleteCase{
 		{
 			name: "no data",
 			data: []byte{},
@@ -220,15 +118,5 @@ func TestHashEntry_ReadFrom_IncompleteData(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var entry HashEntry
-			r := bytes.NewReader(tt.data)
-			_, err := entry.ReadFrom(r)
-
-			if err == nil {
-				t.Errorf("ReadFrom() expected error for incomplete data, got nil")
-			}
-		})
-	}
+	runReadFromIncompleteTable(t, tests, func() readFromEntry { return &HashEntry{} })
 }

@@ -23,7 +23,7 @@ func TestPackage_WritePackageToFile_StreamFromDisk(t *testing.T) {
 	// Add file from disk (streaming)
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("content from disk"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content from disk"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -38,33 +38,12 @@ func TestPackage_WritePackageToFile_StreamFromDisk(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
+		t.Fatalf("Write failed: %v", err)
 	}
 }
 
 func TestPackage_WritePackageToFile_ContextCancelDuringWrite(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-	_, err = pkg.AddFileFromMemory(ctx, "/test.txt", []byte("content"), nil)
-	if err != nil {
-		t.Fatalf("AddFileFromMemory failed: %v", err)
-	}
-
-	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
-	if err := pkg.SetTargetPath(ctx, tmpPkg); err != nil {
-		t.Fatalf("SetTargetPath failed: %v", err)
-	}
-
-	cancelledCtx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	if err := pkg.Write(cancelledCtx); err == nil {
-		t.Error("Write with cancelled context should fail")
-	}
+	runWriteContextCancelled(t)
 }
 
 func TestPackage_WritePackageToFile_NilFileEntry(t *testing.T) {
@@ -106,7 +85,7 @@ func TestPackage_WritePackageToFile_LargeFileStreaming(t *testing.T) {
 	for i := range largeData {
 		largeData[i] = byte(i % 256)
 	}
-	if err := os.WriteFile(largeFile, largeData, 0644); err != nil {
+	if err := os.WriteFile(largeFile, largeData, 0o644); err != nil {
 		t.Fatalf("Failed to create large file: %v", err)
 	}
 
@@ -121,7 +100,7 @@ func TestPackage_WritePackageToFile_LargeFileStreaming(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write failed: %v (implementation may be incomplete)", err)
+		t.Fatalf("Write failed: %v", err)
 	}
 }
 
@@ -136,7 +115,7 @@ func TestPackage_WriteFile_WithMultiplePaths(t *testing.T) {
 	// Add file with first path
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -164,34 +143,7 @@ func TestPackage_WriteFile_WithMultiplePaths(t *testing.T) {
 }
 
 func TestPackage_ReadFile_StreamingPath(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	ctx := context.Background()
-
-	// Create package to open it (required for ReadFile)
-	tmpPkg := filepath.Join(t.TempDir(), "test.pkg")
-	if err := pkg.Create(ctx, tmpPkg); err != nil {
-		t.Fatalf("Create failed: %v", err)
-	}
-
-	testContent := []byte("streaming content")
-	entry, err := pkg.AddFileFromMemory(ctx, "/test.txt", testContent, nil)
-	if err != nil {
-		t.Fatalf("AddFileFromMemory failed: %v", err)
-	}
-
-	// Read file
-	data, err := pkg.ReadFile(ctx, entry.Paths[0].Path)
-	if err != nil {
-		t.Fatalf("ReadFile failed: %v", err)
-	}
-
-	if string(data) != string(testContent) {
-		t.Errorf("ReadFile content mismatch: got %q, want %q", string(data), string(testContent))
-	}
+	runReadFileFromDisk(t, []byte("streaming content"))
 }
 
 func TestPackage_ReadFile_CompressedFile(t *testing.T) {
@@ -223,12 +175,11 @@ func TestPackage_Write_MultipleWriteCycles(t *testing.T) {
 
 	// First write
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("First Write failed: %v (implementation may be incomplete)", err)
-		return
+		t.Fatalf("First Write failed: %v", err)
 	}
 
 	// Second write (overwrite)
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Second Write failed: %v (implementation may be incomplete)", err)
+		t.Fatalf("Second Write failed: %v", err)
 	}
 }

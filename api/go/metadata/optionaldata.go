@@ -10,7 +10,6 @@ package metadata
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
@@ -48,30 +47,14 @@ type OptionalDataEntry struct {
 //   - Data must not be nil or empty
 //
 // Returns an error if any validation check fails.
-func (o *OptionalDataEntry) Validate() error {
-	if len(o.Data) == 0 {
-		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "optional data cannot be nil or empty", nil, pkgerrors.ValidationErrorContext{
-			Field:    "Data",
-			Value:    nil,
-			Expected: "non-empty data",
-		})
-	}
-
-	if uint16(len(o.Data)) != o.DataLength {
-		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "data length mismatch", nil, pkgerrors.ValidationErrorContext{
-			Field:    "DataLength",
-			Value:    o.DataLength,
-			Expected: fmt.Sprintf("%d", len(o.Data)),
-		})
-	}
-
-	return nil
+func (o *OptionalDataEntry) validate() error {
+	return validateSliceLength(len(o.Data), o.DataLength, "Data", "optional data cannot be nil or empty", "non-empty data")
 }
 
 // Size returns the total size of the OptionalDataEntry in bytes.
 //
 // Specification: package_file_format.md: 4.1.4.4 Optional Data
-func (o *OptionalDataEntry) Size() int {
+func (o OptionalDataEntry) size() int {
 	return 3 + int(o.DataLength) // Type(1) + Length(2) + Data
 }
 
@@ -85,7 +68,7 @@ func (o *OptionalDataEntry) Size() int {
 // Returns the number of bytes read and any error encountered.
 //
 // Specification: package_file_format.md: 4.1.4.4 Optional Data
-func (o *OptionalDataEntry) ReadFrom(r io.Reader) (int64, error) {
+func (o *OptionalDataEntry) readFrom(r io.Reader) (int64, error) {
 	var totalRead int64
 
 	// Read DataType (1 byte)
@@ -113,28 +96,12 @@ func (o *OptionalDataEntry) ReadFrom(r io.Reader) (int64, error) {
 	o.DataLength = dataLength
 
 	// Read Data (DataLength bytes)
-	if dataLength > 0 {
-		data := make([]byte, dataLength)
-		n, err := io.ReadFull(r, data)
-		if err != nil {
-			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read data", pkgerrors.ValidationErrorContext{
-				Field:    "Data",
-				Value:    dataLength,
-				Expected: "data bytes",
-			})
-		}
-		if uint16(n) != dataLength {
-			return totalRead, pkgerrors.NewPackageError(pkgerrors.ErrTypeCorruption, "incomplete data read", nil, pkgerrors.ValidationErrorContext{
-				Field:    "Data",
-				Value:    n,
-				Expected: fmt.Sprintf("%d bytes", dataLength),
-			})
-		}
-		totalRead += int64(n)
-		o.Data = data
-	} else {
-		o.Data = nil
+	data, n, err := readLengthPrefixedBytes(r, dataLength, "Data", "data bytes")
+	if err != nil {
+		return totalRead, err
 	}
+	totalRead += n
+	o.Data = data
 
 	return totalRead, nil
 }
@@ -149,7 +116,7 @@ func (o *OptionalDataEntry) ReadFrom(r io.Reader) (int64, error) {
 // Returns the number of bytes written and any error encountered.
 //
 // Specification: package_file_format.md: 4.1.4.4 Optional Data
-func (o *OptionalDataEntry) WriteTo(w io.Writer) (int64, error) {
+func (o *OptionalDataEntry) writeTo(w io.Writer) (int64, error) {
 	var totalWritten int64
 
 	// Write DataType (1 byte)
@@ -173,31 +140,11 @@ func (o *OptionalDataEntry) WriteTo(w io.Writer) (int64, error) {
 	totalWritten += 2
 
 	// Write Data (DataLength bytes)
-	if o.DataLength > 0 {
-		if uint16(len(o.Data)) != o.DataLength {
-			return totalWritten, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "data length mismatch", nil, pkgerrors.ValidationErrorContext{
-				Field:    "DataLength",
-				Value:    len(o.Data),
-				Expected: fmt.Sprintf("%d", o.DataLength),
-			})
-		}
-		n, err := w.Write(o.Data)
-		if err != nil {
-			return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to write data", pkgerrors.ValidationErrorContext{
-				Field:    "Data",
-				Value:    o.Data,
-				Expected: "written successfully",
-			})
-		}
-		if uint16(n) != o.DataLength {
-			return totalWritten, pkgerrors.NewPackageError(pkgerrors.ErrTypeIO, "incomplete data write", nil, pkgerrors.ValidationErrorContext{
-				Field:    "Data",
-				Value:    n,
-				Expected: fmt.Sprintf("%d bytes", o.DataLength),
-			})
-		}
-		totalWritten += int64(n)
+	n, err := writeLengthPrefixedBytes(w, o.Data, o.DataLength, "Data")
+	if err != nil {
+		return totalWritten, err
 	}
+	totalWritten += n
 
 	return totalWritten, nil
 }

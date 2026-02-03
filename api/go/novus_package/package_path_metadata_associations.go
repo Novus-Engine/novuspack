@@ -28,7 +28,7 @@ import (
 //   - error: *PackageError on failure
 //
 // Specification: api_metadata.md: 8.2 PathMetadata Management Methods
-func (p *filePackage) AssociateFileWithPath(ctx context.Context, filePath string, path string) error {
+func (p *filePackage) AssociateFileWithPath(ctx context.Context, filePath, path string) error {
 	if err := internal.CheckContext(ctx, "AssociateFileWithPath"); err != nil {
 		return err
 	}
@@ -69,6 +69,8 @@ func (p *filePackage) AssociateFileWithPath(ctx context.Context, filePath string
 //   - error: *PackageError on failure
 //
 // Specification: api_metadata.md: 8.2 PathMetadata Management Methods
+//
+//nolint:gocognit // lookup and update branches
 func (p *filePackage) DisassociateFileFromPath(ctx context.Context, filePath string) error {
 	if err := internal.CheckContext(ctx, "DisassociateFileFromPath"); err != nil {
 		return err
@@ -115,6 +117,8 @@ func (p *filePackage) DisassociateFileFromPath(ctx context.Context, filePath str
 //   - error: *PackageError on failure
 //
 // Specification: api_metadata.md: 8.2 PathMetadata Management Methods
+//
+//nolint:gocognit // iteration and update branches
 func (p *filePackage) UpdateFilePathAssociations(ctx context.Context) error {
 	if err := internal.CheckContext(ctx, "UpdateFilePathAssociations"); err != nil {
 		return err

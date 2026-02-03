@@ -4,7 +4,7 @@
 // package comments. This file should contain all code related to package comments
 // as specified in api_metadata.md Section 1 and package_file_format.md Section 7.
 //
-// Specification: api_metadata.md: 1. Comment Management
+// Specification: api_metadata.md: 1 Comment Management
 
 // Package novuspack provides metadata domain structures for the NovusPack implementation.
 //
@@ -44,15 +44,15 @@ func NewPackageComment() *PackageComment {
 // Specification: package_file_format.md: 7.1 Package Comment Format Specification
 type PackageComment struct {
 	// CommentLength is the length of comment including null terminator
-	// Specification: package_file_format.md: 6.1.1 NewFileIndex Function
+	// Specification: api_metadata.md: 1.2 PackageComment Structure
 	CommentLength uint32
 
 	// Comment is the UTF-8 encoded comment string (null-terminated)
-	// Specification: package_file_format.md: 6.1.1 NewFileIndex Function
+	// Specification: api_metadata.md: 1.2 PackageComment Structure
 	Comment string
 
 	// Reserved is reserved for future use (must be 0)
-	// Specification: package_file_format.md: 6.1.1 NewFileIndex Function
+	// Specification: api_metadata.md: 1.2 PackageComment Structure
 	Reserved [3]uint8
 }
 
@@ -69,32 +69,11 @@ type PackageComment struct {
 //
 // Returns an error if any validation check fails.
 //
-// Specification: api_metadata.md: 1.2 PackageComment Structure
+// Specification: api_metadata.md: 1.3.4 PackageComment.Validate Method
 func (p *PackageComment) Validate() error {
-	// Check if comment exists
 	if p.CommentLength == 0 {
-		if p.Comment != "" {
-			return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "comment length is zero but comment is not empty", nil, pkgerrors.ValidationErrorContext{
-				Field:    "Comment",
-				Value:    p.Comment,
-				Expected: "empty string",
-			})
-		}
-		// Empty comment is valid
-		// Verify reserved bytes are zero
-		for i, b := range p.Reserved {
-			if b != 0 {
-				return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, fmt.Sprintf("reserved byte %d must be zero", i), nil, pkgerrors.ValidationErrorContext{
-					Field:    "Reserved",
-					Value:    b,
-					Expected: "0",
-				})
-			}
-		}
-		return nil
+		return p.validateEmptyComment()
 	}
-
-	// CommentLength must not exceed maximum
 	if p.CommentLength > MaxCommentLength {
 		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "comment length exceeds maximum", nil, pkgerrors.ValidationErrorContext{
 			Field:    "CommentLength",
@@ -152,31 +131,40 @@ func (p *PackageComment) Validate() error {
 		})
 	}
 
-	// Verify reserved bytes are zero
+	return p.validateReservedZero()
+}
+
+func (p *PackageComment) validateEmptyComment() error {
+	if p.Comment != "" {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "comment length mismatch", nil, pkgerrors.ValidationErrorContext{
+			Field: "CommentLength", Value: p.CommentLength, Expected: "non-zero when comment present",
+		})
+	}
+	return p.validateReservedZero()
+}
+
+func (p *PackageComment) validateReservedZero() error {
 	for i, b := range p.Reserved {
 		if b != 0 {
 			return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, fmt.Sprintf("reserved byte %d must be zero", i), nil, pkgerrors.ValidationErrorContext{
-				Field:    "Reserved",
-				Value:    b,
-				Expected: "0",
+				Field: "Reserved", Value: b, Expected: "0",
 			})
 		}
 	}
-
 	return nil
 }
 
 // Size returns the total size of the PackageComment in bytes.
 //
-// Specification: package_file_format.md: 6.1 File Index Structure
+// Specification: api_metadata.md: 1.3.1 PackageComment.Size Method
 func (p *PackageComment) Size() int {
 	return 4 + int(p.CommentLength) + 3 // Length(4) + Comment + Reserved(3)
 }
 
 // IsEmpty returns true if the comment is empty (CommentLength == 0).
 //
-// Specification: api_generics.md: 1.3.1 PathEntry Structure
-func (p *PackageComment) IsEmpty() bool {
+// Specification: api_metadata.md: 1.3 PackageComment Methods
+func (p *PackageComment) isEmpty() bool {
 	return p.CommentLength == 0
 }
 
@@ -187,8 +175,8 @@ func (p *PackageComment) IsEmpty() bool {
 //
 // Returns an error if the comment exceeds MaxCommentLength or contains invalid UTF-8.
 //
-// Specification: api_generics.md: 1.3.1 PathEntry Structure
-func (p *PackageComment) SetComment(comment string) error {
+// Specification: api_metadata.md: 1.3 PackageComment Methods
+func (p *PackageComment) setComment(comment string) error {
 	// Validate UTF-8 before processing
 	if comment != "" && !utf8.ValidString(comment) {
 		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "comment is not valid UTF-8", nil, pkgerrors.ValidationErrorContext{
@@ -245,8 +233,8 @@ func (p *PackageComment) SetComment(comment string) error {
 //
 // Returns an empty string if the comment is empty.
 //
-// Specification: package_file_format.md: 1. `.nvpk` File Format Overview
-func (p *PackageComment) GetComment() string {
+// Specification: api_metadata.md: 1.3 PackageComment Methods
+func (p *PackageComment) getComment() string {
 	if p.CommentLength == 0 || p.Comment == "" {
 		return ""
 	}
@@ -262,8 +250,8 @@ func (p *PackageComment) GetComment() string {
 
 // Clear removes the comment and resets all fields.
 //
-// Specification: api_metadata.md: 1.1 Package-Level Comment Methods
-func (p *PackageComment) Clear() {
+// Specification: api_metadata.md: 1.3 PackageComment Methods
+func (p *PackageComment) clear() {
 	p.CommentLength = 0
 	p.Comment = ""
 	p.Reserved = [3]uint8{0, 0, 0}
@@ -280,7 +268,7 @@ func (p *PackageComment) Clear() {
 //
 // Returns the number of bytes read and any error encountered.
 //
-// Specification: package_file_format.md: 6.1.1 NewFileIndex Function
+// Specification: api_metadata.md: 1.3.3 PackageComment.ReadFrom Method
 func (p *PackageComment) ReadFrom(r io.Reader) (int64, error) {
 	var totalRead int64
 
@@ -359,7 +347,7 @@ func (p *PackageComment) ReadFrom(r io.Reader) (int64, error) {
 //
 // Returns the number of bytes written and any error encountered.
 //
-// Specification: package_file_format.md: 6.1.1 NewFileIndex Function
+// Specification: api_metadata.md: 1.3.2 PackageComment.WriteTo Method
 func (p *PackageComment) WriteTo(w io.Writer) (int64, error) {
 	var totalWritten int64
 

@@ -13,8 +13,10 @@ package novus_package
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"time"
 
@@ -98,7 +100,7 @@ func (p *filePackage) GetPath() string {
 //	// Package is configured in memory, not yet written to disk
 //	// Call Write() to actually write to disk
 //
-// Specification: api_basic_operations.md: 6.2 Create Method
+// Specification: api_basic_operations.md: 7.2 NewPackageWithOptions Behavior
 func (p *filePackage) Create(ctx context.Context, path string) error {
 	// Validate context
 	if err := internal.CheckContext(ctx, "Create"); err != nil {
@@ -132,7 +134,7 @@ func (p *filePackage) Create(ctx context.Context, path string) error {
 
 	// Calculate index position (right after header) - for future Write operations
 	indexStart := uint64(fileformat.PackageHeaderSize)
-	indexSize := uint64(p.index.Size())
+	indexSize := fileIndexSize(p.index)
 
 	// Update header with index location (in memory only)
 	p.header.IndexStart = indexStart
@@ -179,7 +181,9 @@ func (p *filePackage) Create(ctx context.Context, path string) error {
 //	}
 //	fmt.Printf("Files: %d\n", info.FileCount)
 //
-// Specification: api_basic_operations.md: 7.1 OpenPackage
+// Specification: api_basic_operations.md: 10. OpenPackage Function
+//
+//nolint:gocognit,gocyclo // open/read/validate branches
 func OpenPackage(ctx context.Context, path string) (Package, error) {
 	// Validate context
 	if err := internal.CheckContext(ctx, "OpenPackage"); err != nil {
@@ -215,13 +219,13 @@ func OpenPackage(ctx context.Context, path string) (Package, error) {
 		}
 
 		// Read the index
-		if _, err = index.ReadFrom(file); err != nil {
+		if _, err = readFileIndexFrom(file, index); err != nil {
 			_ = file.Close() // Ignore error on cleanup path
 			return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeIO, "failed to read file index", err, struct{}{})
 		}
 
 		// Validate the index
-		if err := index.Validate(); err != nil {
+		if err := validateFileIndex(index); err != nil {
 			_ = file.Close() // Ignore error on cleanup path
 			return nil, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid file index", err, struct{}{})
 		}
@@ -317,7 +321,7 @@ func OpenPackage(ctx context.Context, path string) (Package, error) {
 	}
 
 	// Load package comment if it exists
-	if header.HasComment() && header.CommentSize > 0 {
+	if header.CommentSize > 0 {
 		if _, err := file.Seek(int64(header.CommentStart), 0); err != nil {
 			_ = file.Close()
 			return nil, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to seek to comment", pkgerrors.ValidationErrorContext{
@@ -348,11 +352,11 @@ func OpenPackage(ctx context.Context, path string) (Package, error) {
 		}
 
 		pkg.Info.HasComment = true
-		pkg.Info.Comment = comment.GetComment() // Use GetComment() to strip null terminator
+		pkg.Info.Comment = extractCommentText(comment) // Strip null terminator
 	}
 
 	// Load signature metadata if it exists
-	if header.IsSigned() && header.SignatureOffset > 0 {
+	if header.SignatureOffset > 0 {
 		// TODO: Implement full signature loading (incremental signing support)
 		// For now, just mark that signatures exist
 		pkg.Info.HasSignatures = true
@@ -376,7 +380,7 @@ func OpenPackage(ctx context.Context, path string) (Package, error) {
 	}
 
 	// Update compression info from header
-	pkg.Info.PackageCompression = uint8(header.GetCompressionType())
+	pkg.Info.PackageCompression = extractCompressionType(header)
 	pkg.Info.IsPackageCompressed = (pkg.Info.PackageCompression != 0)
 	// TODO: Calculate PackageOriginalSize and PackageCompressedSize when package compression is implemented
 
@@ -512,9 +516,9 @@ func OpenBrokenPackage(ctx context.Context, path string) (Package, error) {
 	if header.IndexStart > 0 && header.IndexSize > 0 {
 		if _, err := file.Seek(int64(header.IndexStart), 0); err == nil {
 			index := fileformat.NewFileIndex()
-			if _, err := index.ReadFrom(file); err == nil {
+			if _, err := readFileIndexFrom(file, index); err == nil {
 				// Only use the index if it validates successfully
-				if err := index.Validate(); err == nil {
+				if err := validateFileIndex(index); err == nil {
 					pkg.index = index
 				}
 			}
@@ -524,7 +528,7 @@ func OpenBrokenPackage(ctx context.Context, path string) (Package, error) {
 	// Populate basic Info from header
 	pkg.Info.FormatVersion = header.FormatVersion
 	pkg.Info.FileCount = int(pkg.index.EntryCount)
-	pkg.Info.PackageCompression = uint8(header.GetCompressionType())
+	pkg.Info.PackageCompression = extractCompressionType(header)
 	pkg.Info.IsPackageCompressed = (pkg.Info.PackageCompression != 0)
 
 	return pkg, nil
@@ -605,7 +609,7 @@ func (p *readOnlyPackage) HasVendorID() bool {
 	return p.inner.HasVendorID()
 }
 
-func (p *readOnlyPackage) GetPackageIdentity() (uint32, uint64) {
+func (p *readOnlyPackage) GetPackageIdentity() (vendorID uint32, appID uint64) {
 	return p.inner.GetPackageIdentity()
 }
 
@@ -683,12 +687,12 @@ func (p *readOnlyPackage) RemoveFile(ctx context.Context, path string) error {
 	return p.readOnlyError("RemoveFile")
 }
 
-func (p *readOnlyPackage) RemoveFilePattern(ctx context.Context, pattern string) error {
-	return p.readOnlyError("RemoveFilePattern")
+func (p *readOnlyPackage) RemoveFilePattern(ctx context.Context, pattern string) ([]string, error) {
+	return nil, p.readOnlyError("RemoveFilePattern")
 }
 
-func (p *readOnlyPackage) RemoveDirectory(ctx context.Context, dirPath string) error {
-	return p.readOnlyError("RemoveDirectory")
+func (p *readOnlyPackage) RemoveDirectory(ctx context.Context, dirPath string, options *RemoveDirectoryOptions) ([]string, error) {
+	return nil, p.readOnlyError("RemoveDirectory")
 }
 
 // Target path management is rejected.
@@ -729,6 +733,181 @@ func (p *readOnlyPackage) GetPath() string {
 	return p.inner.GetPath()
 }
 
+func extractCompressionType(header *fileformat.PackageHeader) uint8 {
+	if header == nil {
+		return 0
+	}
+	return uint8((header.Flags & fileformat.FlagsMaskCompressionType) >> fileformat.FlagsShiftCompressionType)
+}
+
+func fileIndexSize(index *fileformat.FileIndex) uint64 {
+	if index == nil {
+		return 0
+	}
+	return uint64(16 + len(index.Entries)*fileformat.IndexEntrySize)
+}
+
+func readFileIndexFrom(r io.Reader, index *fileformat.FileIndex) (int64, error) {
+	if index == nil {
+		return 0, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "file index is nil", nil, struct{}{})
+	}
+
+	entryCount, reserved, firstEntryOffset, totalRead, err := readFileIndexHeader(r)
+	if err != nil {
+		return totalRead, err
+	}
+	index.EntryCount = entryCount
+	index.Reserved = reserved
+	index.FirstEntryOffset = firstEntryOffset
+	if err := validateEntryCountAllocation(entryCount); err != nil {
+		return totalRead, err
+	}
+	index.Entries = make([]fileformat.IndexEntry, 0, entryCount)
+	for i := uint32(0); i < entryCount; i++ {
+		var entry fileformat.IndexEntry
+		if err := binary.Read(r, binary.LittleEndian, &entry); err != nil {
+			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, fmt.Sprintf("failed to read entry %d", i), pkgerrors.ValidationErrorContext{
+				Field: "Entries", Value: i, Expected: "valid index entry",
+			})
+		}
+		totalRead += fileformat.IndexEntrySize
+		index.Entries = append(index.Entries, entry)
+	}
+	return totalRead, nil
+}
+
+func readFileIndexHeader(r io.Reader) (entryCount, reserved uint32, firstEntryOffset uint64, totalRead int64, err error) {
+	if err = binary.Read(r, binary.LittleEndian, &entryCount); err != nil {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			return 0, 0, 0, 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeCorruption, "failed to read entry count: incomplete data", pkgerrors.ValidationErrorContext{
+				Field: "EntryCount", Value: int64(0), Expected: "4 bytes",
+			})
+		}
+		return 0, 0, 0, 0, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read entry count", pkgerrors.ValidationErrorContext{
+			Field: "EntryCount", Value: nil, Expected: "4 bytes",
+		})
+	}
+	totalRead = 4
+	if err = binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return 0, 0, 0, totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read reserved", pkgerrors.ValidationErrorContext{
+			Field: "Reserved", Value: nil, Expected: "4 bytes",
+		})
+	}
+	totalRead += 4
+	if err = binary.Read(r, binary.LittleEndian, &firstEntryOffset); err != nil {
+		return 0, 0, 0, totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read first entry offset", pkgerrors.ValidationErrorContext{
+			Field: "FirstEntryOffset", Value: nil, Expected: "8 bytes",
+		})
+	}
+	totalRead += 8
+	return entryCount, reserved, firstEntryOffset, totalRead, nil
+}
+
+func validateEntryCountAllocation(entryCount uint32) error {
+	const maxInt = int(^uint(0) >> 1)
+	if int(entryCount) > maxInt {
+		return pkgerrors.WrapErrorWithContext(
+			fmt.Errorf("entry count %d exceeds maximum slice size %d", entryCount, maxInt),
+			pkgerrors.ErrTypeValidation, "entry count exceeds system allocation limits",
+			pkgerrors.ValidationErrorContext{Field: "EntryCount", Value: entryCount, Expected: fmt.Sprintf("value <= %d", maxInt)},
+		)
+	}
+	requiredBytes := uint64(entryCount) * uint64(fileformat.IndexEntrySize)
+	if entryCount > 0 && int(entryCount) > maxInt/int(fileformat.IndexEntrySize) {
+		return pkgerrors.WrapErrorWithContext(
+			fmt.Errorf("entry count %d would require allocation exceeding maximum slice size", entryCount),
+			pkgerrors.ErrTypeValidation, "entry count exceeds maximum allocation size",
+			pkgerrors.ValidationErrorContext{Field: "EntryCount", Value: entryCount, Expected: fmt.Sprintf("value <= %d", maxInt/int(fileformat.IndexEntrySize))},
+		)
+	}
+	if requiredBytes <= 1024*1024*1024 {
+		return nil
+	}
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	maxReasonableAllocation := uint64(10 * 1024 * 1024 * 1024)
+	if memStats.Sys > 0 && memStats.Sys < maxReasonableAllocation*2 {
+		maxReasonableAllocation = memStats.Sys / 2
+	}
+	if requiredBytes > maxReasonableAllocation {
+		return pkgerrors.WrapErrorWithContext(
+			fmt.Errorf("entry count %d would require %d bytes (%d GB), exceeding available system memory", entryCount, requiredBytes, requiredBytes/(1024*1024*1024)),
+			pkgerrors.ErrTypeValidation, "entry count exceeds available system memory",
+			pkgerrors.ValidationErrorContext{Field: "EntryCount", Value: entryCount, Expected: "value within available system memory constraints"},
+		)
+	}
+	return nil
+}
+
+func validateFileIndex(index *fileformat.FileIndex) error {
+	if index == nil {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "file index is nil", nil, struct{}{})
+	}
+	if index.Reserved != 0 {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "reserved field must be zero", nil, pkgerrors.ValidationErrorContext{
+			Field:    "Reserved",
+			Value:    index.Reserved,
+			Expected: "0",
+		})
+	}
+	if index.EntryCount != uint32(len(index.Entries)) {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "entry count mismatch", nil, pkgerrors.ValidationErrorContext{
+			Field:    "EntryCount",
+			Value:    index.EntryCount,
+			Expected: fmt.Sprintf("%d", len(index.Entries)),
+		})
+	}
+	for i, entry := range index.Entries {
+		if entry.FileID == 0 {
+			return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, fmt.Sprintf("file ID at index %d cannot be zero", i), nil, pkgerrors.ValidationErrorContext{
+				Field:    "Entries",
+				Value:    i,
+				Expected: "non-zero FileID",
+			})
+		}
+	}
+	seen := make(map[uint64]int)
+	for i, entry := range index.Entries {
+		if prev, exists := seen[entry.FileID]; exists {
+			return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, fmt.Sprintf("duplicate file ID %d at indices %d and %d", entry.FileID, prev, i), nil, pkgerrors.ValidationErrorContext{
+				Field:    "Entries",
+				Value:    entry.FileID,
+				Expected: "unique FileID",
+			})
+		}
+		seen[entry.FileID] = i
+	}
+	return nil
+}
+
+func validatePackageHeader(header *fileformat.PackageHeader) error {
+	if header == nil {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "package header is nil", nil, struct{}{})
+	}
+	if header.Magic != fileformat.NVPKMagic {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "invalid magic number", nil, pkgerrors.ValidationErrorContext{
+			Field:    "Magic",
+			Value:    fmt.Sprintf("0x%08X", header.Magic),
+			Expected: fmt.Sprintf("0x%08X", fileformat.NVPKMagic),
+		})
+	}
+	if header.FormatVersion != fileformat.FormatVersion {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "unsupported format version", nil, pkgerrors.ValidationErrorContext{
+			Field:    "FormatVersion",
+			Value:    header.FormatVersion,
+			Expected: fmt.Sprintf("%d", fileformat.FormatVersion),
+		})
+	}
+	if header.Reserved != 0 {
+		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "reserved field must be 0", nil, pkgerrors.ValidationErrorContext{
+			Field:    "Reserved",
+			Value:    header.Reserved,
+			Expected: "0",
+		})
+	}
+	return nil
+}
+
 // Close closes the package and releases all resources.
 //
 // This method closes the file handle (if open), releases system resources,
@@ -757,7 +936,7 @@ func (p *readOnlyPackage) GetPath() string {
 //	}
 //	defer pkg.Close() // Always close to release resources
 //
-// Specification: api_basic_operations.md: 8.1 Close Method
+// Specification: api_basic_operations.md: 13. Package.Close Method
 func (p *filePackage) Close() error {
 	// If already closed, this is a no-op (idempotent)
 	if !p.isOpen && p.fileHandle == nil {
@@ -844,7 +1023,7 @@ func (p *filePackage) CreateWithOptions(ctx context.Context, path string, option
 // Returns:
 //   - error: Error if closing or cleanup fails
 //
-// Specification: api_basic_operations.md: 6.2 Create Method
+// Specification: api_basic_operations.md: 14. Package.CloseWithCleanup Method
 func (p *filePackage) CloseWithCleanup(ctx context.Context) error {
 	// Validate context
 	if err := internal.CheckContext(ctx, "CloseWithCleanup"); err != nil {
@@ -907,7 +1086,7 @@ func (p *filePackage) CloseWithCleanup(ctx context.Context) error {
 //	}
 //	fmt.Printf("Format Version: %d\n", header.FormatVersion)
 //
-// Specification: api_basic_operations.md: 9.4 Header Inspection
+// Specification: api_basic_operations.md: 18. Header Inspection
 func ReadHeader(ctx context.Context, reader io.Reader) (*fileformat.PackageHeader, error) {
 	// Validate context
 	if err := internal.CheckContext(ctx, "ReadHeader"); err != nil {
@@ -963,7 +1142,7 @@ func ReadHeader(ctx context.Context, reader io.Reader) (*fileformat.PackageHeade
 //	fmt.Printf("Magic: 0x%08X\n", header.Magic)
 //	fmt.Printf("Index Start: %d\n", header.IndexStart)
 //
-// Specification: api_basic_operations.md: 9.4 Header Inspection
+// Specification: api_basic_operations.md: 18. Header Inspection
 func ReadHeaderFromPath(ctx context.Context, path string) (*fileformat.PackageHeader, error) {
 	// Validate context
 	if err := internal.CheckContext(ctx, "ReadHeaderFromPath"); err != nil {

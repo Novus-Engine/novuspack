@@ -12,30 +12,38 @@ import (
 	"github.com/novus-engine/novuspack/api/go/internal/testhelpers"
 )
 
+var fileEntryTestPath = []generics.PathEntry{{PathLength: 8, Path: "test.txt"}}
+
+func fileEntryWithPathAndHashes(hashDataLen int) FileEntry {
+	return FileEntry{
+		FileID:    1,
+		PathCount: 1,
+		Paths:     fileEntryTestPath,
+		HashCount: 1,
+		Hashes: []HashEntry{
+			{
+				HashType:    fileformat.HashTypeSHA256,
+				HashPurpose: fileformat.HashPurposeContentVerification,
+				HashLength:  32,
+				HashData:    make([]byte, hashDataLen),
+			},
+		},
+	}
+}
+
+func fileEntryWithPathAndOptionalData(dataLen uint16, dataBytes int) FileEntry {
+	return FileEntry{
+		FileID:    1,
+		PathCount: 1,
+		Paths:     fileEntryTestPath,
+		OptionalData: []OptionalDataEntry{
+			{DataType: OptionalDataTagsData, DataLength: dataLen, Data: make([]byte, dataBytes)},
+		},
+	}
+}
+
 // TestFileEntryFixedSize verifies the fixed section is exactly 64 bytes
 func TestFileEntryFixedSize(t *testing.T) {
-	// Create a minimal FileEntry with only fixed fields
-	type FileEntryFixed struct {
-		FileID             uint64
-		OriginalSize       uint64
-		StoredSize         uint64
-		RawChecksum        uint32
-		StoredChecksum     uint32
-		FileVersion        uint32
-		MetadataVersion    uint32
-		PathCount          uint16
-		Type               uint16
-		CompressionType    uint8
-		CompressionLevel   uint8
-		EncryptionType     uint8
-		HashCount          uint8
-		HashDataOffset     uint32
-		HashDataLen        uint16
-		OptionalDataLen    uint16
-		OptionalDataOffset uint32
-		Reserved           uint32
-	}
-
 	var fixed FileEntryFixed
 	size := binary.Size(fixed)
 
@@ -100,56 +108,10 @@ func TestFileEntryValidation(t *testing.T) {
 			},
 			true,
 		},
-		{
-			"Invalid hash entry",
-			FileEntry{
-				FileID:    1,
-				PathCount: 1,
-				Paths:     []generics.PathEntry{{PathLength: 8, Path: "test.txt"}},
-				HashCount: 1,
-				Hashes: []HashEntry{
-					{HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification, HashLength: 32, HashData: make([]byte, 16)},
-				},
-			},
-			true,
-		},
-		{
-			"Invalid optional data entry",
-			FileEntry{
-				FileID:    1,
-				PathCount: 1,
-				Paths:     []generics.PathEntry{{PathLength: 8, Path: "test.txt"}},
-				OptionalData: []OptionalDataEntry{
-					{DataType: OptionalDataTagsData, DataLength: 10, Data: make([]byte, 5)},
-				},
-			},
-			true,
-		},
-		{
-			"Valid entry with hashes",
-			FileEntry{
-				FileID:    1,
-				PathCount: 1,
-				Paths:     []generics.PathEntry{{PathLength: 8, Path: "test.txt"}},
-				HashCount: 1,
-				Hashes: []HashEntry{
-					{HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification, HashLength: 32, HashData: make([]byte, 32)},
-				},
-			},
-			false,
-		},
-		{
-			"Valid entry with optional data",
-			FileEntry{
-				FileID:    1,
-				PathCount: 1,
-				Paths:     []generics.PathEntry{{PathLength: 8, Path: "test.txt"}},
-				OptionalData: []OptionalDataEntry{
-					{DataType: OptionalDataTagsData, DataLength: 10, Data: make([]byte, 10)},
-				},
-			},
-			false,
-		},
+		{"Invalid hash entry", fileEntryWithPathAndHashes(16), true},
+		{"Invalid optional data entry", fileEntryWithPathAndOptionalData(10, 5), true},
+		{"Valid entry with hashes", fileEntryWithPathAndHashes(32), false},
+		{"Valid entry with optional data", fileEntryWithPathAndOptionalData(10, 10), false},
 		{
 			"Valid entry with hashes and optional data",
 			FileEntry{
@@ -168,14 +130,11 @@ func TestFileEntryValidation(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.entry.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	cases := make([]validateCase, len(tests))
+	for i := range tests {
+		cases[i] = validateCase{name: tests[i].name, subject: &tests[i].entry, wantErr: tests[i].wantErr}
 	}
+	runValidateTable(t, cases)
 }
 
 // TestFileEntrySizeCalculation verifies size calculations
@@ -276,6 +235,8 @@ func TestFileEntryValidationInvalidPath(t *testing.T) {
 }
 
 // TestNewFileEntry verifies NewFileEntry initializes correctly
+//
+//nolint:gocognit,gocyclo // table-driven init cases
 func TestNewFileEntry(t *testing.T) {
 	entry := NewFileEntry()
 
@@ -390,32 +351,18 @@ func TestFileEntryReadFromFixedOnly(t *testing.T) {
 	}
 }
 
+func fileEntryWithTestPathsAndHashes() FileEntry {
+	return FileEntry{
+		FileID: 1, OriginalSize: 1000, StoredSize: 800, FileVersion: 1, MetadataVersion: 1,
+		PathCount: 1, HashCount: 1, Reserved: 0,
+		Paths:  []generics.PathEntry{{PathLength: 8, Path: "test.txt"}},
+		Hashes: []HashEntry{{HashType: fileformat.HashTypeSHA256, HashPurpose: fileformat.HashPurposeContentVerification, HashLength: 32, HashData: make([]byte, 32)}},
+	}
+}
+
 // TestFileEntryReadFromWithVariableData verifies ReadFrom with variable-length data
 func TestFileEntryReadFromWithVariableData(t *testing.T) {
-	entry := FileEntry{
-		FileID:          1,
-		OriginalSize:    1000,
-		StoredSize:      800,
-		FileVersion:     1,
-		MetadataVersion: 1,
-		PathCount:       1,
-		HashCount:       1,
-		Reserved:        0,
-		Paths: []generics.PathEntry{
-			{
-				PathLength: 8,
-				Path:       "test.txt",
-			},
-		},
-		Hashes: []HashEntry{
-			{
-				HashType:    fileformat.HashTypeSHA256,
-				HashPurpose: fileformat.HashPurposeContentVerification,
-				HashLength:  32,
-				HashData:    make([]byte, 32),
-			},
-		},
-	}
+	entry := fileEntryWithTestPathsAndHashes()
 
 	// Update PathLength to match actual path length
 	for i := range entry.Paths {
@@ -453,6 +400,22 @@ func TestFileEntryReadFromWithVariableData(t *testing.T) {
 	}
 }
 
+// runReadFromIncompleteExpectError runs subtests that expect ReadFrom to return an error for incomplete data.
+func runReadFromIncompleteExpectError(t *testing.T, tests []struct {
+	name string
+	data []byte
+}, readFrom func([]byte) error) {
+	t.Helper()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := readFrom(tt.data)
+			if err == nil {
+				t.Errorf("ReadFrom() expected error for incomplete data, got nil")
+			}
+		})
+	}
+}
+
 // TestFileEntryReadFromIncompleteData verifies ReadFrom handles incomplete data
 func TestFileEntryReadFromIncompleteData(t *testing.T) {
 	tests := []struct {
@@ -463,18 +426,11 @@ func TestFileEntryReadFromIncompleteData(t *testing.T) {
 		{"Partial fixed", make([]byte, 32)},
 		{"Almost complete fixed", make([]byte, 63)},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var entry FileEntry
-			r := bytes.NewReader(tt.data)
-			_, err := entry.ReadFrom(r)
-
-			if err == nil {
-				t.Errorf("ReadFrom() expected error for incomplete data, got nil")
-			}
-		})
-	}
+	runReadFromIncompleteExpectError(t, tests, func(data []byte) error {
+		var entry FileEntry
+		_, err := entry.ReadFrom(bytes.NewReader(data))
+		return err
+	})
 }
 
 // TestFileEntryWriteToFixedOnly verifies WriteTo with fixed section and data
@@ -522,30 +478,7 @@ func TestFileEntryWriteToFixedOnly(t *testing.T) {
 
 // TestFileEntryWriteToWithVariableData verifies WriteTo with variable-length data
 func TestFileEntryWriteToWithVariableData(t *testing.T) {
-	entry := FileEntry{
-		FileID:          1,
-		OriginalSize:    1000,
-		StoredSize:      800,
-		FileVersion:     1,
-		MetadataVersion: 1,
-		PathCount:       1,
-		HashCount:       1,
-		Reserved:        0,
-		Paths: []generics.PathEntry{
-			{
-				PathLength: 8,
-				Path:       "test.txt",
-			},
-		},
-		Hashes: []HashEntry{
-			{
-				HashType:    fileformat.HashTypeSHA256,
-				HashPurpose: fileformat.HashPurposeContentVerification,
-				HashLength:  32,
-				HashData:    make([]byte, 32),
-			},
-		},
-	}
+	entry := fileEntryWithTestPathsAndHashes()
 
 	// Update counts
 	entry.PathCount = uint16(len(entry.Paths))
@@ -647,6 +580,8 @@ func TestFileEntryRoundTrip(t *testing.T) {
 }
 
 // TestFileEntryWriteToErrorPaths verifies WriteTo error handling
+//
+//nolint:gocognit // table-driven error paths
 func TestFileEntryWriteToErrorPaths(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -742,6 +677,8 @@ func TestFileEntryWriteToErrorPaths(t *testing.T) {
 }
 
 // TestFileEntryReadFromErrorPaths verifies ReadFrom error handling for edge cases
+//
+//nolint:gocognit // table-driven error paths
 func TestFileEntryReadFromErrorPaths(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -882,7 +819,7 @@ func TestFileEntryReadFromErrorPaths(t *testing.T) {
 				padding := make([]byte, 100-10)
 				buf.Write(padding)
 				// Write hash
-				if _, err := entry.Hashes[0].WriteTo(&buf); err != nil {
+				if _, err := entry.Hashes[0].writeTo(&buf); err != nil {
 					panic(err)
 				}
 				return bytes.NewReader(buf.Bytes())
@@ -985,7 +922,7 @@ func TestFileEntryReadFromErrorPaths(t *testing.T) {
 				}
 				// Write hash (36 bytes)
 				hashEntry := HashEntry{HashType: fileformat.HashTypeSHA256, HashLength: 32, HashData: make([]byte, 32)}
-				if _, err := hashEntry.WriteTo(&buf); err != nil {
+				if _, err := hashEntry.writeTo(&buf); err != nil {
 					panic(err)
 				}
 				// Only write 50 bytes of padding (need more to reach optional data at offset 300, but only write 50)

@@ -34,6 +34,8 @@ func TestSetTargetPath_Success(t *testing.T) {
 }
 
 // TestSetTargetPath_ErrorCases tests error conditions for SetTargetPath.
+//
+//nolint:gocognit // table-driven error cases
 func TestSetTargetPath_ErrorCases(t *testing.T) {
 	ctx := context.Background()
 
@@ -65,7 +67,7 @@ func TestSetTargetPath_ErrorCases(t *testing.T) {
 				// Create a read-only directory
 				tmpDir := t.TempDir()
 				readOnlyDir := filepath.Join(tmpDir, "readonly")
-				if err := os.Mkdir(readOnlyDir, 0444); err != nil {
+				if err := os.Mkdir(readOnlyDir, 0o444); err != nil {
 					t.Fatalf("Failed to create read-only directory: %v", err)
 				}
 				return filepath.Join(readOnlyDir, "file.nvpk")
@@ -183,7 +185,7 @@ func TestSetTargetPath_PathCleaning(t *testing.T) {
 	expectedClean := filepath.Join(tmpDir, "output.nvpk")
 
 	// Create subdir so the parent validation works
-	if err := os.Mkdir(filepath.Join(tmpDir, "subdir"), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(tmpDir, "subdir"), 0o755); err != nil {
 		t.Fatalf("Failed to create subdir: %v", err)
 	}
 

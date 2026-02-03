@@ -11,6 +11,47 @@ import (
 	"github.com/novus-engine/novuspack/api/go/internal/testhelpers"
 )
 
+const sigTestComment = "test comment"
+
+// signatureHeaderThenErrorReader returns a reader that yields the fixed signature header, lastU16, then an error.
+func signatureHeaderThenErrorReader(lastU16 uint16) io.Reader {
+	buf := new(bytes.Buffer)
+	_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
+	_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
+	_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
+	_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
+	_ = binary.Write(buf, binary.LittleEndian, lastU16)
+	return io.MultiReader(buf, testhelpers.NewErrorReader())
+}
+
+// signatureHeaderBytes builds the 18-byte signature header (type, size, flags, timestamp, commentLen).
+func signatureHeaderBytes(sigType, sigSize, flags, ts uint32, commentLen uint16) []byte {
+	buf := new(bytes.Buffer)
+	_ = binary.Write(buf, binary.LittleEndian, sigType)
+	_ = binary.Write(buf, binary.LittleEndian, sigSize)
+	_ = binary.Write(buf, binary.LittleEndian, flags)
+	_ = binary.Write(buf, binary.LittleEndian, ts)
+	_ = binary.Write(buf, binary.LittleEndian, commentLen)
+	return buf.Bytes()
+}
+
+// signatureHeaderWithCommentAndPartialData returns header (type 1, size 64, 0, 0, 10) + full comment + partialData bytes.
+func signatureHeaderWithCommentAndPartialData(partialDataLen int) []byte {
+	buf := new(bytes.Buffer)
+	buf.Write(signatureHeaderBytes(1, 64, 0, 0, 10))
+	buf.WriteString(sigTestComment[:10])
+	buf.Write(make([]byte, partialDataLen))
+	return buf.Bytes()
+}
+
+// signatureHeaderWithCommentBytes returns header (type 1, size 64, 0, 0, 10) + comment[:n].
+func signatureHeaderWithCommentBytes(n int) []byte {
+	buf := new(bytes.Buffer)
+	buf.Write(signatureHeaderBytes(1, 64, 0, 0, 10))
+	buf.WriteString(sigTestComment[:n])
+	return buf.Bytes()
+}
+
 // TestSignatureValidation verifies validation logic
 func TestSignatureValidation(t *testing.T) {
 	tests := []struct {
@@ -103,9 +144,9 @@ func TestSignatureValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.signature.Validate()
+			err := tt.signature.validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -131,8 +172,8 @@ func TestSignatureSizeCalculation(t *testing.T) {
 				CommentLength: tt.commentLength,
 			}
 
-			if sig.Size() != tt.wantSize {
-				t.Errorf("Size() = %d, want %d", sig.Size(), tt.wantSize)
+			if sig.size() != tt.wantSize {
+				t.Errorf("size() = %d, want %d", sig.size(), tt.wantSize)
 			}
 		})
 	}
@@ -143,14 +184,14 @@ func TestSignatureFlags(t *testing.T) {
 	sig := Signature{}
 
 	// Test setting flag
-	sig.SetFlag(0x01)
-	if !sig.HasFlag(0x01) {
+	sig.setFlag(0x01)
+	if !sig.hasFlag(0x01) {
 		t.Error("Expected flag 0x01 to be set")
 	}
 
 	// Test clearing flag
-	sig.ClearFlag(0x01)
-	if sig.HasFlag(0x01) {
+	sig.clearFlag(0x01)
+	if sig.hasFlag(0x01) {
 		t.Error("Expected flag 0x01 to be cleared")
 	}
 }
@@ -188,6 +229,8 @@ func TestNewSignature(t *testing.T) {
 
 // TestSignatureReadFrom verifies ReadFrom deserialization
 // Specification: package_file_format.md: 8.1 Signature Structure
+//
+//nolint:gocognit // table-driven read cases
 func TestSignatureReadFrom(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -230,14 +273,14 @@ func TestSignatureReadFrom(t *testing.T) {
 
 			// Serialize using WriteTo
 			var writeBuf bytes.Buffer
-			_, writeErr := tt.sig.WriteTo(&writeBuf)
+			_, writeErr := tt.sig.writeTo(&writeBuf)
 			if writeErr != nil {
 				t.Fatalf("WriteTo() error = %v", writeErr)
 			}
 
 			// Deserialize using ReadFrom
 			var sig Signature
-			n, err := sig.ReadFrom(&writeBuf)
+			n, err := sig.readFrom(&writeBuf)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadFrom() error = %v, wantErr %v", err, tt.wantErr)
@@ -245,7 +288,7 @@ func TestSignatureReadFrom(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				expectedSize := tt.sig.Size()
+				expectedSize := tt.sig.size()
 				if n != int64(expectedSize) {
 					t.Errorf("ReadFrom() read %d bytes, want %d", n, expectedSize)
 				}
@@ -268,8 +311,8 @@ func TestSignatureReadFrom(t *testing.T) {
 				}
 
 				// Verify validation passes
-				if err := sig.Validate(); err != nil {
-					t.Errorf("ReadFrom() signature validation failed: %v", err)
+				if err := sig.validate(); err != nil {
+					t.Errorf("readFrom() signature validation failed: %v", err)
 				}
 
 				// Verify SignatureFlags and SignatureTimestamp match
@@ -285,6 +328,8 @@ func TestSignatureReadFrom(t *testing.T) {
 }
 
 // TestSignatureReadFromIncompleteData verifies ReadFrom handles incomplete data
+//
+//nolint:gocognit // table-driven incomplete cases
 func TestSignatureReadFromIncompleteData(t *testing.T) {
 	tests := []struct {
 		name string
@@ -293,15 +338,7 @@ func TestSignatureReadFromIncompleteData(t *testing.T) {
 		{"No data", []byte{}},
 		{"Partial header", make([]byte, 8)},
 		{"Almost complete header", make([]byte, 17)},
-		{"Header but no data", func() []byte {
-			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
-			_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
-			_ = binary.Write(buf, binary.LittleEndian, uint16(0))  // CommentLength
-			return buf.Bytes()                                     // Only 18 bytes, but SignatureSize says 64 bytes needed
-		}()},
+		{"Header but no data", signatureHeaderBytes(1, 64, 0, 0, 0)}, // Only 18 bytes, SignatureSize says 64 needed
 		{"Header with comment but incomplete comment", func() []byte {
 			buf := new(bytes.Buffer)
 			_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
@@ -312,55 +349,10 @@ func TestSignatureReadFromIncompleteData(t *testing.T) {
 			buf.WriteString("test")                                // Only 4 bytes of 10
 			return buf.Bytes()
 		}()},
-		{"Header with comment but incomplete signature data", func() []byte {
-			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
-			_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
-			_ = binary.Write(buf, binary.LittleEndian, uint16(10)) // CommentLength
-			comment := "test comment"
-			buf.Write([]byte(comment[:10])) // Exactly 10 bytes
-			partialData := make([]byte, 30) // Only 30 bytes of 64 signature data
-			buf.Write(partialData)
-			return buf.Bytes()
-		}()},
-		{"Header with comment but incomplete signature data (exact boundary)", func() []byte {
-			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
-			_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
-			_ = binary.Write(buf, binary.LittleEndian, uint16(10)) // CommentLength
-			comment := "test comment"
-			buf.Write([]byte(comment[:10])) // Exactly 10 bytes
-			partialData := make([]byte, 63) // Only 63 bytes of 64 signature data (exact boundary)
-			buf.Write(partialData)
-			return buf.Bytes()
-		}()},
-		{"Header with comment but incomplete comment (exact boundary)", func() []byte {
-			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
-			_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
-			_ = binary.Write(buf, binary.LittleEndian, uint16(10)) // CommentLength
-			comment := "test comment"
-			buf.Write([]byte(comment[:9])) // Only 9 bytes of 10 (exact boundary)
-			return buf.Bytes()
-		}()},
-		{"Header with comment but no signature data when SignatureSize > 0", func() []byte {
-			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
-			_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
-			_ = binary.Write(buf, binary.LittleEndian, uint16(10)) // CommentLength
-			comment := "test comment"
-			buf.Write([]byte(comment[:10])) // Exactly 10 bytes
-			// No signature data
-			return buf.Bytes()
-		}()},
+		{"Header with comment but incomplete signature data", signatureHeaderWithCommentAndPartialData(30)},
+		{"Header with comment but incomplete signature data (exact boundary)", signatureHeaderWithCommentAndPartialData(63)},
+		{"Header with comment but incomplete comment (exact boundary)", signatureHeaderWithCommentBytes(9)},
+		{"Header with comment but no signature data when SignatureSize > 0", signatureHeaderWithCommentBytes(10)},
 		{"Incomplete SignatureSize read", func() []byte {
 			buf := new(bytes.Buffer)
 			_ = binary.Write(buf, binary.LittleEndian, uint32(1)) // SignatureType
@@ -395,29 +387,20 @@ func TestSignatureReadFromIncompleteData(t *testing.T) {
 			buf.Write([]byte{0x00})
 			return buf.Bytes()
 		}()},
-		{"Valid signature with zero SignatureSize and zero CommentLength", func() []byte {
-			buf := new(bytes.Buffer)
-			_ = binary.Write(buf, binary.LittleEndian, uint32(1)) // SignatureType
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // SignatureSize = 0
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // SignatureFlags
-			_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // SignatureTimestamp
-			_ = binary.Write(buf, binary.LittleEndian, uint16(0)) // CommentLength = 0
-			// Complete header, no data (valid case)
-			return buf.Bytes()
-		}()},
+		{"Valid signature with zero SignatureSize and zero CommentLength", signatureHeaderBytes(1, 0, 0, 0, 0)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var sig Signature
 			r := bytes.NewReader(tt.data)
-			_, err := sig.ReadFrom(r)
+			_, err := sig.readFrom(r)
 
 			// Check if this is a valid case (zero sizes)
 			isValidZeroCase := strings.Contains(tt.name, "Valid signature with zero")
 			if isValidZeroCase {
 				if err != nil {
-					t.Errorf("ReadFrom() expected success for valid zero-size signature, got error: %v", err)
+					t.Errorf("readFrom() expected success for valid zero-size signature, got error: %v", err)
 				}
 				// Verify the signature was read correctly
 				if sig.SignatureType != 1 {
@@ -429,16 +412,16 @@ func TestSignatureReadFromIncompleteData(t *testing.T) {
 				if sig.CommentLength != 0 {
 					t.Errorf("CommentLength = %d, want 0", sig.CommentLength)
 				}
-			} else {
-				if err == nil {
-					t.Errorf("ReadFrom() expected error for incomplete data, got nil")
-				}
+			} else if err == nil {
+				t.Errorf("readFrom() expected error for incomplete data, got nil")
 			}
 		})
 	}
 }
 
 // TestSignatureReadFromNonEOFErrors verifies ReadFrom handles non-EOF errors
+//
+//nolint:gocognit // table-driven non-EOF error cases
 func TestSignatureReadFromNonEOFErrors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -501,41 +484,17 @@ func TestSignatureReadFromNonEOFErrors(t *testing.T) {
 			}(),
 			true,
 		},
-		{
-			"Error reader during comment read",
-			func() io.Reader {
-				buf := new(bytes.Buffer)
-				_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
-				_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
-				_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
-				_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
-				_ = binary.Write(buf, binary.LittleEndian, uint16(10)) // CommentLength = 10
-				return io.MultiReader(buf, testhelpers.NewErrorReader())
-			}(),
-			true,
-		},
-		{
-			"Error reader during signature data read",
-			func() io.Reader {
-				buf := new(bytes.Buffer)
-				_ = binary.Write(buf, binary.LittleEndian, uint32(1))  // SignatureType
-				_ = binary.Write(buf, binary.LittleEndian, uint32(64)) // SignatureSize
-				_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureFlags
-				_ = binary.Write(buf, binary.LittleEndian, uint32(0))  // SignatureTimestamp
-				_ = binary.Write(buf, binary.LittleEndian, uint16(0))  // CommentLength = 0
-				return io.MultiReader(buf, testhelpers.NewErrorReader())
-			}(),
-			true,
-		},
+		{"Error reader during comment read", signatureHeaderThenErrorReader(10), true},
+		{"Error reader during signature data read", signatureHeaderThenErrorReader(0), true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var sig Signature
-			_, err := sig.ReadFrom(tt.reader)
+			_, err := sig.readFrom(tt.reader)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ReadFrom() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("readFrom() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -544,7 +503,7 @@ func TestSignatureReadFromNonEOFErrors(t *testing.T) {
 				if strings.Contains(tt.name, "Error reader") {
 					errStr := err.Error()
 					if strings.Contains(errStr, "EOF") || strings.Contains(errStr, "incomplete") {
-						t.Errorf("ReadFrom() error = %q, want non-EOF error for error reader", errStr)
+						t.Errorf("readFrom() error = %q, want non-EOF error for error reader", errStr)
 					}
 				}
 			}
@@ -554,6 +513,8 @@ func TestSignatureReadFromNonEOFErrors(t *testing.T) {
 
 // TestSignatureWriteTo verifies WriteTo serialization
 // Specification: package_file_format.md: 8.1 Signature Structure
+//
+//nolint:gocognit // table-driven write cases
 func TestSignatureWriteTo(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -634,7 +595,7 @@ func TestSignatureWriteTo(t *testing.T) {
 			tt.sig.SignatureSize = uint32(len(tt.sig.SignatureData))
 
 			var buf bytes.Buffer
-			n, err := tt.sig.WriteTo(&buf)
+			n, err := tt.sig.writeTo(&buf)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)
@@ -642,7 +603,7 @@ func TestSignatureWriteTo(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				expectedSize := tt.sig.Size()
+				expectedSize := tt.sig.size()
 				if n != int64(expectedSize) {
 					t.Errorf("WriteTo() wrote %d bytes, want %d", n, expectedSize)
 				}
@@ -653,7 +614,7 @@ func TestSignatureWriteTo(t *testing.T) {
 
 				// Verify we can read it back
 				var sig Signature
-				_, readErr := sig.ReadFrom(&buf)
+				_, readErr := sig.readFrom(&buf)
 				if readErr != nil {
 					t.Errorf("Failed to read back written data: %v", readErr)
 				}
@@ -670,6 +631,8 @@ func TestSignatureWriteTo(t *testing.T) {
 }
 
 // TestSignatureRoundTrip verifies round-trip serialization
+//
+//nolint:gocognit // table-driven round-trip cases
 func TestSignatureRoundTrip(t *testing.T) {
 	tests := []struct {
 		name string
@@ -744,13 +707,13 @@ func TestSignatureRoundTrip(t *testing.T) {
 
 			// Write
 			var buf bytes.Buffer
-			if _, err := tt.sig.WriteTo(&buf); err != nil {
+			if _, err := tt.sig.writeTo(&buf); err != nil {
 				t.Fatalf("WriteTo() error = %v", err)
 			}
 
 			// Read
 			var sig Signature
-			if _, err := sig.ReadFrom(&buf); err != nil {
+			if _, err := sig.readFrom(&buf); err != nil {
 				t.Fatalf("ReadFrom() error = %v", err)
 			}
 
@@ -778,7 +741,7 @@ func TestSignatureRoundTrip(t *testing.T) {
 			}
 
 			// Validate
-			if err := sig.Validate(); err != nil {
+			if err := sig.validate(); err != nil {
 				t.Errorf("Round-trip signature validation failed: %v", err)
 			}
 		})
@@ -786,6 +749,8 @@ func TestSignatureRoundTrip(t *testing.T) {
 }
 
 // TestSignatureWriteToErrorPaths verifies WriteTo error handling
+//
+//nolint:gocognit // table-driven error paths
 func TestSignatureWriteToErrorPaths(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -885,7 +850,7 @@ func TestSignatureWriteToErrorPaths(t *testing.T) {
 				SignatureSize:    64,
 				SignatureData:    make([]byte, 64),
 				CommentLength:    10,
-				SignatureComment: "test comment",
+				SignatureComment: sigTestComment,
 			},
 			testhelpers.NewFailingWriter(17), // Allow header (18 bytes) but fail during comment write
 			true,
@@ -898,7 +863,7 @@ func TestSignatureWriteToErrorPaths(t *testing.T) {
 				SignatureSize:    64,
 				SignatureData:    make([]byte, 64),
 				CommentLength:    10,
-				SignatureComment: "test comment",
+				SignatureComment: sigTestComment,
 			},
 			testhelpers.NewIncompleteWriter(20),
 			true,
@@ -935,7 +900,7 @@ func TestSignatureWriteToErrorPaths(t *testing.T) {
 				SignatureSize:    64,
 				SignatureData:    make([]byte, 64),
 				CommentLength:    10,
-				SignatureComment: "test comment",
+				SignatureComment: sigTestComment,
 			},
 			testhelpers.NewFailingWriter(28), // Allow header (18) + comment (10) but fail during data write
 			true,
@@ -948,7 +913,7 @@ func TestSignatureWriteToErrorPaths(t *testing.T) {
 				SignatureSize:    64,
 				SignatureData:    make([]byte, 64),
 				CommentLength:    10,
-				SignatureComment: "test comment",
+				SignatureComment: sigTestComment,
 			},
 			testhelpers.NewIncompleteWriter(40), // Allow header (18) + comment (10) + partial data (12)
 			true,
@@ -985,7 +950,7 @@ func TestSignatureWriteToErrorPaths(t *testing.T) {
 				SignatureSize:    64,
 				SignatureData:    make([]byte, 64),
 				CommentLength:    10,
-				SignatureComment: "test comment",
+				SignatureComment: sigTestComment,
 			},
 			testhelpers.NewIncompleteWriter(27), // Allow header (18) + 9 bytes of comment (need 10)
 			true,
@@ -1072,7 +1037,7 @@ func TestSignatureWriteToErrorPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// WriteTo updates lengths first
-			_, err := tt.sig.WriteTo(tt.writer)
+			_, err := tt.sig.writeTo(tt.writer)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("WriteTo() error = %v, wantErr %v", err, tt.wantErr)

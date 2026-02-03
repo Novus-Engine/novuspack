@@ -5,6 +5,7 @@ package internal
 
 import (
 	"context"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,6 +20,26 @@ import (
 	"github.com/novus-engine/novuspack/api/go/metadata"
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
+
+func assertPathValidationError(t *testing.T, err error, shouldError bool, errorType pkgerrors.ErrorType, fnName string) {
+	t.Helper()
+	if shouldError {
+		if err == nil {
+			t.Errorf("%s() expected error, got nil", fnName)
+			return
+		}
+		var pkgErr *pkgerrors.PackageError
+		if !pkgerrors.As(err, &pkgErr) {
+			t.Errorf("%s() error is not a PackageError: %v", fnName, err)
+			return
+		}
+		if pkgErr.Type != errorType {
+			t.Errorf("%s() error type = %v, want %v", fnName, pkgErr.Type, errorType)
+		}
+	} else if err != nil {
+		t.Errorf("%s() unexpected error: %v", fnName, err)
+	}
+}
 
 // TestValidatePath tests the ValidatePath function with various inputs.
 func TestValidatePath(t *testing.T) {
@@ -66,29 +87,14 @@ func TestValidatePath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			err := ValidatePath(ctx, tt.path)
-			if tt.shouldError {
-				if err == nil {
-					t.Errorf("ValidatePath() expected error, got nil")
-					return
-				}
-				var pkgErr *pkgerrors.PackageError
-				if !pkgerrors.As(err, &pkgErr) {
-					t.Errorf("ValidatePath() error is not a PackageError: %v", err)
-					return
-				}
-				if pkgErr.Type != tt.errorType {
-					t.Errorf("ValidatePath() error type = %v, want %v", pkgErr.Type, tt.errorType)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidatePath() unexpected error: %v", err)
-				}
-			}
+			assertPathValidationError(t, err, tt.shouldError, tt.errorType, "ValidatePath")
 		})
 	}
 }
 
 // TestCheckContext tests the CheckContext function with various context scenarios.
+//
+//nolint:gocognit // table-driven context cases
 func TestCheckContext(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -168,16 +174,16 @@ func TestCheckContext(t *testing.T) {
 						t.Errorf("CheckContext() error should be a PackageError")
 					}
 				}
-			} else {
-				if err != nil {
-					t.Errorf("CheckContext() unexpected error: %v", err)
-				}
+			} else if err != nil {
+				t.Errorf("CheckContext() unexpected error: %v", err)
 			}
 		})
 	}
 }
 
 // TestOpenFileForReading tests the OpenFileForReading function.
+//
+//nolint:gocognit // table-driven file/open cases
 func TestOpenFileForReading(t *testing.T) {
 	// Create a temporary file for testing
 	tmpDir := t.TempDir()
@@ -326,11 +332,11 @@ func TestOpenFileForReading_PermissionError(t *testing.T) {
 	_ = file.Close()
 
 	// Remove read permission
-	if err := os.Chmod(path, 0000); err != nil {
+	if err := os.Chmod(path, 0o000); err != nil {
 		t.Fatalf("Failed to chmod file: %v", err)
 	}
 	defer func() {
-		_ = os.Chmod(path, 0644) // Restore permissions for cleanup
+		_ = os.Chmod(path, 0o644) // Restore permissions for cleanup
 	}()
 
 	// Try to open the file - should fail with permission error
@@ -354,6 +360,8 @@ func TestOpenFileForReading_PermissionError(t *testing.T) {
 }
 
 // TestReadAndValidateHeader tests the ReadAndValidateHeader function.
+//
+//nolint:gocognit // table-driven header read/validate cases
 func TestReadAndValidateHeader(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -372,7 +380,7 @@ func TestReadAndValidateHeader(t *testing.T) {
 					t.Fatalf("Failed to create test file: %v", err)
 				}
 				header := fileformat.NewPackageHeader()
-				_, _ = header.WriteTo(file)
+				_ = writeTestHeader(t, file, header)
 				_, _ = file.Seek(0, 0)
 				return file
 			},
@@ -418,7 +426,7 @@ func TestReadAndValidateHeader(t *testing.T) {
 				}
 				// Write valid magic but invalid rest of header
 				header := fileformat.NewPackageHeader()
-				_, _ = header.WriteTo(file)
+				_ = writeTestHeader(t, file, header)
 				// Corrupt the file by truncating it
 				_, _ = file.Seek(0, 0)
 				_ = file.Truncate(10) // Truncate to invalid size
@@ -482,7 +490,7 @@ func TestReadAndValidateHeader_ValidateError(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.Magic = fileformat.NVPKMagic
 	header.FormatVersion = 999 // Invalid version that will fail validation
-	_, _ = header.WriteTo(file)
+	_ = writeTestHeader(t, file, header)
 	_, _ = file.Seek(0, 0)
 	_ = file.Close()
 
@@ -646,6 +654,8 @@ func TestReadAndValidateHeader_ReadFromGenericError(t *testing.T) {
 }
 
 // TestNormalizePackagePath tests the NormalizePackagePath function.
+//
+//nolint:gocognit // table-driven path cases
 func TestNormalizePackagePath(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -824,26 +834,43 @@ func TestValidatePackagePath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidatePackagePath(tt.path)
-			if tt.shouldError {
-				if err == nil {
-					t.Errorf("ValidatePackagePath() expected error, got nil")
-					return
-				}
-				var pkgErr *pkgerrors.PackageError
-				if !pkgerrors.As(err, &pkgErr) {
-					t.Errorf("ValidatePackagePath() error is not a PackageError: %v", err)
-					return
-				}
-				if pkgErr.Type != tt.errorType {
-					t.Errorf("ValidatePackagePath() error type = %v, want %v", pkgErr.Type, tt.errorType)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidatePackagePath() unexpected error: %v", err)
-				}
-			}
+			assertPathValidationError(t, err, tt.shouldError, tt.errorType, "ValidatePackagePath")
 		})
 	}
+}
+
+func writeTestHeader(t *testing.T, file *os.File, header *fileformat.PackageHeader) error {
+	t.Helper()
+	if err := binary.Write(file, binary.LittleEndian, header); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeTestIndex(t *testing.T, file *os.File, index *fileformat.FileIndex) error {
+	t.Helper()
+	if err := binary.Write(file, binary.LittleEndian, index.EntryCount); err != nil {
+		return err
+	}
+	if err := binary.Write(file, binary.LittleEndian, index.Reserved); err != nil {
+		return err
+	}
+	if err := binary.Write(file, binary.LittleEndian, index.FirstEntryOffset); err != nil {
+		return err
+	}
+	for i := range index.Entries {
+		if err := binary.Write(file, binary.LittleEndian, index.Entries[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func testFileIndexSize(index *fileformat.FileIndex) uint64 {
+	if index == nil {
+		return 0
+	}
+	return uint64(16 + len(index.Entries)*fileformat.IndexEntrySize)
 }
 
 // TestLoadFileEntry tests the LoadFileEntry function.
@@ -861,20 +888,20 @@ func TestLoadFileEntry(t *testing.T) {
 	header := fileformat.NewPackageHeader()
 	header.IndexStart = uint64(fileformat.PackageHeaderSize)
 	header.IndexSize = 16 // Empty index size
-	if _, err := header.WriteTo(file); err != nil {
+	if err := writeTestHeader(t, file, header); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write header: %v", err)
 	}
 
 	// Write empty index
 	index := fileformat.NewFileIndex()
-	if _, err := index.WriteTo(file); err != nil {
+	if err := writeTestIndex(t, file, index); err != nil {
 		_ = file.Close()
 		t.Fatalf("Failed to write index: %v", err)
 	}
 
 	// Calculate file entry offset (after header and index)
-	entryOffset := uint64(fileformat.PackageHeaderSize) + uint64(index.Size())
+	entryOffset := uint64(fileformat.PackageHeaderSize) + testFileIndexSize(index)
 
 	// Write a minimal file entry
 	entry := metadata.NewFileEntry()
@@ -991,6 +1018,8 @@ func TestLoadFileEntry_InvalidEntry(t *testing.T) {
 // TestNormalizePackagePath_Canonicalization tests path canonicalization with dot segments.
 // These tests verify that dot segments are properly canonicalized rather than rejected.
 // This is the TDD Red Phase - these tests will fail until canonicalization is implemented.
+//
+//nolint:gocognit // table-driven canonicalization cases
 func TestNormalizePackagePath_Canonicalization(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -1277,6 +1306,8 @@ func TestNormalizePackagePath_UnicodeNormalization(t *testing.T) {
 }
 
 // TestValidatePathLength tests the ValidatePathLength function.
+//
+//nolint:gocognit // table-driven length/validation cases
 func TestValidatePathLength(t *testing.T) {
 	// Helper to generate path of specific length
 	generatePath := func(length int) string {
@@ -1395,10 +1426,8 @@ func TestValidatePathLength(t *testing.T) {
 					if len(warnings) != tt.warningCount {
 						t.Errorf("ValidatePathLength() warning count = %d, want %d", len(warnings), tt.warningCount)
 					}
-				} else {
-					if len(warnings) != 0 {
-						t.Errorf("ValidatePathLength() unexpected warnings for %d byte path: %v", tt.pathLength, warnings)
-					}
+				} else if len(warnings) != 0 {
+					t.Errorf("ValidatePathLength() unexpected warnings for %d byte path: %v", tt.pathLength, warnings)
 				}
 			}
 		})
@@ -1456,24 +1485,7 @@ func TestValidatePackagePath_Canonicalization(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidatePackagePath(tt.path)
-			if tt.shouldError {
-				if err == nil {
-					t.Errorf("ValidatePackagePath() expected error, got nil")
-					return
-				}
-				var pkgErr *pkgerrors.PackageError
-				if !pkgerrors.As(err, &pkgErr) {
-					t.Errorf("ValidatePackagePath() error is not a PackageError: %v", err)
-					return
-				}
-				if pkgErr.Type != tt.errorType {
-					t.Errorf("ValidatePackagePath() error type = %v, want %v", pkgErr.Type, tt.errorType)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidatePackagePath() unexpected error: %v", err)
-				}
-			}
+			assertPathValidationError(t, err, tt.shouldError, tt.errorType, "ValidatePackagePath")
 		})
 	}
 }

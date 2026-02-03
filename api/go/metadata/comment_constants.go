@@ -2,7 +2,7 @@
 // comment length and validation constants. This file should contain only
 // constant definitions used for comment validation and processing.
 //
-// Specification: api_metadata.md: 1. Comment Management
+// Specification: api_metadata.md: 1 Comment Management
 
 // Package novuspack provides metadata domain structures for the NovusPack implementation.
 //
@@ -11,5 +11,5 @@
 package metadata
 
 // MaxCommentLength is the maximum allowed comment length (1MB - 1)
-// Specification: package_file_format.md: 6.1.1 NewFileIndex Function
+// Specification: package_file_format.md: 7.1 Package Comment Format Specification
 const MaxCommentLength = 1048575

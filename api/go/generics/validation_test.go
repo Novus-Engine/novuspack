@@ -39,7 +39,7 @@ func TestValidateWith_DifferentTypes(t *testing.T) {
 
 	// String type
 	rule := &ValidationRule[string]{
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 	err := ValidateWith(ctx, "test", rule)
@@ -121,7 +121,7 @@ func TestValidateAll_MixedResults(t *testing.T) {
 func TestComposeValidators(t *testing.T) {
 	// Create two validators
 	validator1 := &ValidationRule[string]{
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 	validator2 := &ValidationRule[string]{
@@ -169,7 +169,7 @@ func TestComposeValidators_Empty(t *testing.T) {
 
 func TestComposeValidators_NilValidators(t *testing.T) {
 	validator := &ValidationRule[string]{
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 
@@ -190,7 +190,7 @@ func TestComposeValidators_NilValidators(t *testing.T) {
 func TestComposeValidators_MultipleTypes(t *testing.T) {
 	// String validators
 	strValidator1 := &ValidationRule[string]{
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 	strValidator2 := &ValidationRule[string]{

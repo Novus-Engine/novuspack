@@ -6,13 +6,19 @@ import (
 	"github.com/novus-engine/novuspack/api/go/generics"
 )
 
+// fileEntryWithTwoPathsFirstSymlink returns a FileEntry with two paths; the first is a symlink with the given target.
+func fileEntryWithTwoPathsFirstSymlink(path1, linkTarget, path2 string) *FileEntry {
+	fe := NewFileEntry()
+	fe.Paths = []generics.PathEntry{
+		{Path: path1, IsSymlink: true, LinkTarget: linkTarget},
+		{Path: path2},
+	}
+	return fe
+}
+
 // TestHasSymlinks tests HasSymlinks method
 func TestHasSymlinks(t *testing.T) {
-	tests := []struct {
-		name  string
-		setup func() *FileEntry
-		want  bool
-	}{
+	tests := []fileEntryTableCase{
 		{
 			name: "no symlinks",
 			setup: func() *FileEntry {
@@ -37,25 +43,9 @@ func TestHasSymlinks(t *testing.T) {
 			},
 			want: true,
 		},
-		{
-			name: "no paths",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
-			want: false,
-		},
+		{name: "no paths", setup: NewFileEntry, want: false},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			got := fe.HasSymlinks()
-
-			if got != tt.want {
-				t.Errorf("HasSymlinks() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	runFileEntryTableTest(t, tests, func(fe *FileEntry) interface{} { return fe.HasSymlinks() }, "HasSymlinks() = %v, want %v")
 }
 
 // TestGetSymlinkPaths tests GetSymlinkPaths method
@@ -84,11 +74,7 @@ func TestGetSymlinkPaths(t *testing.T) {
 
 // TestGetPrimaryPath tests GetPrimaryPath method
 func TestGetPrimaryPath(t *testing.T) {
-	tests := []struct {
-		name  string
-		setup func() *FileEntry
-		want  string
-	}{
+	tests := []fileEntryTableCase{
 		{
 			name: "has paths",
 			setup: func() *FileEntry {
@@ -99,27 +85,11 @@ func TestGetPrimaryPath(t *testing.T) {
 				}
 				return fe
 			},
-			want: "test/file1", // display format (no leading slash)
+			want: "test/file1",
 		},
-		{
-			name: "no paths",
-			setup: func() *FileEntry {
-				return NewFileEntry()
-			},
-			want: "",
-		},
+		{name: "no paths", setup: NewFileEntry, want: ""},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fe := tt.setup()
-			got := fe.GetPrimaryPath()
-
-			if got != tt.want {
-				t.Errorf("GetPrimaryPath() = %q, want %q", got, tt.want)
-			}
-		})
-	}
+	runFileEntryTableTest(t, tests, func(fe *FileEntry) interface{} { return fe.GetPrimaryPath() }, "GetPrimaryPath() = %q, want %q")
 }
 
 // TestResolveAllSymlinks tests ResolveAllSymlinks method
@@ -132,24 +102,14 @@ func TestResolveAllSymlinks(t *testing.T) {
 		{
 			name: "absolute symlink target",
 			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				fe.Paths = []generics.PathEntry{
-					{Path: "/test/file1", IsSymlink: true, LinkTarget: "/absolute/target"},
-					{Path: "/test/file2"},
-				}
-				return fe
+				return fileEntryWithTwoPathsFirstSymlink("/test/file1", "/absolute/target", "/test/file2")
 			},
 			want: []string{"/absolute/target", "/test/file2"},
 		},
 		{
 			name: "relative symlink target",
 			setup: func() *FileEntry {
-				fe := NewFileEntry()
-				fe.Paths = []generics.PathEntry{
-					{Path: "/test/file1", IsSymlink: true, LinkTarget: "relative/target"},
-					{Path: "/test/file2"},
-				}
-				return fe
+				return fileEntryWithTwoPathsFirstSymlink("/test/file1", "relative/target", "/test/file2")
 			},
 			want: []string{"/test/relative/target", "/test/file2"},
 		},

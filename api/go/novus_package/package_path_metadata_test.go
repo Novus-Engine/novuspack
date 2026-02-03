@@ -43,19 +43,9 @@ func TestPackage_GetPathMetadata_Basic(t *testing.T) {
 
 // TestPackage_GetPathMetadata_WithContext tests GetPathMetadata with context scenarios.
 func TestPackage_GetPathMetadata_WithContext(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	// Test with cancelled context
-	cancelledCtx := testhelpers.CancelledContext()
-	fpkg := pkg.(*filePackage)
-	_, err = fpkg.GetPathMetadata(cancelledCtx)
-	if err == nil {
-		t.Error("GetPathMetadata should fail with cancelled context")
-	}
+	runWithCancelledContext(t, func(fpkg *filePackage, ctx context.Context) (interface{}, error) {
+		return fpkg.GetPathMetadata(ctx)
+	}, "GetPathMetadata")
 }
 
 // =============================================================================
@@ -580,48 +570,15 @@ func TestPackage_UpdatePath_ContextCancelled(t *testing.T) {
 
 // TestPackage_ValidatePathMetadata_ContextCancelled tests ValidatePathMetadata with cancelled context.
 func TestPackage_ValidatePathMetadata_ContextCancelled(t *testing.T) {
-	ctx := testhelpers.CancelledContext()
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	err = fpkg.ValidatePathMetadata(ctx)
-	if err == nil {
-		t.Error("ValidatePathMetadata() should fail with cancelled context")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Expected error type Context, got: %v", pkgErr.Type)
-	}
+	runContextCancelledTest(t, func(fpkg *filePackage, ctx context.Context) error {
+		return fpkg.ValidatePathMetadata(ctx)
+	})
 }
 
 // TestPackage_GetPathConflicts_ContextCancelled tests GetPathConflicts with cancelled context.
 func TestPackage_GetPathConflicts_ContextCancelled(t *testing.T) {
-	ctx := testhelpers.CancelledContext()
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	fpkg := pkg.(*filePackage)
-	_, err = fpkg.GetPathConflicts(ctx)
-	if err == nil {
-		t.Error("GetPathConflicts() should fail with cancelled context")
-	}
-
-	pkgErr := &pkgerrors.PackageError{}
-	if !asPackageError(err, pkgErr) {
-		t.Fatalf("Expected PackageError, got: %T", err)
-	}
-	if pkgErr.Type != pkgerrors.ErrTypeContext {
-		t.Errorf("Expected error type Context, got: %v", pkgErr.Type)
-	}
+	runContextCancelledTest(t, func(fpkg *filePackage, ctx context.Context) error {
+		_, err := fpkg.GetPathConflicts(ctx)
+		return err
+	})
 }

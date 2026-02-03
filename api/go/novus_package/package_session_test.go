@@ -6,6 +6,8 @@ import (
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
+const sessionBasePath = "/home/user/project"
+
 // TestSetSessionBase_Success tests successful session base setting.
 func TestSetSessionBase_Success(t *testing.T) {
 	pkg, err := NewPackage()
@@ -19,7 +21,7 @@ func TestSetSessionBase_Success(t *testing.T) {
 	}{
 		{
 			name:     "Unix absolute path",
-			basePath: "/home/user/project",
+			basePath: sessionBasePath,
 		},
 		// Note: Windows path testing skipped - filepath.IsAbs is platform-specific
 		// On Linux, Windows paths like "C:\\" are not considered absolute
@@ -122,7 +124,7 @@ func TestGetSessionBase(t *testing.T) {
 	}
 
 	// Set a base path
-	basePath := "/home/user/project"
+	basePath := sessionBasePath
 	if err := pkg.SetSessionBase(basePath); err != nil {
 		t.Fatalf("SetSessionBase failed: %v", err)
 	}
@@ -142,7 +144,7 @@ func TestClearSessionBase(t *testing.T) {
 	}
 
 	// Set a session base
-	basePath := "/home/user/project"
+	basePath := sessionBasePath
 	if err := pkg.SetSessionBase(basePath); err != nil {
 		t.Fatalf("SetSessionBase failed: %v", err)
 	}
@@ -178,7 +180,7 @@ func TestHasSessionBase(t *testing.T) {
 	}
 
 	// Set a session base
-	basePath := "/home/user/project"
+	basePath := sessionBasePath
 	if err := pkg.SetSessionBase(basePath); err != nil {
 		t.Fatalf("SetSessionBase failed: %v", err)
 	}

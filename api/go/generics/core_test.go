@@ -5,96 +5,50 @@ import (
 	"testing"
 )
 
-// TestOption_String tests Option with string type
-func TestOption_String(t *testing.T) {
-	var opt Option[string]
-
-	// Initially not set
+func runOptionLifecycleTest[T comparable](t *testing.T, setVal, defaultVal, zeroVal T) {
+	t.Helper()
+	var opt Option[T]
 	if opt.IsSet() {
 		t.Error("Option should not be set initially")
 	}
-
 	val, ok := opt.Get()
 	if ok {
 		t.Error("Get should return false when not set")
 	}
-	if val != "" {
-		t.Errorf("Get should return zero value, got %q", val)
+	if val != zeroVal {
+		t.Errorf("Get should return zero value, got %v", val)
 	}
-
-	// Set value
-	opt.Set("hello")
+	opt.Set(setVal)
 	if !opt.IsSet() {
 		t.Error("Option should be set after Set")
 	}
-
 	val, ok = opt.Get()
 	if !ok {
 		t.Error("Get should return true when set")
 	}
-	if val != "hello" {
-		t.Errorf("Get should return set value, got %q", val)
+	if val != setVal {
+		t.Errorf("Get should return set value, got %v", val)
 	}
-
-	// GetOrDefault
-	if opt.GetOrDefault("default") != "hello" {
+	if opt.GetOrDefault(defaultVal) != setVal {
 		t.Error("GetOrDefault should return set value")
 	}
-
-	// Clear
 	opt.Clear()
 	if opt.IsSet() {
 		t.Error("Option should not be set after Clear")
 	}
-	if opt.GetOrDefault("default") != "default" {
+	if opt.GetOrDefault(defaultVal) != defaultVal {
 		t.Error("GetOrDefault should return default after Clear")
 	}
 }
 
+// TestOption_String tests Option with string type
+func TestOption_String(t *testing.T) {
+	runOptionLifecycleTest(t, "hello", "default", "")
+}
+
 // TestOption_Int tests Option with int type
 func TestOption_Int(t *testing.T) {
-	var opt Option[int]
-
-	// Initially not set
-	if opt.IsSet() {
-		t.Error("Option should not be set initially")
-	}
-
-	val, ok := opt.Get()
-	if ok {
-		t.Error("Get should return false when not set")
-	}
-	if val != 0 {
-		t.Errorf("Get should return zero value, got %d", val)
-	}
-
-	// Set value
-	opt.Set(42)
-	if !opt.IsSet() {
-		t.Error("Option should be set after Set")
-	}
-
-	val, ok = opt.Get()
-	if !ok {
-		t.Error("Get should return true when set")
-	}
-	if val != 42 {
-		t.Errorf("Get should return set value, got %d", val)
-	}
-
-	// GetOrDefault
-	if opt.GetOrDefault(0) != 42 {
-		t.Error("GetOrDefault should return set value")
-	}
-
-	// Clear
-	opt.Clear()
-	if opt.IsSet() {
-		t.Error("Option should not be set after Clear")
-	}
-	if opt.GetOrDefault(100) != 100 {
-		t.Error("GetOrDefault should return default after Clear")
-	}
+	runOptionLifecycleTest(t, 42, 100, 0)
 }
 
 // CustomType is a custom type for testing
@@ -151,35 +105,30 @@ func TestOption_CustomType(t *testing.T) {
 	}
 }
 
-// TestResult_String tests Result with string type
-func TestResult_String(t *testing.T) {
-	// Ok result
-	result := Ok("success")
+func runResultLifecycleTest[T comparable](t *testing.T, okVal, zeroVal T) {
+	t.Helper()
+	result := Ok(okVal)
 	if !result.IsOk() {
 		t.Error("Result should be Ok")
 	}
 	if result.IsErr() {
 		t.Error("Result should not be Err")
 	}
-
 	val, err := result.Unwrap()
 	if err != nil {
 		t.Errorf("Unwrap should return nil error for Ok, got %v", err)
 	}
-	if val != "success" {
-		t.Errorf("Unwrap should return value, got %q", val)
+	if val != okVal {
+		t.Errorf("Unwrap should return value, got %v", val)
 	}
-
-	// Err result
 	testErr := errors.New("test error")
-	result = Err[string](testErr)
+	result = Err[T](testErr)
 	if result.IsOk() {
 		t.Error("Result should not be Ok")
 	}
 	if !result.IsErr() {
 		t.Error("Result should be Err")
 	}
-
 	val, err = result.Unwrap()
 	if err == nil {
 		t.Error("Unwrap should return error for Err")
@@ -187,50 +136,19 @@ func TestResult_String(t *testing.T) {
 	if err != testErr {
 		t.Errorf("Unwrap should return set error, got %v", err)
 	}
-	if val != "" {
-		t.Errorf("Unwrap should return zero value for Err, got %q", val)
+	if val != zeroVal {
+		t.Errorf("Unwrap should return zero value for Err, got %v", val)
 	}
+}
+
+// TestResult_String tests Result with string type
+func TestResult_String(t *testing.T) {
+	runResultLifecycleTest(t, "success", "")
 }
 
 // TestResult_Int tests Result with int type
 func TestResult_Int(t *testing.T) {
-	// Ok result
-	result := Ok(42)
-	if !result.IsOk() {
-		t.Error("Result should be Ok")
-	}
-	if result.IsErr() {
-		t.Error("Result should not be Err")
-	}
-
-	val, err := result.Unwrap()
-	if err != nil {
-		t.Errorf("Unwrap should return nil error for Ok, got %v", err)
-	}
-	if val != 42 {
-		t.Errorf("Unwrap should return value, got %d", val)
-	}
-
-	// Err result
-	testErr := errors.New("test error")
-	result = Err[int](testErr)
-	if result.IsOk() {
-		t.Error("Result should not be Ok")
-	}
-	if !result.IsErr() {
-		t.Error("Result should be Err")
-	}
-
-	val, err = result.Unwrap()
-	if err == nil {
-		t.Error("Unwrap should return error for Err")
-	}
-	if err != testErr {
-		t.Errorf("Unwrap should return set error, got %v", err)
-	}
-	if val != 0 {
-		t.Errorf("Unwrap should return zero value for Err, got %d", val)
-	}
+	runResultLifecycleTest(t, 42, 0)
 }
 
 // TestResult_CustomType tests Result with custom type

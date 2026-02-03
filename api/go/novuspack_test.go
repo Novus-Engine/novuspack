@@ -70,7 +70,7 @@ func TestValidateWith_DifferentTypes(t *testing.T) {
 
 	// String type
 	rule := &ValidationRule[string]{
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 	err := ValidateWith(ctx, "test", rule)
@@ -111,22 +111,22 @@ func TestValidateAll(t *testing.T) {
 	// All valid
 	validator := &testValidator{shouldFail: false}
 	values := []string{"test1", "test2", "test3"}
-	errors := ValidateAll(ctx, values, validator)
-	if len(errors) != 0 {
-		t.Errorf("ValidateAll should return no errors for all valid values, got %d errors", len(errors))
+	errs := ValidateAll(ctx, values, validator)
+	if len(errs) != 0 {
+		t.Errorf("ValidateAll should return no errors for all valid values, got %d errors", len(errs))
 	}
 
 	// Some invalid
 	validator = &testValidator{shouldFail: true}
-	errors = ValidateAll(ctx, values, validator)
-	if len(errors) != len(values) {
-		t.Errorf("ValidateAll should return error for each invalid value, got %d errors", len(errors))
+	errs = ValidateAll(ctx, values, validator)
+	if len(errs) != len(values) {
+		t.Errorf("ValidateAll should return error for each invalid value, got %d errors", len(errs))
 	}
 
 	// Empty slice
-	errors = ValidateAll(ctx, []string{}, validator)
-	if len(errors) != 0 {
-		t.Errorf("ValidateAll should return no errors for empty slice, got %d errors", len(errors))
+	errs = ValidateAll(ctx, []string{}, validator)
+	if len(errs) != 0 {
+		t.Errorf("ValidateAll should return no errors for empty slice, got %d errors", len(errs))
 	}
 }
 
@@ -135,12 +135,12 @@ func TestValidateAll_NilValidator(t *testing.T) {
 	ctx := context.Background()
 	values := []string{"test1", "test2"}
 
-	errors := ValidateAll(ctx, values, nil)
-	if len(errors) != len(values) {
-		t.Errorf("ValidateAll should return error for each value when validator is nil, got %d errors", len(errors))
+	errs := ValidateAll(ctx, values, nil)
+	if len(errs) != len(values) {
+		t.Errorf("ValidateAll should return error for each value when validator is nil, got %d errors", len(errs))
 	}
 	expectedErrMsg := "[Validation] validator is nil"
-	for _, err := range errors {
+	for _, err := range errs {
 		if err.Error() != expectedErrMsg {
 			t.Errorf("ValidateAll should return specific error for nil validator, got %q, want %q", err.Error(), expectedErrMsg)
 		}
@@ -158,10 +158,10 @@ func TestValidateAll_MixedResults(t *testing.T) {
 	}
 
 	values := []string{"valid1", "invalid", "valid2", "invalid"}
-	errors := ValidateAll(ctx, values, validator)
+	errs := ValidateAll(ctx, values, validator)
 
-	if len(errors) != 2 {
-		t.Errorf("ValidateAll should return 2 errors, got %d", len(errors))
+	if len(errs) != 2 {
+		t.Errorf("ValidateAll should return 2 errors, got %d", len(errs))
 	}
 }
 
@@ -176,10 +176,10 @@ func TestValidateAll_DifferentTypes(t *testing.T) {
 	}
 
 	values := []int{1, 2, 3, -1, -2}
-	errors := ValidateAll(ctx, values, intRule)
+	errs := ValidateAll(ctx, values, intRule)
 
-	if len(errors) != 2 {
-		t.Errorf("ValidateAll should return 2 errors for invalid ints, got %d", len(errors))
+	if len(errs) != 2 {
+		t.Errorf("ValidateAll should return 2 errors for invalid ints, got %d", len(errs))
 	}
 }
 
@@ -191,7 +191,7 @@ func TestValidateAll_DifferentTypes(t *testing.T) {
 func TestComposeValidators(t *testing.T) {
 	// Create two validators
 	validator1 := &ValidationRule[string]{
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 	validator2 := &ValidationRule[string]{
@@ -242,7 +242,7 @@ func TestComposeValidators_Empty(t *testing.T) {
 func TestComposeValidators_MultipleTypes(t *testing.T) {
 	// String validators
 	strValidator1 := &ValidationRule[string]{
-		Predicate: func(s string) bool { return len(s) > 0 },
+		Predicate: func(s string) bool { return s != "" },
 		Message:   "string cannot be empty",
 	}
 	strValidator2 := &ValidationRule[string]{

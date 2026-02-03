@@ -5,6 +5,7 @@
 package novus_package
 
 import (
+	"bytes"
 	"context"
 	"path/filepath"
 	"testing"
@@ -17,20 +18,28 @@ import (
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
-// TestPackage_GetInfo_Basic tests basic package information retrieval.
-func TestPackage_GetInfo_Basic(t *testing.T) {
+const testPkgPath = "/test/package.nvpk"
+
+func newFilePackageWithState(info *metadata.PackageInfo, filePath string, fileEntries []*metadata.FileEntry) *filePackage {
+	pkg, _ := NewPackage()
+	fpkg := pkg.(*filePackage)
+	fpkg.Info = info
+	fpkg.FilePath = filePath
+	fpkg.FileEntries = fileEntries
+	return fpkg
+}
+
+func runOpenPackageGetInfoAssert(t *testing.T) {
+	t.Helper()
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	pkgPath := filepath.Join(tmpDir, "test.nvpk")
 	testutil.CreateTestPackageFile(t, pkgPath)
-
 	pkg, err := OpenPackage(ctx, pkgPath)
 	if err != nil {
 		t.Fatalf("OpenPackage() failed: %v", err)
 	}
 	defer func() { _ = pkg.Close() }()
-
-	// Test: GetInfo should return package information
 	info, err := pkg.GetInfo()
 	if err != nil {
 		t.Errorf("GetInfo() failed: %v", err)
@@ -40,27 +49,14 @@ func TestPackage_GetInfo_Basic(t *testing.T) {
 	}
 }
 
+// TestPackage_GetInfo_Basic tests basic package information retrieval.
+func TestPackage_GetInfo_Basic(t *testing.T) {
+	runOpenPackageGetInfoAssert(t)
+}
+
 // TestPackage_GetInfo_WithContext tests GetInfo with context scenarios.
 func TestPackage_GetInfo_WithContext(t *testing.T) {
-	ctx := context.Background()
-	tmpDir := t.TempDir()
-	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-	testutil.CreateTestPackageFile(t, pkgPath)
-
-	pkg, err := OpenPackage(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("OpenPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	// GetInfo is a pure in-memory operation and does not accept context
-	info, err := pkg.GetInfo()
-	if err != nil {
-		t.Errorf("GetInfo() failed: %v", err)
-	}
-	if info == nil {
-		t.Error("GetInfo() returned nil")
-	}
+	runOpenPackageGetInfoAssert(t)
 }
 
 // TestPackage_GetInfo_AfterCreate tests GetInfo after Create and Open.
@@ -101,53 +97,12 @@ func TestPackage_GetInfo_AfterCreate(t *testing.T) {
 
 // TestPackage_GetInfo_OnNew tests GetInfo on newly created package.
 func TestPackage_GetInfo_OnNew(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage() failed: %v", err)
-	}
-
-	// GetInfo on new package should succeed (metadata is initialized)
-	info, err := pkg.GetInfo()
-	if err != nil {
-		t.Fatalf("GetInfo() failed on newly created package: %v", err)
-	}
-
-	if info == nil {
-		t.Fatal("GetInfo() returned nil")
-	}
-
-	// Verify format version is set
-	if info.FormatVersion == 0 {
-		t.Error("FormatVersion should be non-zero for newly created package")
-	}
+	runGetInfoBasic(t, true)
 }
 
 // TestPackage_GetInfo_OnClosedPackage tests GetInfo after Close.
 func TestPackage_GetInfo_OnClosedPackage(t *testing.T) {
-	ctx := context.Background()
-	// Open a package to ensure metadata is loaded, then Close it.
-	tmpDir := t.TempDir()
-	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-	testutil.CreateTestPackageFile(t, pkgPath)
-
-	pkg, err := OpenPackage(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("OpenPackage() failed: %v", err)
-	}
-
-	// Close the package (in-memory metadata should remain available)
-	if err := pkg.Close(); err != nil {
-		t.Fatalf("Close() failed: %v", err)
-	}
-
-	// GetInfo on closed package should succeed if metadata is still in memory
-	info, err := pkg.GetInfo()
-	if err != nil {
-		t.Fatalf("GetInfo() should succeed on a closed package with cached metadata, got error: %v", err)
-	}
-	if info == nil {
-		t.Fatal("GetInfo() returned nil info")
-	}
+	runAssertGetInfoOnClosed(t)
 }
 
 // TestPackage_GetInfo_WithCancelledContext tests GetInfo (no longer uses context).
@@ -257,88 +212,19 @@ func TestPackage_ReadFile(t *testing.T) {
 
 // TestPackage_ListFiles tests the ListFiles method.
 func TestPackage_ListFiles(t *testing.T) {
-	ctx := context.Background()
-	tmpDir := t.TempDir()
-	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-	testutil.CreateTestPackageFile(t, pkgPath)
-
-	pkg, err := OpenPackage(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("OpenPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	// ListFiles on an empty package should return empty list
-	files, err := pkg.ListFiles()
-	if err != nil {
-		t.Fatalf("ListFiles() failed: %v", err)
-	}
-	if files == nil {
-		t.Fatal("ListFiles() should not return nil")
-	}
-	if len(files) != 0 {
-		t.Errorf("ListFiles() on empty package should return empty list, got %d files", len(files))
-	}
+	runOpenPackageListFilesExpectEmpty(t)
 }
 
 // TestPackage_ListFiles_WithFiles tests ListFiles with files in package.
 // Note: This test is simplified to test the basic functionality.
 // Full file entry loading is tested in OpenPackage tests.
 func TestPackage_ListFiles_WithFiles(t *testing.T) {
-	ctx := context.Background()
-	tmpDir := t.TempDir()
-	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-
-	// Create a minimal package file
-	testutil.CreateTestPackageFile(t, pkgPath)
-
-	// Open package
-	pkg, err := OpenPackage(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("OpenPackage() failed: %v", err)
-	}
-	defer func() { _ = pkg.Close() }()
-
-	// ListFiles should return empty list for empty package
-	files, err := pkg.ListFiles()
-	if err != nil {
-		t.Fatalf("ListFiles() failed: %v", err)
-	}
-	if files == nil {
-		t.Fatal("ListFiles() should not return nil")
-	}
-	// Empty package should return empty list
-	if len(files) != 0 {
-		t.Errorf("ListFiles() on empty package should return empty list, got %d files", len(files))
-	}
+	runOpenPackageListFilesExpectEmpty(t)
 }
 
 // TestPackage_ListFiles_ClosedPackage tests ListFiles on closed package.
 func TestPackage_ListFiles_ClosedPackage(t *testing.T) {
-	ctx := context.Background()
-	// Open a package to ensure metadata is loaded, then Close it.
-	tmpDir := t.TempDir()
-	pkgPath := filepath.Join(tmpDir, "test.nvpk")
-	testutil.CreateTestPackageFile(t, pkgPath)
-
-	pkg, err := OpenPackage(ctx, pkgPath)
-	if err != nil {
-		t.Fatalf("OpenPackage() failed: %v", err)
-	}
-
-	// Close the package (in-memory metadata should remain available)
-	if err := pkg.Close(); err != nil {
-		t.Fatalf("Close() failed: %v", err)
-	}
-
-	// ListFiles on closed package should succeed if metadata is still in memory
-	files, err := pkg.ListFiles()
-	if err != nil {
-		t.Fatalf("ListFiles() should succeed on a closed package with cached metadata, got error: %v", err)
-	}
-	if files == nil {
-		t.Fatal("ListFiles() should not return nil")
-	}
+	runAssertListFilesOnClosed(t)
 }
 
 // TestPackage_ListFiles_StableSorting tests that ListFiles returns stable results.
@@ -381,6 +267,8 @@ func TestPackage_ListFiles_StableSorting(t *testing.T) {
 }
 
 // TestPackage_ListFiles_FileInfoFields tests that FileInfo contains all required fields.
+//
+//nolint:gocognit,gocyclo // table-driven file-info cases
 func TestPackage_ListFiles_FileInfoFields(t *testing.T) {
 	// Setup: Create a new package in memory
 	pkg, err := NewPackage()
@@ -391,7 +279,7 @@ func TestPackage_ListFiles_FileInfoFields(t *testing.T) {
 
 	fpkg := pkg.(*filePackage)
 	fpkg.isOpen = true                                         // Mark package as open
-	fpkg.FilePath = "/test/package.nvpk"                       // Set package path
+	fpkg.FilePath = testPkgPath                                // Set package path
 	fpkg.Info = metadata.NewPackageInfo()                      // Initialize Info so metadata is considered loaded
 	fpkg.FileEntries = []*metadata.FileEntry{}                 // Initialize FileEntries slice
 	fpkg.PathMetadataEntries = []*metadata.PathMetadataEntry{} // Initialize PathMetadataEntries
@@ -636,6 +524,8 @@ func TestPackage_ListFiles_FileInfoFields_Uncompressed(t *testing.T) {
 }
 
 // TestPackage_ListFiles_EdgeCases tests edge cases in ListFiles for coverage.
+//
+//nolint:gocognit,gocyclo // table-driven edge cases
 func TestPackage_ListFiles_EdgeCases(t *testing.T) {
 	// Setup: Create a new package in memory
 	pkg, err := NewPackage()
@@ -789,60 +679,22 @@ func TestPackage_ListFiles_EdgeCases(t *testing.T) {
 }
 
 // TestPackage_ListFiles_NoMetadataLoaded tests ListFiles when metadata is not loaded.
+//
+//nolint:gocognit // table-driven no-metadata cases
 func TestPackage_ListFiles_NoMetadataLoaded(t *testing.T) {
 	tests := []struct {
 		name         string
 		setupPackage func() *filePackage
 		wantErr      bool
 	}{
-		{
-			name: "Info is nil",
-			setupPackage: func() *filePackage {
-				pkg, _ := NewPackage()
-				fpkg := pkg.(*filePackage)
-				fpkg.Info = nil
-				fpkg.FilePath = "/test/package.nvpk"
-				fpkg.FileEntries = []*metadata.FileEntry{}
-				return fpkg
-			},
-			wantErr: true,
-		},
-		{
-			name: "FilePath is empty",
-			setupPackage: func() *filePackage {
-				pkg, _ := NewPackage()
-				fpkg := pkg.(*filePackage)
-				fpkg.Info = metadata.NewPackageInfo()
-				fpkg.FilePath = ""
-				fpkg.FileEntries = []*metadata.FileEntry{}
-				return fpkg
-			},
-			wantErr: false, // Changed: FilePath can be empty for newly created packages
-		},
-		{
-			name: "FileEntries is nil",
-			setupPackage: func() *filePackage {
-				pkg, _ := NewPackage()
-				fpkg := pkg.(*filePackage)
-				fpkg.Info = metadata.NewPackageInfo()
-				fpkg.FilePath = "/test/package.nvpk"
-				fpkg.FileEntries = nil
-				return fpkg
-			},
-			wantErr: true,
-		},
-		{
-			name: "All fields valid",
-			setupPackage: func() *filePackage {
-				pkg, _ := NewPackage()
-				fpkg := pkg.(*filePackage)
-				fpkg.Info = metadata.NewPackageInfo()
-				fpkg.FilePath = "/sp/package.nvpk"
-				fpkg.FileEntries = []*metadata.FileEntry{}
-				return fpkg
-			},
-			wantErr: false,
-		},
+		{"Info is nil", func() *filePackage { return newFilePackageWithState(nil, testPkgPath, []*metadata.FileEntry{}) }, true},
+		{"FilePath is empty", func() *filePackage {
+			return newFilePackageWithState(metadata.NewPackageInfo(), "", []*metadata.FileEntry{})
+		}, false},
+		{"FileEntries is nil", func() *filePackage { return newFilePackageWithState(metadata.NewPackageInfo(), testPkgPath, nil) }, true},
+		{"All fields valid", func() *filePackage {
+			return newFilePackageWithState(metadata.NewPackageInfo(), "/sp/package.nvpk", []*metadata.FileEntry{})
+		}, false},
 	}
 
 	for _, tt := range tests {
@@ -1257,7 +1109,7 @@ func TestPackage_ReadFile_SourceFileNil(t *testing.T) {
 		t.Fatalf("ReadFile() failed: %v", err)
 	}
 
-	if string(data) != string(testContent) {
+	if !bytes.Equal(data, testContent) {
 		t.Errorf("ReadFile() content mismatch: got %q, want %q", string(data), string(testContent))
 	}
 }
@@ -1298,7 +1150,7 @@ func TestPackage_ReadFile_SourceOffsetZero(t *testing.T) {
 		t.Fatalf("ReadFile() failed: %v", err)
 	}
 
-	if string(data) != string(testContent) {
+	if !bytes.Equal(data, testContent) {
 		t.Errorf("ReadFile() content mismatch: got %q, want %q", string(data), string(testContent))
 	}
 }

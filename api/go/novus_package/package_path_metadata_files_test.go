@@ -64,8 +64,8 @@ func TestPackage_SavePathMetadataFile_CreateNew(t *testing.T) {
 	if len(specialFile.Paths) == 0 {
 		t.Fatal("Special file should have path")
 	}
-	if specialFile.Paths[0].Path != "__NVPK_PATH_65001__.nvpkpath" {
-		t.Errorf("Special file path = %s, want '__NVPK_PATH_65001__.nvpkpath'", specialFile.Paths[0].Path)
+	if specialFile.Paths[0].Path != "/__NVPK_PATH_65001__.nvpkpath" {
+		t.Errorf("Special file path = %s, want '/__NVPK_PATH_65001__.nvpkpath'", specialFile.Paths[0].Path)
 	}
 	// Verify compression type is uncompressed (per spec)
 	if specialFile.CompressionType != 0 {
@@ -107,7 +107,7 @@ func TestPackage_SavePathMetadataFile_UpdateExisting(t *testing.T) {
 	existingFile.FileID = 1 // Sequential FileID
 	existingFile.Type = 65001
 	existingFile.Paths = []generics.PathEntry{
-		{Path: "__NVPK_PATH_65001__.nvpkpath", PathLength: 27},
+		{Path: "/__NVPK_PATH_65001__.nvpkpath", PathLength: uint16(len("/__NVPK_PATH_65001__.nvpkpath"))},
 	}
 	existingFile.Data = []byte("old data")
 	fpkg.SpecialFiles[65001] = existingFile

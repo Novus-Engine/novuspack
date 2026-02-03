@@ -2,9 +2,9 @@
 // It contains methods for loading, unloading, and managing file data in memory
 // and temporary files. This file should contain data management methods
 // (LoadData, UnloadData, GetData, SetData, temp file operations) as specified
-// in api_file_mgmt_file_entry.md Section 1.4.
+// in api_file_mgmt_file_entry.md Section 4.
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4 Data Management
 
 package metadata
 
@@ -28,10 +28,10 @@ import (
 //
 // Returns *PackageError on failure.
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.1.1 FileEntry LoadData Method
 func (f *FileEntry) LoadData(ctx context.Context) error {
 	// Check if already loaded
-	if f.IsDataLoaded && len(f.Data) > 0 {
+	if f.IsDataLoaded {
 		return nil
 	}
 
@@ -100,7 +100,7 @@ func (f *FileEntry) LoadData(ctx context.Context) error {
 // Clears file content from memory.
 // Releases memory resources.
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.1.2 FileEntry.UnloadData Method
 func (f *FileEntry) UnloadData() {
 	f.Data = nil
 	f.IsDataLoaded = false
@@ -116,10 +116,10 @@ func (f *FileEntry) UnloadData() {
 //   - []byte: File content
 //   - error: *PackageError on failure
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.1.3 FileEntry.GetData Method
 func (f *FileEntry) GetData() ([]byte, error) {
 	// If data is already loaded, return it
-	if f.IsDataLoaded && len(f.Data) > 0 {
+	if f.IsDataLoaded {
 		result := make([]byte, len(f.Data))
 		copy(result, f.Data)
 		return result, nil
@@ -150,15 +150,15 @@ func (f *FileEntry) GetData() ([]byte, error) {
 // Parameters:
 //   - data: File content to set
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.1.4 FileEntry.SetData Method
 func (f *FileEntry) SetData(data []byte) {
-	f.Data = data
-	f.IsDataLoaded = len(data) > 0
-	if f.IsDataLoaded {
-		f.ProcessingState = ProcessingStateComplete
-	} else {
-		f.ProcessingState = ProcessingStateIdle
+	if data == nil {
+		data = []byte{}
 	}
+
+	f.Data = data
+	f.IsDataLoaded = true
+	f.ProcessingState = ProcessingStateComplete
 }
 
 // GetProcessingState returns the current processing state.
@@ -166,7 +166,7 @@ func (f *FileEntry) SetData(data []byte) {
 // Returns:
 //   - ProcessingState: Current processing state
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.3.1 FileEntry.GetProcessingState Method
 func (f *FileEntry) GetProcessingState() ProcessingState {
 	return f.ProcessingState
 }
@@ -176,7 +176,7 @@ func (f *FileEntry) GetProcessingState() ProcessingState {
 // Parameters:
 //   - state: Processing state to set
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.3.2 FileEntry.SetProcessingState Method
 func (f *FileEntry) SetProcessingState(state ProcessingState) {
 	f.ProcessingState = state
 }
@@ -188,8 +188,8 @@ func (f *FileEntry) SetProcessingState(state ProcessingState) {
 //   - offset: Offset in source file
 //   - size: Size of data to read from source
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
-func (f *FileEntry) SetSourceFile(file *os.File, offset, size int64) {
+// Specification: api_file_mgmt_file_entry.md: 4.4 Source Tracking (CurrentSource/OriginalSource)
+func (f *FileEntry) setSourceFile(file *os.File, offset, size int64) {
 	f.SourceFile = file
 	f.SourceOffset = offset
 	f.SourceSize = size
@@ -202,8 +202,8 @@ func (f *FileEntry) SetSourceFile(file *os.File, offset, size int64) {
 //   - int64: Offset in source file
 //   - int64: Size of data to read from source
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
-func (f *FileEntry) GetSourceFile() (*os.File, int64, int64) {
+// Specification: api_file_mgmt_file_entry.md: 4.4 Source Tracking (CurrentSource/OriginalSource)
+func (f *FileEntry) getSourceFile() (file *os.File, offset, size int64) {
 	return f.SourceFile, f.SourceOffset, f.SourceSize
 }
 
@@ -212,8 +212,8 @@ func (f *FileEntry) GetSourceFile() (*os.File, int64, int64) {
 // Parameters:
 //   - path: Path to temporary file
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
-func (f *FileEntry) SetTempPath(path string) {
+// Specification: api_file_mgmt_file_entry.md: 4.2 Temporary File Operations
+func (f *FileEntry) setTempPath(path string) {
 	f.TempFilePath = path
 	f.IsTempFile = path != ""
 }
@@ -223,8 +223,8 @@ func (f *FileEntry) SetTempPath(path string) {
 // Returns:
 //   - string: Path to temporary file (empty if not set)
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
-func (f *FileEntry) GetTempPath() string {
+// Specification: api_file_mgmt_file_entry.md: 4.2 Temporary File Operations
+func (f *FileEntry) getTempPath() string {
 	return f.TempFilePath
 }
 
@@ -238,7 +238,7 @@ func (f *FileEntry) GetTempPath() string {
 //
 // Returns *PackageError on failure.
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.2.1 FileEntry.CreateTempFile Method
 func (f *FileEntry) CreateTempFile(ctx context.Context) error {
 	if ctx != nil {
 		select {
@@ -278,7 +278,7 @@ func (f *FileEntry) CreateTempFile(ctx context.Context) error {
 //
 // Returns *PackageError on failure.
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.2.2 FileEntry.StreamToTempFile Method
 func (f *FileEntry) StreamToTempFile(ctx context.Context) error {
 	if ctx != nil {
 		select {
@@ -307,7 +307,7 @@ func (f *FileEntry) StreamToTempFile(ctx context.Context) error {
 		}
 	}
 
-	tmpFile, err := os.OpenFile(f.TempFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	tmpFile, err := os.OpenFile(f.TempFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to open temporary file for writing", pkgerrors.ValidationErrorContext{
 			Field:    "TempFilePath",
@@ -355,7 +355,7 @@ func (f *FileEntry) StreamToTempFile(ctx context.Context) error {
 //
 // Returns *PackageError on failure.
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.2.3 FileEntry.WriteToTempFile Method
 func (f *FileEntry) WriteToTempFile(ctx context.Context, data []byte) error {
 	if ctx != nil {
 		select {
@@ -376,7 +376,7 @@ func (f *FileEntry) WriteToTempFile(ctx context.Context, data []byte) error {
 		}
 	}
 
-	tmpFile, err := os.OpenFile(f.TempFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	tmpFile, err := os.OpenFile(f.TempFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to open temporary file for writing", pkgerrors.ValidationErrorContext{
 			Field:    "TempFilePath",
@@ -416,7 +416,7 @@ func (f *FileEntry) WriteToTempFile(ctx context.Context, data []byte) error {
 //   - []byte: Data read from temporary file
 //   - error: *PackageError on failure
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.2.4 FileEntry.ReadFromTempFile Method
 func (f *FileEntry) ReadFromTempFile(ctx context.Context, offset, size int64) ([]byte, error) {
 	if ctx != nil {
 		select {
@@ -480,7 +480,7 @@ func (f *FileEntry) ReadFromTempFile(ctx context.Context, offset, size int64) ([
 //
 // Returns *PackageError on failure.
 //
-// Specification: api_file_mgmt_file_entry.md: 1.4 Helper Functions
+// Specification: api_file_mgmt_file_entry.md: 4.2.5 FileEntry.CleanupTempFile Method
 func (f *FileEntry) CleanupTempFile(ctx context.Context) error {
 	if ctx != nil {
 		select {

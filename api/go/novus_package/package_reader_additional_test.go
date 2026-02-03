@@ -3,6 +3,7 @@
 package novus_package
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -37,7 +38,7 @@ func TestReadFile_AfterAddFromMemory(t *testing.T) {
 	}
 
 	// Verify data matches
-	if string(readData) != string(originalData) {
+	if !bytes.Equal(readData, originalData) {
 		t.Errorf("ReadFile data = %q, want %q", string(readData), string(originalData))
 	}
 }
@@ -66,8 +67,7 @@ func TestReadFile_AfterWrite(t *testing.T) {
 	}
 
 	if err := pkg.Write(ctx); err != nil {
-		t.Logf("Write note: %v (may be expected for incomplete implementation)", err)
-		return
+		t.Fatalf("Write failed: %v", err)
 	}
 
 	// Close and reopen
@@ -78,8 +78,7 @@ func TestReadFile_AfterWrite(t *testing.T) {
 	// Open for reading
 	pkg2, err := OpenPackage(ctx, tmpFile)
 	if err != nil {
-		t.Logf("OpenPackage note: %v (may require complete Write implementation)", err)
-		return
+		t.Fatalf("OpenPackage failed: %v", err)
 	}
 	defer func() { _ = pkg2.Close() }()
 
@@ -89,7 +88,7 @@ func TestReadFile_AfterWrite(t *testing.T) {
 		t.Fatalf("ReadFile failed: %v", err)
 	}
 
-	if string(readData) != string(originalData) {
+	if !bytes.Equal(readData, originalData) {
 		t.Errorf("ReadFile data = %q, want %q", string(readData), string(originalData))
 	}
 }
@@ -176,42 +175,12 @@ func TestReadFile_ContextCancelled(t *testing.T) {
 
 // TestGetMetadata_Basic tests GetMetadata method.
 func TestGetMetadata_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	metadata, err := pkg.GetMetadata()
-	if err != nil {
-		t.Logf("GetMetadata note: %v (may require initialization)", err)
-		return
-	}
-
-	if metadata == nil {
-		t.Error("GetMetadata returned nil")
-	}
+	runGetMetadataBasic(t)
 }
 
 // TestGetInfo_Basic tests GetInfo method.
 func TestGetInfo_Basic(t *testing.T) {
-	pkg, err := NewPackage()
-	if err != nil {
-		t.Fatalf("NewPackage failed: %v", err)
-	}
-
-	info, err := pkg.GetInfo()
-	if err != nil {
-		t.Fatalf("GetInfo failed: %v", err)
-	}
-
-	if info == nil {
-		t.Fatal("GetInfo returned nil")
-	}
-
-	// Verify basic info fields
-	if info.FormatVersion == 0 {
-		t.Error("Info.FormatVersion = 0, expected non-zero")
-	}
+	runGetInfoBasic(t, true)
 }
 
 // TestValidate_EmptyPackage tests validating an empty package.
@@ -331,7 +300,7 @@ func TestWrite_EmptyPackage(t *testing.T) {
 
 	err = pkg.Write(ctx)
 	if err != nil {
-		t.Logf("Write empty package: %v (may be expected)", err)
+		t.Fatalf("Write empty package failed: %v", err)
 	}
 }
 
@@ -344,15 +313,7 @@ func TestWrite_WithFiles(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Add files
-	for i := 0; i < 3; i++ {
-		path := "file" + string(rune('0'+i)) + ".txt"
-		data := []byte("Content for file " + string(rune('0'+i)))
-		_, err := pkg.AddFileFromMemory(ctx, path, data, nil)
-		if err != nil {
-			t.Fatalf("AddFileFromMemory failed: %v", err)
-		}
-	}
+	addThreeFilesFromMemory(t, ctx, pkg, "", "Content for file ")
 
 	tmpFile := filepath.Join(t.TempDir(), "withfiles.pkg")
 	if err := pkg.SetTargetPath(ctx, tmpFile); err != nil {
@@ -361,8 +322,7 @@ func TestWrite_WithFiles(t *testing.T) {
 
 	err = pkg.Write(ctx)
 	if err != nil {
-		t.Logf("Write with files: %v (implementation may be incomplete)", err)
-		return
+		t.Fatalf("Write with files failed: %v", err)
 	}
 
 	// Verify file was created
@@ -393,7 +353,7 @@ func TestSafeWrite_NoOverwrite(t *testing.T) {
 	}
 
 	// Create the file first
-	if err := os.WriteFile(tmpFile, []byte("existing"), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte("existing"), 0o644); err != nil {
 		t.Fatalf("Failed to create existing file: %v", err)
 	}
 
@@ -426,13 +386,13 @@ func TestSafeWrite_WithOverwrite(t *testing.T) {
 	}
 
 	// Create the file first
-	if err := os.WriteFile(tmpFile, []byte("old data"), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte("old data"), 0o644); err != nil {
 		t.Fatalf("Failed to create existing file: %v", err)
 	}
 
 	// SafeWrite with overwrite (should succeed)
 	err = pkg.SafeWrite(ctx, true)
 	if err != nil {
-		t.Logf("SafeWrite with overwrite: %v (implementation may be incomplete)", err)
+		t.Fatalf("SafeWrite with overwrite failed: %v", err)
 	}
 }

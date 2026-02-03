@@ -91,56 +91,55 @@ func ValidateWith[T any](ctx context.Context, value T, validator Validator[T]) e
 //	errors := ValidateAll(ctx, []int{1, -1, 2, -2}, validator)
 func ValidateAll[T any](ctx context.Context, values []T, validator Validator[T]) []error {
 	if validator == nil {
-		err := pkgerrors.NewTypedPackageError(pkgerrors.ErrTypeValidation, "validator is nil", nil, pkgerrors.ValidationErrorContext{
-			Field:    "validator",
-			Value:    nil,
-			Expected: "non-nil validator",
-		})
-		errors := make([]error, len(values))
-		for i := range errors {
-			errors[i] = err
-		}
-		return errors
+		return validateAllNilValidator(values)
 	}
-
 	var validationErrors []error
 	for i, value := range values {
-		// Check context cancellation before each validation
-		if ctx != nil {
-			select {
-			case <-ctx.Done():
-				// Return context error for remaining values
-				ctxErr := pkgerrors.WrapErrorWithContext(ctx.Err(), pkgerrors.ErrTypeContext, "validation cancelled", pkgerrors.ValidationErrorContext{
-					Field:    fmt.Sprintf("values[%d]", i),
-					Value:    value,
-					Expected: "validation completed",
-				})
-				// Add context error for this and all remaining values
-				for j := i; j < len(values); j++ {
-					validationErrors = append(validationErrors, ctxErr)
-				}
-				return validationErrors
-			default:
+		if ctxErr := validateAllCheckContext(ctx, i, value); ctxErr != nil {
+			for j := i; j < len(values); j++ {
+				validationErrors = append(validationErrors, ctxErr)
 			}
+			return validationErrors
 		}
-
 		if err := validator.Validate(value); err != nil {
-			// If error is already a PackageError, use it
-			if pkgErr, ok := pkgerrors.IsPackageError(err); ok {
-				validationErrors = append(validationErrors, pkgErr)
-			} else {
-				// Wrap error with ValidationErrorContext
-				wrappedErr := pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeValidation, fmt.Sprintf("validation failed at index %d", i), pkgerrors.ValidationErrorContext{
-					Field:    fmt.Sprintf("values[%d]", i),
-					Value:    value,
-					Expected: "valid value",
-				})
-				validationErrors = append(validationErrors, wrappedErr)
-			}
+			validationErrors = append(validationErrors, validateAllWrapError(err, i, value))
 		}
 	}
-
 	return validationErrors
+}
+
+func validateAllNilValidator[T any](values []T) []error {
+	err := pkgerrors.NewTypedPackageError(pkgerrors.ErrTypeValidation, "validator is nil", nil, pkgerrors.ValidationErrorContext{
+		Field: "validator", Value: nil, Expected: "non-nil validator",
+	})
+	out := make([]error, len(values))
+	for i := range out {
+		out[i] = err
+	}
+	return out
+}
+
+func validateAllCheckContext[T any](ctx context.Context, i int, value T) error {
+	if ctx == nil {
+		return nil
+	}
+	select {
+	case <-ctx.Done():
+		return pkgerrors.WrapErrorWithContext(ctx.Err(), pkgerrors.ErrTypeContext, "validation cancelled", pkgerrors.ValidationErrorContext{
+			Field: fmt.Sprintf("values[%d]", i), Value: value, Expected: "validation completed",
+		})
+	default:
+		return nil
+	}
+}
+
+func validateAllWrapError[T any](err error, i int, value T) error {
+	if pkgErr, ok := pkgerrors.IsPackageError(err); ok {
+		return pkgErr
+	}
+	return pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeValidation, fmt.Sprintf("validation failed at index %d", i), pkgerrors.ValidationErrorContext{
+		Field: fmt.Sprintf("values[%d]", i), Value: value, Expected: "valid value",
+	})
 }
 
 // ComposeValidators creates a validator that runs multiple validators.

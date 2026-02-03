@@ -1,11 +1,11 @@
 // This file implements the PackageMetadata structure providing comprehensive
 // package metadata including all package information plus detailed file and
 // metadata file contents. It contains the PackageMetadata type definition
-// and NewPackageMetadata constructor as specified in api_core.md Section 1.1.6
-// and api_metadata.md Section 7.5.
+// and NewPackageMetadata constructor as specified in api_core.md Section 1.2.6
+// and api_metadata.md Section 7.1.
 //
-// Specification: api_core.md: 1.1.6 GetMetadata Method Contract
-// Specification: api_metadata.md: 1. Comment Management
+// Specification: api_core.md: 1.2.6 Package.GetMetadata Method
+// Specification: api_metadata.md: 7.1 PackageInfo Structure
 
 // Package metadata provides metadata domain structures for the NovusPack implementation.
 //
@@ -23,8 +23,8 @@ package metadata
 // This method MUST NOT perform additional disk I/O or parsing beyond what OpenPackage
 // already loaded. All data in PackageMetadata comes from already-loaded package state.
 //
-// Specification: api_core.md: 1.1.6.5 PackageMetadata Contents
-// Specification: api_metadata.md: 1. Comment Management
+// Specification: api_core.md: 1.2.6.2 Package.GetMetadata Returns
+// Specification: api_metadata.md: 7.1 PackageInfo Structure
 type PackageMetadata struct {
 	// Embed PackageInfo for basic package information
 	*PackageInfo
@@ -49,7 +49,7 @@ type PackageMetadata struct {
 // Returns:
 //   - *PackageMetadata: A new PackageMetadata instance with default values
 //
-// Specification: api_metadata.md: 1. Comment Management
+// Specification: api_metadata.md: 7.1 PackageInfo Structure
 func NewPackageMetadata() *PackageMetadata {
 	return &PackageMetadata{
 		PackageInfo:         NewPackageInfo(),

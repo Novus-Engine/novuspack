@@ -36,13 +36,6 @@ type PackageBuilder interface {
 	Build(ctx context.Context) (Package, error)
 }
 
-// EncryptionType represents the type of encryption to use.
-//
-// This type is used by PackageBuilder interface.
-// Use constants from fileformat package (EncryptionNone, EncryptionAES256GCM, etc.)
-// via the novuspack package re-exports.
-type EncryptionType uint8
-
 // packageBuilder is the concrete implementation of PackageBuilder.
 type packageBuilder struct {
 	compression CompressionType

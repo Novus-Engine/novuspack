@@ -10,7 +10,6 @@ package metadata
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 
 	"github.com/novus-engine/novuspack/api/go/pkgerrors"
@@ -47,30 +46,14 @@ type HashEntry struct {
 //   - HashType must be valid
 //
 // Returns an error if any validation check fails.
-func (h *HashEntry) Validate() error {
-	if len(h.HashData) == 0 {
-		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "hash data cannot be nil or empty", nil, pkgerrors.ValidationErrorContext{
-			Field:    "HashData",
-			Value:    nil,
-			Expected: "non-empty hash data",
-		})
-	}
-
-	if uint16(len(h.HashData)) != h.HashLength {
-		return pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "hash length mismatch", nil, pkgerrors.ValidationErrorContext{
-			Field:    "HashLength",
-			Value:    h.HashLength,
-			Expected: fmt.Sprintf("%d", len(h.HashData)),
-		})
-	}
-
-	return nil
+func (h *HashEntry) validate() error {
+	return validateSliceLength(len(h.HashData), h.HashLength, "HashData", "hash data cannot be nil or empty", "non-empty hash data")
 }
 
 // Size returns the total size of the HashEntry in bytes.
 //
 // Specification: package_file_format.md: 4.1.4.3 Hash Data
-func (h *HashEntry) Size() int {
+func (h HashEntry) size() int {
 	return 4 + int(h.HashLength) // Type(1) + Purpose(1) + Length(2) + Data
 }
 
@@ -85,7 +68,7 @@ func (h *HashEntry) Size() int {
 // Returns the number of bytes read and any error encountered.
 //
 // Specification: package_file_format.md: 4.1.4.3 Hash Data
-func (h *HashEntry) ReadFrom(r io.Reader) (int64, error) {
+func (h *HashEntry) readFrom(r io.Reader) (int64, error) {
 	var totalRead int64
 
 	// Read HashType (1 byte)
@@ -125,28 +108,12 @@ func (h *HashEntry) ReadFrom(r io.Reader) (int64, error) {
 	h.HashLength = hashLength
 
 	// Read HashData (HashLength bytes)
-	if hashLength > 0 {
-		hashData := make([]byte, hashLength)
-		n, err := io.ReadFull(r, hashData)
-		if err != nil {
-			return totalRead, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to read hash data", pkgerrors.ValidationErrorContext{
-				Field:    "HashData",
-				Value:    hashLength,
-				Expected: "hash data",
-			})
-		}
-		if uint16(n) != hashLength {
-			return totalRead, pkgerrors.NewPackageError(pkgerrors.ErrTypeCorruption, "incomplete hash data read", nil, pkgerrors.ValidationErrorContext{
-				Field:    "HashData",
-				Value:    n,
-				Expected: fmt.Sprintf("%d bytes", hashLength),
-			})
-		}
-		totalRead += int64(n)
-		h.HashData = hashData
-	} else {
-		h.HashData = nil
+	hashData, n, err := readLengthPrefixedBytes(r, hashLength, "HashData", "hash data")
+	if err != nil {
+		return totalRead, err
 	}
+	totalRead += n
+	h.HashData = hashData
 
 	return totalRead, nil
 }
@@ -162,7 +129,7 @@ func (h *HashEntry) ReadFrom(r io.Reader) (int64, error) {
 // Returns the number of bytes written and any error encountered.
 //
 // Specification: package_file_format.md: 4.1.4.3 Hash Data
-func (h *HashEntry) WriteTo(w io.Writer) (int64, error) {
+func (h *HashEntry) writeTo(w io.Writer) (int64, error) {
 	var totalWritten int64
 
 	// Write HashType (1 byte)
@@ -196,31 +163,11 @@ func (h *HashEntry) WriteTo(w io.Writer) (int64, error) {
 	totalWritten += 2
 
 	// Write HashData (HashLength bytes)
-	if h.HashLength > 0 {
-		if uint16(len(h.HashData)) != h.HashLength {
-			return totalWritten, pkgerrors.NewPackageError(pkgerrors.ErrTypeValidation, "hash length mismatch", nil, pkgerrors.ValidationErrorContext{
-				Field:    "HashLength",
-				Value:    len(h.HashData),
-				Expected: fmt.Sprintf("%d", h.HashLength),
-			})
-		}
-		n, err := w.Write(h.HashData)
-		if err != nil {
-			return totalWritten, pkgerrors.WrapErrorWithContext(err, pkgerrors.ErrTypeIO, "failed to write hash data", pkgerrors.ValidationErrorContext{
-				Field:    "HashData",
-				Value:    h.HashData,
-				Expected: "written successfully",
-			})
-		}
-		if uint16(n) != h.HashLength {
-			return totalWritten, pkgerrors.NewPackageError(pkgerrors.ErrTypeIO, "incomplete hash data write", nil, pkgerrors.ValidationErrorContext{
-				Field:    "HashData",
-				Value:    n,
-				Expected: fmt.Sprintf("%d bytes", h.HashLength),
-			})
-		}
-		totalWritten += int64(n)
+	n, err := writeLengthPrefixedBytes(w, h.HashData, h.HashLength, "HashData")
+	if err != nil {
+		return totalWritten, err
 	}
+	totalWritten += n
 
 	return totalWritten, nil
 }
