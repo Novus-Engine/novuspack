@@ -28,7 +28,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python lint tooling
-        run: pip install flake8 pylint radon xenon vulture bandit
+        run: pip install -r scripts/requirements-lint.txt
 
       - name: Run python linting
         run: make lint-python
