@@ -20,10 +20,10 @@ alwaysApply: true
   - Do not bypass linting in CI, Make targets, or tooling configuration.
   - Do not add ignore directives (e.g., `# noqa`, `# pylint: disable=...`, `//nolint`) to silence failures unless explicitly instructed.
   - Fix the underlying issue instead of suppressing it.
-- **Shell quoting with backticks:** When passing text containing backticks (e.g., markdown headings with inline code like `` `code` ``) to shell commands or Makefile targets, always use single quotes to preserve the backticks.
-  - Correct: ```make generate-anchor TEXT='Heading with `code` example'```
-  - Incorrect: ```make generate-anchor TEXT="Heading with \`code\` example"``` (shell processes backticks before make sees them)
-  - This applies to any command or script that accepts text containing backticks.
+- **Shell quoting with backticks:** Avoid passing markdown headings directly as command-line string arguments.
+  Prefer file-based inputs to eliminate quoting issues (especially backticks).
+  If you must pass text with backticks on the commandline, use single quotes (not double-quotes) wherever possible
+  and properly escape the backticks in all other cases.
 - Avoid using commands which require approval.
   - Commands that do not require approval:
     - awk
@@ -180,9 +180,8 @@ Quick reference:
   - Note: Skipped when PATHS is specified (requires all tech specs to validate the index)
 - **`make validate-req-references [VERBOSE=1]`** - Validate REQ references in feature files
   - Note: Skipped when PATHS is specified (requires all feature files to validate references)
-- **`make generate-anchor TEXT='Heading Text'`** - Generate markdown anchor from heading text
-  - Use single quotes when TEXT contains backticks: ```make generate-anchor TEXT='Heading with `code` example'```
-  - The script automatically removes backticks and their contents when generating anchors
+- **`make generate-anchor FILE='path/to/file.md'`** - Print anchors for all headings in a file
+- **`make generate-anchor LINE='path/to/file.md:224'`** - Print anchor for the heading at a specific line in a file
 
 #### Coverage Audits
 
@@ -217,4 +216,5 @@ All make commands are pre-approved for use:
 - `make audit-feature-coverage` - Feature coverage audit
 - `make audit-requirements-coverage` - Requirements coverage audit
 - `make audit-coverage` - All coverage audits
-- `make generate-anchor TEXT='...'` - Generate markdown anchor (use single quotes)
+- `make generate-anchor FILE='path/to/file.md'` - Print anchors for all headings in a file
+- `make generate-anchor LINE='path/to/file.md:224'` - Print anchor for a heading at a specific line

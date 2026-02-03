@@ -41,15 +41,13 @@ The following principles guide all development work on this project.
 
 ### 1.5 Shell Quoting with Backticks
 
-- **Critical Rule:** When passing text containing backticks (e.g., markdown headings with inline code like `` `code` ``) to shell commands or Makefile targets, always use single quotes to preserve the backticks.
-- **Why:** The shell processes backticks as command substitution before make or scripts see them, which will break the text.
-- **Correct Examples:**
-  - `` make generate-anchor TEXT='Heading with `code` example' ``
-  - `` python3 scripts/generate_anchor.py --text 'File Management with `Package` type' ``
-- **Incorrect Examples:**
-  - `` make generate-anchor TEXT="Heading with \`code\` example" `` (shell processes backticks before make sees them)
-  - `` python3 scripts/generate_anchor.py --text "File Management with \`Package\` type" `` (same issue)
-- **Applies To:** Any command or script that accepts text containing backticks, including the `generate-anchor` Make target and related scripts.
+- **Critical Rule:** Avoid passing markdown headings (especially ones containing backticks like `` `code` ``) as command-line string arguments.
+- **Why:** Backticks are command substitution in shells, and quoting/escaping is error-prone for both humans and AI agents.
+- **Fallback (when text must be on the command line):** Use single quotes (not double quotes) wherever possible and escape backticks in all other cases.
+- **Correct Examples (preferred, file-based):**
+  - `` make generate-anchor LINE='docs/tech_specs/api_core.md:224' ``
+  - `` make generate-anchor FILE='docs/tech_specs/api_core.md' ``
+- **Applies To:** Any tooling that needs to work with markdown headings containing backticks.
 
 ## 2. Development Workflow
 
@@ -294,9 +292,8 @@ Quick reference:
   - Note: Skipped when PATHS is specified (requires all tech specs)
 - **`make validate-req-references [VERBOSE=1]`** - Validate requirement references
   - Note: Skipped when PATHS is specified (requires all feature files)
-- **`make generate-anchor TEXT='Heading Text'`** - Generate markdown anchor from heading text
-  - Use single quotes (see example in section 1.5)
-  - The script automatically removes backticks and their contents when generating anchors
+- **`make generate-anchor FILE='path/to/file.md'`** - Print anchors for all headings in a file
+- **`make generate-anchor LINE='path/to/file.md:224'`** - Print anchor for the heading at a specific line in a file
   - See [Shell Quoting with Backticks](#15-shell-quoting-with-backticks) for details
 
 #### Coverage Audit Targets

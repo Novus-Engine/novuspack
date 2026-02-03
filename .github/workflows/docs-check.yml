@@ -58,94 +58,97 @@ jobs:
       - name: Install markdownlint-cli2
         run: npm install -g markdownlint-cli2
 
+      - name: Create tmp directory
+        run: mkdir -p tmp
+
       - name: Run Go code blocks validation
-        run: python3 scripts/validate_go_code_blocks.py --output go_code_blocks_report.md --verbose
+        run: python3 scripts/validate_go_code_blocks.py --output tmp/go_code_blocks_report.md --verbose
 
       - name: Upload Go code blocks report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: go-code-blocks-validation-report
-          path: go_code_blocks_report.md
+          path: tmp/go_code_blocks_report.md
           if-no-files-found: ignore
 
       - name: Run Go signature consistency validation
-        run: python3 scripts/validate_go_spec_signature_consistency.py --output signature_consistency_report.txt --verbose
+        run: python3 scripts/validate_go_spec_signature_consistency.py --output tmp/signature_consistency_report.txt --verbose
 
       - name: Upload signature consistency report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: signature-consistency-report
-          path: signature_consistency_report.txt
+          path: tmp/signature_consistency_report.txt
           if-no-files-found: ignore
 
       - name: Run heading numbering validation
-        run: python3 scripts/validate_heading_numbering.py --output heading_numbering_report.txt --verbose
+        run: python3 scripts/validate_heading_numbering.py --output tmp/heading_numbering_report.txt --verbose
 
       - name: Upload heading numbering report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: heading-numbering-validation-report
-          path: heading_numbering_report.txt
+          path: tmp/heading_numbering_report.txt
           if-no-files-found: ignore
 
       - name: Run Go definitions index validation
-        run: python3 scripts/validate_api_go_defs_index.py --output go_defs_index_report.txt --verbose
+        run: python3 scripts/validate_api_go_defs_index.py --output tmp/go_defs_index_report.txt --verbose
 
       - name: Upload Go definitions index report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: go-definitions-index-report
-          path: go_defs_index_report.txt
+          path: tmp/go_defs_index_report.txt
           if-no-files-found: ignore
 
       - name: Run requirement reference validation
-        run: python3 scripts/validate_req_references.py --output req_references_report.txt --verbose
+        run: python3 scripts/validate_req_references.py --output tmp/req_references_report.txt --verbose
 
       - name: Upload requirement reference report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: requirement-reference-report
-          path: req_references_report.txt
+          path: tmp/req_references_report.txt
           if-no-files-found: ignore
 
       - name: Run feature coverage audit
-        run: python3 scripts/audit_feature_coverage.py --output feature_coverage_report.txt --verbose
+        run: python3 scripts/audit_feature_coverage.py --output tmp/feature_coverage_report.txt --verbose
 
       - name: Upload feature coverage report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: feature-coverage-report
-          path: feature_coverage_report.txt
+          path: tmp/feature_coverage_report.txt
           if-no-files-found: ignore
 
       - name: Run requirements coverage audit
-        run: python3 scripts/audit_requirements_coverage.py --output requirements_coverage_report.txt --verbose
+        run: python3 scripts/audit_requirements_coverage.py --output tmp/requirements_coverage_report.txt --verbose
 
       - name: Upload requirements coverage report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: requirements-coverage-report
-          path: requirements_coverage_report.txt
+          path: tmp/requirements_coverage_report.txt
           if-no-files-found: ignore
 
       - name: Run link validation
-        run: python3 scripts/validate_links.py --output validation_report.txt --verbose
+        run: python3 scripts/validate_links.py --output tmp/validation_report.txt --verbose
 
       - name: Upload link validation report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: link-validation-report
-          path: validation_report.txt
+          path: tmp/validation_report.txt
           if-no-files-found: ignore
 
       - name: Run markdown linting
         if: always()
-        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md"
+        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md" "#tmp/**"

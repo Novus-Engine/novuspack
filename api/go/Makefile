@@ -11,11 +11,11 @@ ifneq ($(MAKE),$(SYSTEM_MAKE))
   override MAKE := $(SYSTEM_MAKE)
 endif
 
-.PHONY: test bdd bdd-ci bdd-domain ci tidy coverage coverage-html coverage-report validate-go-spec-references apply-go-spec-references
+.PHONY: test bdd bdd-ci bdd-domain ci tidy go-fmt coverage coverage-html coverage-report validate-go-spec-references apply-go-spec-references
 
 BDD_TAGS ?= '~@skip && ~@wip'
 BDD_DOMAIN ?= ''
-BDD_OUTPUT_DIR ?= ../../../tmp
+BDD_OUTPUT_DIR ?= ../../tmp
 BDD_OUTPUT_FILE ?= $(BDD_OUTPUT_DIR)/bdd_test_output_$(shell date +%Y%m%d_%H%M%S).txt
 
 # Tidy dependencies - must use bdd build tag to preserve BDD dependencies
@@ -23,6 +23,12 @@ tidy:
 	@echo "Running go mod tidy with bdd build tag..."
 	@GOFLAGS=-tags=bdd go mod tidy
 	@echo "Dependencies tidied successfully."
+
+# Format Go source files
+go-fmt:
+	@echo "Running go fmt..."
+	@go fmt ./...
+	@echo "Formatting complete."
 
 # Run all unit tests
 # Set GOCACHE to a writable location if the default cache is not writable
@@ -132,8 +138,7 @@ lint:
 	@go vet ./...
 	@echo ""
 	@echo "Running golangci-lint..."
-	@golangci-lint run --exclude-dir=_bdd ./...
-	@golangci-lint run --build-tags=bdd ./...
+	@golangci-lint run ./...
 
 # Go signature validation - validates Go signatures in implementation against tech specs
 # NOTE: This target must be kept in sync with .github/workflows/docs-check.yml.
