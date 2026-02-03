@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 """Test script for _go_code_utils normalization logic."""
 
-import sys
-from pathlib import Path
-
-# Add scripts directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from lib._go_code_utils import (  # noqa: E402
-    normalize_go_signature, normalize_generic_name, extract_receiver_type,
-    parse_go_def_signature,
-    find_go_code_blocks, is_in_go_code_block, is_example_code,
+from lib._go_code_utils import (
+    extract_receiver_type,
+    find_go_code_blocks,
+    is_continuation_line,
+    is_definition_start_line,
+    is_example_code,
     is_example_signature_name,
-    is_definition_start_line, is_continuation_line, is_signature_only_code_block
+    is_in_go_code_block,
+    is_signature_only_code_block,
+    normalize_generic_name,
+    normalize_go_signature,
+    parse_go_def_signature,
 )
+
+
+def _check(condition: bool, message: str = "check failed") -> None:
+    """Raise AssertionError if condition is false (avoids assert for Bandit B101)."""
+    if not condition:
+        raise AssertionError(message)
 
 
 def test_normalize_generic_name():
@@ -491,11 +497,11 @@ var y = 1
     status = "✓" if not result else "✗"
     print(f"  {status} type + var -> {result} (expected False)")
     # Definition start line detection
-    assert is_definition_start_line("type SymlinkConvertOptions struct {")
-    assert is_definition_start_line("func (p *Package) Foo() error")
-    assert not is_definition_start_line("    PrimaryPath Option[string]")
-    assert is_continuation_line("    PrimaryPath Option[string]")
-    assert is_continuation_line("}")
+    _check(is_definition_start_line("type SymlinkConvertOptions struct {"))
+    _check(is_definition_start_line("func (p *Package) Foo() error"))
+    _check(not is_definition_start_line("    PrimaryPath Option[string]"))
+    _check(is_continuation_line("    PrimaryPath Option[string]"))
+    _check(is_continuation_line("}"))
     print("  ✓ is_definition_start_line / is_continuation_line edge cases")
     print()
 

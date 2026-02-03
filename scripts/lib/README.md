@@ -4,6 +4,7 @@
 - [2. Shared Utilities](#2-shared-utilities)
   - [2.1 Go Code Utils Module](#21-go-code-utils-module)
   - [2.2 Validation Utils Module](#22-validation-utils-module)
+  - [2.3 Heading Numbering Module](#23-heading-numbering-module)
 - [3. Go Definitions Index Subsystem](#3-go-definitions-index-subsystem)
 - [4. Requirements Coverage Audit Subsystem](#4-requirements-coverage-audit-subsystem)
 - [5. Tests](#5-tests)
@@ -50,10 +51,11 @@ Used by:
 Shared utilities for validation scripts, including output formatting, error reporting, and common helpers.
 
 Location: [`scripts/lib/_validation_utils.py`](../lib/_validation_utils.py).
+Implementation lives in [`scripts/lib/validation/`](../lib/validation/) (`_core`, `_output`, `_fs`, `_markdown`); `_validation_utils` re-exports from lib.validation for backward compatibility.
 
 Core functionality:
 
-- `OutputBuilder` - Class for building formatted validation output.
+- `OutputBuilder` - Class for building formatted validation output; use `add_success_message()`, `add_failure_message()`, or `add_warnings_only_message()` for the final message (success, errors, or warnings-only).
 - `ValidationIssue` - Unified class for representing validation errors and warnings.
 - `get_workspace_root()` - Find repository root directory.
 - `find_markdown_files()` - Find markdown files in specified paths.
@@ -91,6 +93,20 @@ Used by:
 - [`scripts/validate_heading_numbering.py`](../validate_heading_numbering.py)
 - [`scripts/validate_links.py`](../validate_links.py)
 - [`scripts/validate_req_references.py`](../validate_req_references.py)
+
+### 2.3 Heading Numbering Module
+
+Modules used by `validate_heading_numbering.py` for heading structure and numbering checks.
+
+Location: [`scripts/lib/heading_numbering/`](../lib/heading_numbering/).
+
+Core functionality:
+
+- **\_checks.py** – Check functions: `check_organizational_headings`, `check_heading_capitalization`, `check_h2_period_consistency`, `check_duplicate_headings`, `check_excessive_numbering`, `check_single_word_headings`.
+
+Used by:
+
+- [`scripts/validate_heading_numbering.py`](../validate_heading_numbering.py)
 
 ## 3. Go Definitions Index Subsystem
 

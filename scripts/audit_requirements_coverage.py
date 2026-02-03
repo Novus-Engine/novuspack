@@ -125,7 +125,8 @@ def _run_index_ref_check(
     output.add_blank_line("error")
     for req_file, line_num, reference in index_ref_errors:
         error_msg = format_issue_message(
-            "error", "Index file ref", req_file, line_num, reference, no_color
+            "error", "Index file ref", req_file,
+            line_num=line_num, message=reference, no_color=no_color
         )
         output.add_error_line(error_msg)
     output.add_blank_line("error")
@@ -165,7 +166,8 @@ def _run_file_level_coverage(
 
         if not count:
             error_msg = format_issue_message(
-                "error", "Spec without Req", spec_basename, None, "NO REQUIREMENTS", no_color
+                "error", "Spec without Req", spec_basename,
+                message="NO REQUIREMENTS", no_color=no_color
             )
             output.add_error_line(error_msg)
             missing_specs.append(spec_basename)
@@ -176,7 +178,8 @@ def _run_file_level_coverage(
         output.add_errors_header()
         for spec_basename in missing_specs:
             error_msg = format_issue_message(
-                "error", "Spec without Req", spec_basename, None, "NO REQUIREMENTS", no_color
+                "error", "Spec without Req", spec_basename,
+                message="NO REQUIREMENTS", no_color=no_color
             )
             output.add_error_line(error_msg)
 
@@ -214,8 +217,9 @@ def _run_heading_coverage(
         except (IOError, OSError) as e:
             if args.verbose:
                 output.add_verbose_line(f"  Warning: Could not read {spec_basename}: {e}")
-            issues.append(ValidationIssue(
-                "file_read_error", spec_relative_path, 0, 0, f"Could not read file: {e}",
+            issues.append(ValidationIssue.create(
+                "file_read_error", spec_relative_path, 0, 0,
+                message=f"Could not read file: {e}",
                 severity='error'
             ))
             continue
@@ -224,17 +228,19 @@ def _run_heading_coverage(
                 output.add_verbose_line(
                     f"  Warning: Could not decode {spec_basename} (encoding issue): {e}"
                 )
-            issues.append(ValidationIssue(
+            issues.append(ValidationIssue.create(
                 "file_encoding_error", spec_relative_path, 0, 0,
-                f"Could not decode file (encoding issue): {e}", severity='error'
+                message=f"Could not decode file (encoding issue): {e}",
+                severity='error'
             ))
             continue
         except _SCRIPT_ERROR_EXCEPTIONS as e:
             if args.verbose:
                 output.add_verbose_line(f"  Warning: Unexpected error reading {spec_basename}: {e}")
-            issues.append(ValidationIssue(
+            issues.append(ValidationIssue.create(
                 "unexpected_error", spec_relative_path, 0, 0,
-                f"Unexpected error reading file: {e}", severity='error'
+                message=f"Unexpected error reading file: {e}",
+                severity='error'
             ))
             continue
 
@@ -270,14 +276,21 @@ def _process_one_heading(
         )
     except _SCRIPT_ERROR_EXCEPTIONS as e:
         error_msg = format_issue_message(
-            "error", "Analysis error", ctx.spec_relative_path, heading.line_num,
-            f"Failed to extract section content for heading '{heading.heading_text}': {str(e)}",
-            None, no_color
+            "error", "Analysis error", ctx.spec_relative_path,
+            line_num=heading.line_num,
+            message=(
+                f"Failed to extract section content for heading "
+                f"'{heading.heading_text}': {str(e)}"
+            ),
+            no_color=no_color
         )
         output.add_error_line(error_msg)
-        issues.append(ValidationIssue(
+        issues.append(ValidationIssue.create(
             "analysis_error", Path(ctx.spec_relative_path), heading.line_num, heading.line_num,
-            f"Failed to extract section content for heading '{heading.heading_text}': {str(e)}",
+            message=(
+                f"Failed to extract section content for heading "
+                f"'{heading.heading_text}': {str(e)}"
+            ),
             severity='error',
             heading_level=heading.heading_level,
             heading_text=heading.heading_text,
@@ -293,19 +306,25 @@ def _process_one_heading(
             heading.heading_level,
             ctx.headings_for_hierarchy,
             ctx.hierarchy,
-            MAX_ORGANIZATIONAL_PROSE_LINES
+            max_prose_lines=MAX_ORGANIZATIONAL_PROSE_LINES
         )
     except (ValueError, IndexError, KeyError) as e:
         error_msg = format_issue_message(
-            "error", "Analysis error", ctx.spec_relative_path, heading.line_num,
-            f"Failed to check if organizational for heading '{heading.heading_text}': {str(e)}",
-            None,
-            no_color
+            "error", "Analysis error", ctx.spec_relative_path,
+            line_num=heading.line_num,
+            message=(
+                f"Failed to check if organizational for heading "
+                f"'{heading.heading_text}': {str(e)}"
+            ),
+            no_color=no_color
         )
         output.add_error_line(error_msg)
-        issues.append(ValidationIssue(
+        issues.append(ValidationIssue.create(
             "analysis_error", Path(ctx.spec_relative_path), heading.line_num, heading.line_num,
-            f"Failed to check if organizational for heading '{heading.heading_text}': {str(e)}",
+            message=(
+                f"Failed to check if organizational for heading "
+                f"'{heading.heading_text}': {str(e)}"
+            ),
             severity='error',
             heading_level=heading.heading_level,
             heading_text=heading.heading_text,
@@ -314,18 +333,21 @@ def _process_one_heading(
         return (issues, excluded)
     except _SCRIPT_ERROR_EXCEPTIONS as e:
         error_msg = format_issue_message(
-            "error", "Analysis error", ctx.spec_relative_path, heading.line_num,
-            (
+            "error", "Analysis error", ctx.spec_relative_path,
+            line_num=heading.line_num,
+            message=(
                 "Unexpected error checking organizational heading "
                 f"'{heading.heading_text}': {str(e)}"
             ),
-            None,
-            no_color
+            no_color=no_color
         )
         output.add_error_line(error_msg)
-        issues.append(ValidationIssue(
+        issues.append(ValidationIssue.create(
             "analysis_error", Path(ctx.spec_relative_path), heading.line_num, heading.line_num,
-            f"Unexpected error checking organizational heading '{heading.heading_text}': {str(e)}",
+            message=(
+                f"Unexpected error checking organizational heading "
+                f"'{heading.heading_text}': {str(e)}"
+            ),
             severity='error',
             heading_level=heading.heading_level,
             heading_text=heading.heading_text,
@@ -347,10 +369,11 @@ def _process_one_heading(
             content_note = (
                 " (no direct content)" if org_result['is_empty'] else " (minor content)"
             )
-            issues.append(ValidationIssue(
+            issues.append(ValidationIssue.create(
                 "organizational_heading", Path(ctx.spec_relative_path),
                 heading.line_num, heading.line_num,
-                f"{heading.heading_text} (#{heading.anchor}){content_note}", severity='warning',
+                message=f"{heading.heading_text} (#{heading.anchor}){content_note}",
+                severity='warning',
                 heading_level=heading.heading_level,
                 heading_text=heading.heading_text,
                 anchor=heading.anchor,
@@ -369,13 +392,15 @@ def _process_one_heading(
         )
     except _SCRIPT_ERROR_EXCEPTIONS as e:
         error_msg = format_issue_message(
-            "error", "Analysis error", ctx.spec_relative_path, heading.line_num,
-            f"Failed to classify heading '{heading.heading_text}': {str(e)}", None, no_color
+            "error", "Analysis error", ctx.spec_relative_path,
+            line_num=heading.line_num,
+            message=f"Failed to classify heading '{heading.heading_text}': {str(e)}",
+            no_color=no_color
         )
         output.add_error_line(error_msg)
-        issues.append(ValidationIssue(
+        issues.append(ValidationIssue.create(
             "analysis_error", Path(ctx.spec_relative_path), heading.line_num, heading.line_num,
-            f"Failed to extract section content for heading '{heading.heading_text}': {str(e)}",
+            message=f"Failed to classify heading '{heading.heading_text}': {str(e)}",
             severity='error',
             heading_level=heading.heading_level,
             heading_text=heading.heading_text,
@@ -410,10 +435,10 @@ def _process_one_heading(
     ):
         return (issues, excluded)
     severity = classification['severity_if_missing']
-    issues.append(ValidationIssue(
+    issues.append(ValidationIssue.create(
         "missing_requirement", Path(ctx.spec_relative_path),
         heading.line_num, heading.line_num,
-        f"{heading.heading_text} (#{heading.anchor}) - {classification['reason']}",
+        message=f"{heading.heading_text} (#{heading.anchor}) - {classification['reason']}",
         severity=severity,
         heading_level=heading.heading_level,
         heading_text=heading.heading_text,
@@ -519,9 +544,10 @@ def _handle_classification_result(
 
     if kind == 'architectural':
         return (
-            ValidationIssue(
+            ValidationIssue.create(
                 "architectural_heading", spec_path, line_num, line_num,
-                f"{heading_text} (architectural: {reason})", severity='warning',
+                message=f"{heading_text} (architectural: {reason})",
+                severity='warning',
                 heading=heading_text, heading_level=heading_level, anchor=anchor, reason=reason
             ),
             excluded_pairs,
@@ -529,9 +555,10 @@ def _handle_classification_result(
         )
     if kind == 'signature_only':
         return (
-            ValidationIssue(
+            ValidationIssue.create(
                 "signature_only_heading", spec_path, line_num, line_num,
-                f"{heading_text} (#{anchor}) - {reason}", severity='warning',
+                message=f"{heading_text} (#{anchor}) - {reason}",
+                severity='warning',
                 heading_level=heading_level, heading_text=heading_text, anchor=anchor, reason=reason
             ),
             excluded_pairs,
@@ -539,9 +566,10 @@ def _handle_classification_result(
         )
     if kind == 'example_only':
         return (
-            ValidationIssue(
+            ValidationIssue.create(
                 "example_only_heading", spec_path, line_num, line_num,
-                f"{heading_text} (#{anchor}) - {reason}", severity='warning',
+                message=f"{heading_text} (#{anchor}) - {reason}",
+                severity='warning',
                 heading_level=heading_level, heading_text=heading_text, anchor=anchor, reason=reason
             ),
             excluded_pairs,
@@ -549,9 +577,10 @@ def _handle_classification_result(
         )
     if kind == 'non_prose':
         return (
-            ValidationIssue(
+            ValidationIssue.create(
                 "non_prose_heading", spec_path, line_num, line_num,
-                f"{heading_text} (#{anchor}) - {reason}", severity='warning',
+                message=f"{heading_text} (#{anchor}) - {reason}",
+                severity='warning',
                 heading_level=heading_level, heading_text=heading_text, anchor=anchor, reason=reason
             ),
             excluded_pairs,
@@ -590,11 +619,13 @@ def _run_requirement_refs_to_excluded(
                 req_path, file_cache
             ):
                 if (spec_basename, anchor) in excluded_headings_set:
-                    issues.append(ValidationIssue(
+                    issues.append(ValidationIssue.create(
                         "requirement_references_excluded_heading", Path(req_relative), line_num,
                         line_num,
-                        f"references excluded heading {spec_basename}#{anchor} - "
-                        "requirement may be out of date or overly implementation-specific",
+                        message=(
+                            f"references excluded heading {spec_basename}#{anchor} - "
+                            "requirement may be out of date or overly implementation-specific"
+                        ),
                         severity='warning', spec_basename=spec_basename, anchor=anchor
                     ))
     except _SCRIPT_ERROR_EXCEPTIONS as e:
@@ -756,9 +787,8 @@ def _emit_issues_and_summary(
         )
 
     if _has_warnings_only(counters) and total_headings > 0:
-        output.add_line(
-            "Note: Warnings are shown above, but they do not cause the audit to fail.",
-            section="final_message"
+        output.add_warnings_only_message(
+            message="Note: Warnings are shown above, but they do not cause the audit to fail.",
         )
     elif total_headings > 0:
         output.add_success_message("All H2+ headings have requirement coverage!")

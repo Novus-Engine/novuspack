@@ -23,52 +23,174 @@ from lib.go_defs_index._go_defs_index_scoring_text import (
 from lib.go_defs_index._go_defs_index_shared import map_implementation_to_interface
 
 
-def score_file_patterns(ctx: ScoringContext) -> Tuple[float, List[str]]:
-    file_patterns = {
-        "api_core.md": [
+_FILE_SECTION_PATTERNS = [
+    ("file_mgmt_error", ["Error Types"]),
+    ("file_mgmt_compression", ["Compression Types", "FileEntry Types"]),
+    (
+        "file_mgmt",
+        [
+            "FileEntry Types",
+            "FileEntry Query Methods",
+            "FileEntry Data Methods",
+            "FileEntry Temp File Methods",
+            "FileEntry Serialization Methods",
+            "FileEntry Path Methods",
+            "FileEntry Transformation Methods",
+            "FileEntry Helper Functions",
+            "Tag Methods",
+        ],
+    ),
+    (
+        "core",
+        [
             "Package Interface Types",
-            "PackageReader Interface Types",
-            "PackageWriter Interface Types",
+            "Package Lifecycle Methods",
+            "Package File Management Methods",
+            "Package Information and Queries Methods",
+            "Package Comment Methods",
+            "Package Identity Methods",
+            "Package Special File Methods",
+            "Package Path Metadata Methods",
+            "Package Symlink Methods",
+            "Package Metadata-Only Methods",
+            "Package Info Methods",
+            "Package Metadata Validation Methods",
+            "Package Metadata Internal Methods",
+            "Package Compression Methods",
+            "Package Path and Configuration Methods",
+            "Package File Encryption Methods",
+            "Package Signature Management Methods",
+            "Package Write Methods",
+            "Package Other Methods",
+            "Package Helper Functions",
             "Error Types",
         ],
-        "api_basic_operations.md": [
+    ),
+    (
+        "basic_operation",
+        [
             "Package Interface Types",
-            "Package Methods",
+            "Package Lifecycle Methods",
+            "Package File Management Methods",
+            "Package Information and Queries Methods",
             "Package Helper Functions",
         ],
-        "package_file_format.md": [
+    ),
+    (
+        "basic_operations",
+        [
             "Package Interface Types",
-            "Package Methods",
+            "Package Lifecycle Methods",
+            "Package File Management Methods",
+            "Package Information and Queries Methods",
             "Package Helper Functions",
         ],
-        "api_file_management.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_index.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_file_entry.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_addition.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_extraction.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_removal.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_updates.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_queries.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_file_mgmt_compression.md": ["FileEntry Types", "FileEntry Methods"],
-        "api_metadata.md": ["Package Interface Types", "Package Methods", "Metadata Types"],
-        "api_package_compression.md": [
+    ),
+    (
+        "file_format",
+        [
             "Package Interface Types",
-            "Package Methods",
-            "Compression Types",
+            "Package Information and Queries Methods",
+            "Package File Management Methods",
         ],
-        "api_streaming.md": ["Streaming and Buffer Types"],
-        "api_security.md": ["Encryption and Security Types"],
-        "api_generics.md": ["Generic Types"],
-        "api_writing.md": ["PackageWriter Interface Types", "PackageWriter Methods"],
-        "api_deduplication.md": ["Deduplication Types"],
-        "api_signatures.md": ["Signature Types"],
-        "file_type_system.md": ["FileType System Types"],
-    }
-    if ctx.definition.file not in file_patterns:
+    ),
+    ("compression", ["Compression Types", "Compression Methods", "Compression Helper Functions"]),
+    (
+        "streaming",
+        [
+            "Streaming and Buffer Types",
+            "Streaming and Buffer Methods",
+            "Streaming and Buffer Helper Functions",
+        ],
+    ),
+    (
+        "security",
+        [
+            "Encryption and Security Types",
+            "Encryption and Security Methods",
+            "Encryption and Security Helper Functions",
+        ],
+    ),
+    (
+        "encryption",
+        [
+            "Encryption and Security Types",
+            "Encryption and Security Methods",
+            "Encryption and Security Helper Functions",
+        ],
+    ),
+    ("signature", ["Signature Types", "Signature Methods", "Signature Helper Functions"]),
+    (
+        "metadata",
+        [
+            "Package Metadata Types",
+            "Package Comment Methods",
+            "Package Identity Methods",
+            "Package Special File Methods",
+            "Package Path Metadata Methods",
+            "Package Symlink Methods",
+            "Package Metadata-Only Methods",
+            "Package Info Methods",
+            "Package Metadata Validation Methods",
+            "Package Metadata Internal Methods",
+            "Package Metadata Type Methods",
+            "Package Metadata Helper Functions",
+            "Package Interface Types",
+        ],
+    ),
+    (
+        "deduplication",
+        [
+            "Package File Management Methods",
+            "Package Information and Queries Methods",
+        ],
+    ),
+    ("generic", ["Generic Types", "Generic Methods", "Generic Helper Functions"]),
+    (
+        "writing",
+        [
+            "Package Write Methods",
+            "Package Helper Functions",
+        ],
+    ),
+    (
+        "file_type",
+        ["FileType System Types", "FileType System Methods", "FileType System Helper Functions"],
+    ),
+]
+
+
+def _file_tokens(file_name: str) -> List[str]:
+    normalized = file_name.lower().replace(".md", "").replace("-", "_")
+    return [token for token in normalized.split("_") if token]
+
+
+def _tokens_contain_sequence(tokens: List[str], pattern_tokens: List[str]) -> bool:
+    if not tokens or not pattern_tokens:
+        return False
+    start_index = 0
+    for token in pattern_tokens:
+        try:
+            found_index = tokens.index(token, start_index)
+        except ValueError:
+            return False
+        start_index = found_index + 1
+    return True
+
+
+def score_file_patterns(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if not ctx.definition.file:
         return 0.0, []
-    for pattern in file_patterns[ctx.definition.file]:
-        if pattern.lower() in ctx.section_lower or ctx.section_lower in pattern.lower():
-            return 0.15, [f"File pattern match ({ctx.definition.file}): +15%"]
+    section_leaf = ctx.section_lower.split(">")[-1].strip()
+    file_tokens = _file_tokens(ctx.definition.file)
+    for pattern, section_keywords in _FILE_SECTION_PATTERNS:
+        pattern_tokens = _file_tokens(pattern)
+        if not _tokens_contain_sequence(file_tokens, pattern_tokens):
+            continue
+        for section_keyword in section_keywords:
+            keyword_lower = section_keyword.lower()
+            if keyword_lower in section_leaf or section_leaf in keyword_lower:
+                return 0.15, [f"File pattern match ({ctx.definition.file}): +15%"]
     return 0.0, []
 
 
@@ -182,7 +304,7 @@ def score_comment_domain_match(ctx: ScoringContext) -> Tuple[float, List[str]]:
         "creation": ["create", "creation"],
         "generic": ["generic"],
         "filetype": ["filetype"],
-        "writing": ["write", "writing", "packagewriter"],
+        "writing": ["write", "writing"],
     }
     score = 0.0
     reasoning: List[str] = []

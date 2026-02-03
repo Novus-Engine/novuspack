@@ -28,32 +28,32 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import List, NamedTuple
 
-scripts_dir = Path(__file__).parent
-lib_dir = scripts_dir / "lib"
+from lib._validation_utils import format_issue_message
 
-# Import shared utilities
-if str(scripts_dir) not in sys.path:
-    sys.path.insert(0, str(scripts_dir))
 
-from lib._validation_utils import (  # noqa: E402  # pylint: disable=wrong-import-position
-    format_issue_message,
-)
+class _CorrectionData(NamedTuple):
+    """Data for a single heading correction."""
+
+    filepath: str
+    line_num: int
+    current_number: str
+    corrected_number: str
+    heading_text: str
+    level: int
 
 
 class Correction:
     """Represents a single heading correction."""
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
-        self, filepath, line_num, current_number, corrected_number, heading_text, level
-    ):
-        self.filepath = filepath
-        self.line_num = line_num
-        self.current_number = current_number
-        self.corrected_number = corrected_number
-        self.heading_text = heading_text
-        self.level = level
+    def __init__(self, data: _CorrectionData):
+        self.filepath = data.filepath
+        self.line_num = data.line_num
+        self.current_number = data.current_number
+        self.corrected_number = data.corrected_number
+        self.heading_text = data.heading_text
+        self.level = data.level
 
     def __repr__(self):
         return (f"Correction(filepath={self.filepath!r}, line={self.line_num}, "
@@ -102,24 +102,22 @@ class CorrectionParser:
                 level = len(heading_prefix)
 
                 if self.current_file:
-                    correction = Correction(
+                    correction = Correction(_CorrectionData(
                         self.current_file,
                         line_num,
                         current_number,
                         corrected_number,
                         heading_text,
-                        level
-                    )
+                        level,
+                    ))
                     self.corrections.append(correction)
                 else:
                     warning_msg = format_issue_message(
                         "warning",
                         "Correction without file context",
                         "unknown",
-                        None,
-                        line.strip(),
-                        None,
-                        False
+                        message=line.strip(),
+                        no_color=False,
                     )
                     print(warning_msg, file=sys.stderr)
 
@@ -164,10 +162,7 @@ class CorrectionApplier:
                 "error",
                 "File not found",
                 str(filepath),
-                None,
-                None,
-                None,
-                False
+                no_color=False,
             )
             print(error_msg, file=sys.stderr)
             self.failed_count += len(corrections)
@@ -197,11 +192,12 @@ class CorrectionApplier:
                     "error",
                     "Line out of range",
                     str(filepath),
-                    correction.line_num,
-                    (f"Line number {correction.line_num} is out of range "
-                     f"(file has {len(lines)} lines)"),
-                    None,
-                    False
+                    line_num=correction.line_num,
+                    message=(
+                        f"Line number {correction.line_num} is out of range "
+                        f"(file has {len(lines)} lines)"
+                    ),
+                    no_color=False,
                 )
                 print(error_msg, file=sys.stderr)
                 self.failed_count += 1
@@ -227,10 +223,9 @@ class CorrectionApplier:
                     "warning",
                     "Could not apply correction",
                     str(filepath),
-                    correction.line_num,
-                    f"Line: {original_line.rstrip()}",
-                    None,
-                    False
+                    line_num=correction.line_num,
+                    message=f"Line: {original_line.rstrip()}",
+                    no_color=False,
                 )
                 print(warning_msg, file=sys.stderr)
                 self.failed_count += 1

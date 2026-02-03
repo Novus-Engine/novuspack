@@ -15,6 +15,9 @@ from lib._go_code_utils import normalize_generic_name
 from lib.go_defs_index._go_defs_index_models import DetectedDefinition, IndexEntry
 from lib._index_utils import IndexSection
 from lib.go_defs_index._go_defs_index_scoring import calculate_confidence_score
+from lib.go_defs_index._go_defs_index_matching_helpers import (
+    adjust_related_section_for_function,
+)
 from lib.go_defs_index._go_defs_index_shared import map_implementation_to_interface
 from lib._validation_utils import OutputBuilder
 
@@ -37,8 +40,9 @@ def _expected_kind_for_definition(defn: DetectedDefinition) -> str:
 
 
 def _definition_sort_key(defn: DetectedDefinition) -> Tuple[int, str]:
-    kind_order = {"type": 0, "method": 1, "func": 2}
-    return (kind_order.get(defn.kind, 99), defn.name.lower())
+    if defn.kind in ("method", "func"):
+        return (1 if defn.kind == "method" else 2, defn.name.lower())
+    return (0, defn.name.lower())
 
 
 def _populate_section_valid_types(index_sections: List[IndexSection]) -> None:
@@ -60,7 +64,7 @@ def _populate_section_valid_types(index_sections: List[IndexSection]) -> None:
             sec.valid_types = set()
 
     for sec in index_sections:
-        if sec.kind != "method":
+        if sec.kind not in ("method", "func"):
             continue
         if sec.parent_heading and sec.parent_heading.kind == "type":
             sec.valid_types = set(sec.parent_heading.valid_types)
@@ -68,56 +72,160 @@ def _populate_section_valid_types(index_sections: List[IndexSection]) -> None:
 
 _METHOD_CATEGORY_RULES = {
     "Package": [
-        ("Package Signature Methods", ["signature", "sign", "validatesignature"]),
-        ("Package Lifecycle Methods", ["open", "close", "isopen", "isreadonly"]),
-        ("Package File Management Methods", ["addfile", "removefile", "extract"]),
+        ("Package Comment Methods", ["comment"]),
+        ("Package Identity Methods", ["appid", "vendorid", "identity", "packageidentity"]),
+        (
+            "Package Special File Methods",
+            [
+                "indexfile",
+                "manifestfile",
+                "metadatafile",
+                "signaturefile",
+                "specialfile",
+                "specialmetadata",
+            ],
+        ),
+        (
+            "Package Path Metadata Methods",
+            [
+                "pathmetadata",
+                "directorymetadata",
+                "filepathassociation",
+                "pathconflicts",
+                "pathstats",
+                "pathtree",
+                "pathfiles",
+                "filesinpath",
+                "destpath",
+                "targetexists",
+            ],
+        ),
+        ("Package Symlink Methods", ["symlink"]),
+        ("Package Metadata-Only Methods", ["metadataonly"]),
+        ("Package Info Methods", ["packageinfo"]),
+        (
+            "Package Metadata Validation Methods",
+            [
+                "validatemetadataonly",
+                "validatepathmetadata",
+                "validatespecial",
+                "validatesymlink",
+                "validatepathwithin",
+            ],
+        ),
+        ("Package Metadata Internal Methods", ["load", "save", "updatefilepathassociations"]),
+        (
+            "Package File Encryption Methods",
+            ["encryptfile", "decryptfile", "validatefileencryption", "fileencryptioninfo"],
+        ),
+        ("Package Write Methods", ["safewrite", "fastwrite", "write"]),
+        ("Package Signature Management Methods", ["signature", "sign", "validatesignature"]),
+        (
+            "Package Lifecycle Methods",
+            ["open", "close", "validate", "integrity", "defragment"],
+        ),
+        (
+            "Package File Management Methods",
+            ["addfile", "removefile", "extract", "updatefile", "addfilepath", "removefilepath"],
+        ),
+        ("Package Compression Methods", ["compress", "compressed", "compression", "decompress"]),
         (
             "Package Information and Queries Methods",
-            ["getinfo", "getmetadata", "listfiles", "fileexists", "getfile"],
+            [
+                "getinfo",
+                "getmetadata",
+                "listfiles",
+                "fileexists",
+                "getfile",
+                "getpath",
+                "getpathstats",
+                "getpathmetadata",
+                "isopen",
+                "isreadonly",
+                "securitystatus",
+                "multipath",
+                "list",
+                "find",
+                "has",
+            ],
         ),
-        ("Package Metadata Methods", ["comment", "appid", "vendorid", "identity"]),
-        ("Package Compression Methods", ["compress", "decompress"]),
         (
             "Package Path and Configuration Methods",
             ["targetpath", "extractroot", "sessionbase"],
         ),
     ],
     "FileEntry": [
-        (
-            "FileEntry Data Management Methods",
-            ["loaddata", "unloaddata", "setdata", "getdata"],
-        ),
+        ("FileEntry Data Methods", ["getdata", "setdata", "loaddata", "unloaddata", "data"]),
+        ("FileEntry Temp File Methods", ["tempfile", "temp"]),
+        ("FileEntry Serialization Methods", ["marshal", "writedata", "writemeta", "writeto"]),
+        ("FileEntry Path Methods", ["path", "symlink", "associate", "resolve"]),
         (
             "FileEntry Transformation Methods",
-            ["compress", "decompress", "encrypt", "decrypt", "transform"],
+            [
+                "compress",
+                "decompress",
+                "encrypt",
+                "decrypt",
+                "transform",
+                "process",
+                "pipeline",
+                "set",
+                "unset",
+                "current",
+                "original",
+                "processingstate",
+                "validate",
+                "cleanup",
+                "resume",
+                "execute",
+                "copy",
+            ],
         ),
-        ("FileEntry Tag Management Methods", ["tag", "tags"]),
-        (
-            "FileEntry Path and Metadata Methods",
-            ["path", "metadata", "associate"],
-        ),
-        ("FileEntry Source Management Methods", ["source", "current", "original"]),
-        ("FileEntry Marshaling Methods", ["marshal", "unmarshal"]),
-        (
-            "FileEntry Query Methods",
-            ["is", "has", "get", "compressed", "encrypted"],
-        ),
+        ("FileEntry Query Methods", ["get", "has", "is"]),
     ],
-    "PackageReader": [
-        ("PackageReader Read Operations", ["read", "readfile"]),
-        ("PackageReader Query Operations", ["list", "getinfo", "getmetadata", "query"]),
-    ],
-    "PackageWriter": [
-        ("PackageWriter Write Operations", ["write", "writedata", "writefile"]),
+    "Tag": [
+        ("Tag Methods", ["get", "set"]),
     ],
 }
 
 _METHOD_CATEGORY_DEFAULTS = {
     "Package": "Package Other Methods",
-    "FileEntry": "FileEntry Other Methods",
-    "PackageReader": "PackageReader Other Methods",
-    "PackageWriter": "PackageWriter Other Methods",
+    "FileEntry": "FileEntry Query Methods",
+    "Tag": "Tag Methods",
 }
+
+_PACKAGE_METHOD_OVERRIDE_EXACT = {
+    "addpathtoexistingentry": "Package File Management Methods",
+    "isopen": "Package Information and Queries Methods",
+    "loadpathmetadata": "Package Metadata Internal Methods",
+    "loadspecialmetadatafiles": "Package Metadata Internal Methods",
+    "loadsymlinkmetadatafile": "Package Symlink Methods",
+    "savepathmetadatafile": "Package Metadata Internal Methods",
+    "savesymlinkmetadatafile": "Package Metadata Internal Methods",
+    "updatefilemetadata": "Package Path Metadata Methods",
+    "validatemetadataonlyintegrity": "Package Metadata Validation Methods",
+    "validatemetadataonlypackage": "Package Metadata Validation Methods",
+    "validatepathmetadata": "Package Metadata Validation Methods",
+    "validatespecialfiles": "Package Metadata Validation Methods",
+    "validatesymlinkpaths": "Package Metadata Validation Methods",
+}
+
+_PACKAGE_METHOD_OVERRIDE_CONTAINS = [
+    ("validatefileencryption", "Package File Encryption Methods"),
+    ("encryptioninfo", "Package File Encryption Methods"),
+    ("compressioninfo", "Package Compression Methods"),
+    ("listcompressedfiles", "Package Compression Methods"),
+    ("bytag", "Package Information and Queries Methods"),
+    ("metadataindex", "Package Compression Methods"),
+    ("multipath", "Package Information and Queries Methods"),
+    ("filepathassociations", "Package Metadata Internal Methods"),
+    ("sessionbase", "Package Path and Configuration Methods"),
+    ("targetpath", "Package Path and Configuration Methods"),
+]
+
+_PACKAGE_METHOD_OVERRIDE_PREFIXES = [
+    ("updatefile", "Package File Management Methods"),
+]
 
 
 def _categorize_by_keywords(
@@ -131,7 +239,50 @@ def _categorize_by_keywords(
     return fallback
 
 
-def categorize_method(method_name: str, receiver_type: str) -> str:
+def _package_category_overrides(
+    method_lower: str,
+) -> Optional[str]:
+    exact_override = _PACKAGE_METHOD_OVERRIDE_EXACT.get(method_lower)
+    if exact_override:
+        return exact_override
+    for token, category in _PACKAGE_METHOD_OVERRIDE_CONTAINS:
+        if token in method_lower:
+            return category
+    for prefix, category in _PACKAGE_METHOD_OVERRIDE_PREFIXES:
+        if method_lower.startswith(prefix) and "pattern" not in method_lower:
+            return category
+    return None
+
+
+def _package_category_from_file(
+    defn: DetectedDefinition,
+    method_lower: str,
+) -> Optional[str]:
+    if not defn.file:
+        return None
+    file_name = defn.file
+    if file_name in (
+        "api_file_mgmt_addition.md",
+        "api_file_mgmt_removal.md",
+        "api_file_mgmt_extraction.md",
+    ):
+        return "Package File Management Methods"
+    if file_name == "api_file_mgmt_queries.md":
+        if "compressed" in method_lower:
+            return "Package Compression Methods"
+        return "Package Information and Queries Methods"
+    if file_name == "api_deduplication.md":
+        return "Package Information and Queries Methods"
+    if file_name == "api_signatures.md":
+        return "Package Signature Management Methods"
+    if file_name == "api_package_compression.md":
+        return "Package Compression Methods"
+    if file_name == "api_security.md" and "signature" in method_lower:
+        return "Package Signature Management Methods"
+    return None
+
+
+def categorize_method(defn: DetectedDefinition, receiver_type: str) -> str:
     """
     Categorize a method into a logical group for sub-subsection placement.
 
@@ -139,11 +290,59 @@ def categorize_method(method_name: str, receiver_type: str) -> str:
     "FileEntry Data Management Methods", etc.
     The category name includes the type prefix.
     """
+    method_name = defn.name.split(".", 1)[1] if "." in defn.name else defn.name
     method_lower = method_name.lower()
 
     if receiver_type == "PathMetadataEntry":
-        # PathMetadataEntry methods are grouped under "Metadata Methods" in the index.
-        return "Metadata Methods"
+        # PathMetadataEntry methods are grouped under Package Path Metadata Methods.
+        return "Package Path Metadata Methods"
+
+    if receiver_type == "Tag":
+        return "Tag Methods"
+
+    if receiver_type == "Package":
+        override_category = _package_category_overrides(method_lower)
+        if override_category:
+            return override_category
+        file_category = _package_category_from_file(defn, method_lower)
+        if file_category:
+            return file_category
+
+    if receiver_type == "FileEntry":
+        if method_lower in {"getdata", "setdata", "loaddata", "unloaddata"}:
+            return "FileEntry Data Methods"
+        if "tempfile" in method_lower:
+            return "FileEntry Temp File Methods"
+        if method_lower.startswith(("marshal", "writedata", "writemeta", "writeto")):
+            return "FileEntry Serialization Methods"
+        if any(
+            token in method_lower
+            for token in ("pathmetadata", "symlink", "path", "associate", "resolve")
+        ):
+            return "FileEntry Path Methods"
+        if method_lower.startswith(("get", "has", "is")):
+            return "FileEntry Query Methods"
+        if method_lower.startswith(
+            (
+                "set",
+                "compress",
+                "decompress",
+                "encrypt",
+                "decrypt",
+                "process",
+                "transform",
+                "resume",
+                "execute",
+                "cleanup",
+                "validate",
+                "copy",
+                "unset",
+            )
+        ) or any(
+            token in method_lower
+            for token in ("pipeline", "current", "original", "processingstate")
+        ):
+            return "FileEntry Transformation Methods"
 
     categories = _METHOD_CATEGORY_RULES.get(receiver_type)
     if not categories:
@@ -170,7 +369,7 @@ def _get_section_by_receiver(
     receiver_type: str,
     type_sections: List[IndexSection],
 ) -> Optional[IndexSection]:
-    receiver = normalize_generic_name(receiver_type).lower()
+    receiver = normalize_generic_name(receiver_type)
     for section in type_sections:
         if receiver in section.expected_entries:
             return section
@@ -199,11 +398,14 @@ def _select_method_section_by_category(
     receiver_type: str,
     candidates: List[IndexSection],
 ) -> Optional[IndexSection]:
-    method_name = defn.name.split(".", 1)[1] if "." in defn.name else defn.name
-    category = categorize_method(method_name, receiver_type)
+    category = categorize_method(defn, receiver_type)
     for section in candidates:
         if section.heading_text == category:
             return section
+    if receiver_type not in _METHOD_CATEGORY_RULES:
+        for section in candidates:
+            if section.heading_text.endswith("Other Type Methods"):
+                return section
     if receiver_type == "Package" and _is_signature_package_method(defn):
         for section in candidates:
             if section.heading_text == "Package Other Methods":
@@ -285,7 +487,7 @@ def _place_type_definitions(
     definitions: List[DetectedDefinition],
     context: PlacementContext,
 ) -> None:
-    for defn in [d for d in definitions if d.kind == "type"]:
+    for defn in [d for d in definitions if d.kind not in ("method", "func")]:
         best_section, best_score, best_reasoning = _best_section_for_definition(
             defn,
             context.type_sections,
@@ -316,30 +518,34 @@ def _place_method_definition(
         _add_unresolved_entry(defn, context.unsorted_methods)
         return
     receiver = _normalize_receiver_type(defn.receiver_type)
-    if receiver in context.unresolved_types:
-        current_section = context.parsed_index.find_section_by_current_entry(defn.name)
-        if current_section and current_section.kind == "method":
-            entry = defn.to_index_entry(current_section.path_label())
-            entry.suggested_section = current_section.path_label()
-            current_section.expected_entries[entry.name] = entry
-            return
-        _add_unresolved_entry(defn, context.unsorted_methods)
-        return
     receiver_section = _get_section_by_receiver(receiver, context.type_sections)
     if not receiver_section:
+        if receiver in context.unresolved_types:
+            current_section = context.parsed_index.find_section_by_current_entry(defn.name)
+            if current_section and current_section.kind == "method":
+                score, reasoning = calculate_confidence_score(
+                    defn,
+                    current_section.path_label(),
+                    context.all_sections,
+                    context.section_valid_types,
+                )
+                defn.confidence_score = score
+                defn.confidence_reasoning = reasoning
+                entry = defn.to_index_entry(current_section.path_label())
+                entry.suggested_section = current_section.path_label()
+                current_section.expected_entries[entry.name] = entry
+                return
         _add_unresolved_entry(defn, context.unsorted_methods)
         return
-    candidates = [
-        child for child in receiver_section.children if child.kind == "method"
-    ]
+    candidates: List[IndexSection] = []
+    for child in receiver_section.children:
+        if child.kind == "method":
+            candidates.append(child)
+        for grandchild in child.children:
+            if grandchild.kind == "method":
+                candidates.append(grandchild)
     if not candidates:
         _add_unresolved_entry(defn, context.unsorted_methods)
-        return
-    category_section = _select_method_section_by_category(defn, receiver, candidates)
-    if category_section is not None:
-        defn.confidence_score = 1.0
-        defn.confidence_reasoning = ["Category match: structure-first placement"]
-        _assign_definition_to_section(defn, category_section)
         return
     best_section, best_score, best_reasoning = _best_section_for_definition(
         defn,
@@ -347,6 +553,15 @@ def _place_method_definition(
         context.all_sections,
         context.section_valid_types,
     )
+    category_section = _select_method_section_by_category(defn, receiver, candidates)
+    if category_section is not None:
+        defn.confidence_score = best_score
+        defn.confidence_reasoning = list(best_reasoning)
+        defn.confidence_reasoning.append(
+            "Category match: structure-first placement (placement override)"
+        )
+        _assign_definition_to_section(defn, category_section)
+        return
     defn.confidence_score = best_score
     defn.confidence_reasoning = best_reasoning
     if best_section and best_score >= CONFIDENCE_THRESHOLD:
@@ -429,6 +644,7 @@ def _place_function_definitions(
 ) -> None:
     for defn in [d for d in definitions if d.kind == "func"]:
         related_section = _find_related_section(defn, context.type_sections)
+        related_section = adjust_related_section_for_function(defn, related_section)
         candidates = context.func_sections
         if related_section:
             related_candidates = [
@@ -442,6 +658,16 @@ def _place_function_definitions(
             context.all_sections,
             context.section_valid_types,
         )
+        if not best_section:
+            current_section = context.parsed_index.find_section_by_current_entry(defn.name)
+            if current_section and current_section.kind == "func":
+                best_score, best_reasoning = calculate_confidence_score(
+                    defn,
+                    current_section.path_label(),
+                    context.all_sections,
+                    context.section_valid_types,
+                )
+                best_section = current_section
         defn.confidence_score = best_score
         defn.confidence_reasoning = best_reasoning
         if best_section and best_score >= CONFIDENCE_THRESHOLD:
@@ -464,9 +690,22 @@ def _emit_verbose_placements(
     for defn in definitions:
         section = parsed_index.find_section_by_expected_entry(defn.name)
         entry = section.expected_entries.get(defn.name) if section else None
+        if not entry:
+            for unsorted_path in parsed_index.unsorted_paths:
+                unsorted_section = parsed_index.sections.get(unsorted_path)
+                if not unsorted_section:
+                    continue
+                if defn.name in unsorted_section.expected_entries:
+                    section = unsorted_section
+                    entry = unsorted_section.expected_entries.get(defn.name)
+                    break
         if entry:
             reasoning_str = ", ".join(entry.confidence_reasoning)
-            target_section = entry.suggested_section or entry.current_section
+            target_section = (
+                entry.suggested_section
+                or entry.current_section
+                or (section.path_label() if section else None)
+            )
             if entry.confidence_score is None:
                 score_str = "N/A"
             else:
@@ -474,6 +713,17 @@ def _emit_verbose_placements(
             output.add_verbose_line(
                 f"{defn.name} -> {target_section}: {score_str} ({reasoning_str})"
             )
+            if (
+                entry.confidence_score is not None
+                and entry.confidence_score < CONFIDENCE_THRESHOLD
+            ):
+                output.add_warning_line(
+                    (
+                        f"Low-confidence placement: {defn.name} -> {target_section} "
+                        f"({score_str})"
+                    ),
+                    verbose_only=True,
+                )
         else:
             output.add_verbose_line(
                 f"{defn.name} -> (no section): 0% (no valid matches)"
@@ -495,6 +745,10 @@ def determine_section_placement(
 
     # Ensure processing order: types, then methods, then funcs.
     definitions.sort(key=_definition_sort_key)
+
+    for defn in definitions:
+        current_section = parsed_index.find_section_by_current_entry(defn.name)
+        defn.current_section = current_section.path_label() if current_section else None
 
     all_sections = set(parsed_index.section_order)
     _populate_section_valid_types(list(parsed_index.sections.values()))

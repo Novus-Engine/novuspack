@@ -95,10 +95,13 @@ def _method_flags(method_name: str) -> Tuple[bool, bool]:
 def _score_getter_section(ctx: ScoringContext, is_getter: bool) -> Tuple[float, List[str]]:
     if not is_getter:
         return 0.0, []
-    if "data management" in ctx.section_lower:
-        msg = "Getter method (Get/Is/Has) matches Data Management Methods: +25%"
+    if "query methods" in ctx.section_lower:
+        msg = "Getter method (Get/Is/Has) matches Query Methods: +25%"
         return 0.25, [msg]
-    if "transformation" in ctx.section_lower:
+    if "data methods" in ctx.section_lower:
+        msg = "Getter method (Get/Is/Has) matches Data Methods: +15%"
+        return 0.15, [msg]
+    if "transformation methods" in ctx.section_lower:
         msg = "Getter method (Get/Is/Has) does not match Transformation Methods: -25%"
         return -0.25, [msg]
     return 0.0, []
@@ -110,16 +113,16 @@ def _score_transformation_section(
 ) -> Tuple[float, List[str]]:
     if not is_transformation:
         return 0.0, []
-    if "transformation" in ctx.section_lower:
+    if "transformation methods" in ctx.section_lower:
         msg = (
             "Transformation method (Add/Update/Set/Remove) matches "
             "Transformation Methods: +25%"
         )
         return 0.25, [msg]
-    if "data management" in ctx.section_lower:
+    if "data methods" in ctx.section_lower or "query methods" in ctx.section_lower:
         msg = (
             "Transformation method (Add/Update/Set/Remove) does not match "
-            "Data Management Methods: -25%"
+            "Query/Data Methods: -25%"
         )
         return -0.25, [msg]
     return 0.0, []
@@ -187,3 +190,60 @@ def score_method_name_preferences(ctx: ScoringContext) -> Tuple[float, List[str]
                         "Compression Methods: -20%"
                     )
     return score, reasoning
+
+
+def score_file_entry_method_categories(ctx: ScoringContext) -> Tuple[float, List[str]]:
+    if ctx.definition.kind != "method" or "." not in ctx.definition.name:
+        return 0.0, []
+    receiver = ctx.definition.receiver_type or ctx.definition.name.split(".", 1)[0]
+    if receiver.lower() != "fileentry":
+        return 0.0, []
+    method_lower = ctx.definition.name.split(".", 1)[1].lower()
+    category_rules = [
+        (
+            "query methods",
+            ["get", "has", "is"],
+        ),
+        (
+            "data methods",
+            ["getdata", "setdata", "loaddata", "unloaddata", "data"],
+        ),
+        (
+            "temp file methods",
+            ["tempfile", "temp"],
+        ),
+        (
+            "serialization methods",
+            ["marshal", "writedata", "writemeta", "writeto"],
+        ),
+        (
+            "path methods",
+            ["path", "symlink", "associate", "resolve"],
+        ),
+        (
+            "transformation methods",
+            [
+                "compress",
+                "decompress",
+                "encrypt",
+                "decrypt",
+                "transform",
+                "process",
+                "pipeline",
+                "set",
+                "unset",
+                "current",
+                "original",
+                "processingstate",
+                "validate",
+                "cleanup",
+                "resume",
+                "execute",
+                "copy",
+            ],
+        ),
+    ]
+    for section_keyword, tokens in category_rules:
+        if section_keyword in ctx.section_lower and any(token in method_lower for token in tokens):
+            return 0.40, [f"FileEntry {section_keyword} method matches section: +40%"]
+    return 0.0, []

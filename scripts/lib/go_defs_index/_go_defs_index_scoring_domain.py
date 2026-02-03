@@ -8,10 +8,7 @@ import re
 from typing import List, Optional, Tuple
 
 from lib._go_code_utils import normalize_generic_name
-from lib.go_defs_index._go_defs_index_config import (
-    DOMAIN_FILE_MAP,
-    KEYWORD_TO_SECTION_MAPPING,
-)
+from lib.go_defs_index._go_defs_index_config import KEYWORD_TO_SECTION_MAPPING
 from lib.go_defs_index._go_defs_index_models import DetectedDefinition
 
 _DOMAIN_SUFFIXES: Tuple[str, ...] = ("strategy", "builder", "validator")
@@ -24,16 +21,28 @@ _DOMAIN_SUFFIX_KEYWORDS = {
 }
 _DOMAIN_FALLBACK_KEYWORDS = {
     "metadata": ["metadata", "comment", "tag", "pathmetadata", "fileentrytag"],
-    "compression": ["compression", "compress", "decompress"],
-    "encryption": ["encryption", "encrypt", "decrypt", "aes", "chacha", "mlkem", "cipher"],
-    "signature": ["signature", "sign"],
-    "streaming": ["streaming", "stream", "buffer", "chunk"],
-    "deduplication": ["deduplication", "dedup"],
-    "package": ["package"],
-    "concurrency": ["concurrency", "thread", "worker", "safety"],
+    "compression": ["compression", "compress", "decompress", "lz4", "lzma", "zstd"],
+    "encryption": [
+        "encryption",
+        "encrypt",
+        "decrypt",
+        "aes",
+        "chacha",
+        "mlkem",
+        "cipher",
+        "key",
+    ],
+    "signature": ["signature", "sign", "signing", "certificate", "x509"],
+    "streaming": ["streaming", "stream", "buffer", "chunk", "pool"],
+    "deduplication": ["deduplication", "dedup", "hash"],
+    "package": ["package", "filepackage", "readonly"],
+    "concurrency": ["concurrency", "thread", "worker", "safety", "job"],
     "extraction": ["extract", "extraction"],
-    "creation": ["create", "creation"],
-    "filetype": ["filetype"],
+    "creation": ["create", "creation", "new"],
+    "filetype": ["filetype", "mimetype"],
+    "error": ["error", "errorcontext", "errtype"],
+    "fileentry": ["fileentry", "filesource", "fileinfo"],
+    "generic": ["generic", "option", "result"],
 }
 _SECTION_DOMAIN_RULES = [
     ("metadata", ["package metadata", "metadata"]),
@@ -44,13 +53,65 @@ _SECTION_DOMAIN_RULES = [
     ("signature", ["signature", "sign"]),
     ("deduplication", ["deduplication", "dedup"]),
     ("filetype", ["filetype"]),
-    ("writing", ["packagewriter", "package writing"]),
+    ("writing", ["package write methods", "package writing"]),
     ("package", ["package"]),
+]
+
+_FILE_DOMAIN_PATTERNS = [
+    # Specific patterns first (more specific wins)
+    ("file_mgmt_error", "error"),
+    ("file_mgmt_compression", "compression"),
+    ("file_mgmt", "fileentry"),
+    ("file_type", "filetype"),
+    ("basic_operation", "package"),
+    ("core", "package"),
+    ("file_format", "package"),
+    # Domain keywords in file name
+    ("compression", "compression"),
+    ("streaming", "streaming"),
+    ("security", "encryption"),
+    ("encryption", "encryption"),
+    ("signature", "signature"),
+    ("metadata", "metadata"),
+    ("deduplication", "deduplication"),
+    ("generic", "generic"),
+    ("writing", "writing"),
+    ("error", "error"),
 ]
 
 
 def _name_has_any(name_lower: str, keywords: List[str]) -> bool:
     return any(keyword in name_lower for keyword in keywords)
+
+
+def _file_tokens(file_name: str) -> List[str]:
+    normalized = file_name.lower().replace(".md", "").replace("-", "_")
+    return [token for token in normalized.split("_") if token]
+
+
+def _tokens_contain_sequence(tokens: List[str], pattern_tokens: List[str]) -> bool:
+    if not tokens or not pattern_tokens:
+        return False
+    start_index = 0
+    for token in pattern_tokens:
+        try:
+            found_index = tokens.index(token, start_index)
+        except ValueError:
+            return False
+        start_index = found_index + 1
+    return True
+
+
+def _domain_from_file_pattern(file_name: str) -> Optional[str]:
+    """Infer domain from file name using token pattern matching."""
+    if not file_name:
+        return None
+    tokens = _file_tokens(file_name)
+    for pattern, domain in _FILE_DOMAIN_PATTERNS:
+        pattern_tokens = _file_tokens(pattern)
+        if _tokens_contain_sequence(tokens, pattern_tokens):
+            return domain
+    return None
 
 
 def _infer_domain_from_section_pattern(pattern: str) -> Optional[str]:
@@ -125,8 +186,9 @@ def detect_definition_domain(definition: DetectedDefinition, name_lower: str) ->
     signature_domain = _domain_from_signature(definition, normalized_lower)
     if signature_domain:
         return signature_domain
-    if definition.file in DOMAIN_FILE_MAP:
-        return DOMAIN_FILE_MAP[definition.file]
+    file_domain = _domain_from_file_pattern(definition.file)
+    if file_domain:
+        return file_domain
     generic_domain = _domain_from_generic(definition, normalized_name)
     if generic_domain:
         return generic_domain

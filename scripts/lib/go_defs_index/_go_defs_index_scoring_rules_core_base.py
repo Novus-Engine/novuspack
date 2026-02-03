@@ -67,9 +67,14 @@ def _extract_primary_name_from_section(section_name: str) -> str:
         "definition",
         "definitions",
     ]
-    for suffix in suffixes:
-        if leaf_lower.endswith(" " + suffix):
-            leaf_lower = leaf_lower[: -(len(suffix) + 1)].strip()
+    while True:
+        removed = False
+        for suffix in suffixes:
+            if leaf_lower.endswith(" " + suffix):
+                leaf_lower = leaf_lower[: -(len(suffix) + 1)].strip()
+                removed = True
+                break
+        if not removed:
             break
     leaf_lower = re.sub(r"[^a-z0-9]", "", leaf_lower)
     return leaf_lower
@@ -81,7 +86,7 @@ def _is_core_package_type(
     receiver_type: Optional[str] = None,
 ) -> bool:
     name_lower_check = name.lower()
-    core_package_types = ["package", "packagereader", "packagewriter", "filepackage"]
+    core_package_types = ["package", "filepackage"]
     if name_lower_check in core_package_types:
         return True
     if kind == "method" and receiver_type:
@@ -210,12 +215,17 @@ def score_exact_name_match(ctx: ScoringContext) -> Tuple[float, List[str]]:
         if mapped_norm and section_primary and mapped_norm == section_primary:
             score += 0.60
             reasoning.append(f"Exact type name match ({mapped_name}): +60%")
+            if "interface" in section_leaf_lower:
+                score += 0.15
+                reasoning.append("Interface Types section boosts exact type match: +15%")
 
     return score, reasoning
 
 
 def score_implementation_mapping(ctx: ScoringContext) -> Tuple[float, List[str]]:
     if ctx.definition.kind not in ("type", "struct"):
+        return 0.0, []
+    if "readonly" in ctx.name_lower:
         return 0.0, []
     score = 0.0
     reasoning: List[str] = []
@@ -257,6 +267,8 @@ def _score_error_section_penalties(ctx: ScoringContext) -> Tuple[float, List[str
         ctx.definition.kind,
     )
     if not is_error_section:
+        return 0.0, [], False
+    if ctx.definition.kind == "method" and "error methods" in ctx.section_lower:
         return 0.0, [], False
     if ctx.definition.kind in ("method", "func"):
         score -= 0.5

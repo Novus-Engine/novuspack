@@ -40,16 +40,9 @@ import re
 import argparse
 from pathlib import Path
 from collections import defaultdict
+from typing import Dict, List, Optional, Tuple
 
-scripts_dir = Path(__file__).parent
-lib_dir = scripts_dir / "lib"
-
-# Import shared utilities
-for module_path in (str(scripts_dir), str(lib_dir)):
-    if module_path not in sys.path:
-        sys.path.insert(0, module_path)
-
-from lib._validation_utils import (  # noqa: E402
+from lib._validation_utils import (
     OutputBuilder, parse_no_color_flag,
     is_in_dot_directory, get_workspace_root, parse_paths,
     ValidationIssue, DOCS_DIR, REQUIREMENTS_DIR, FEATURES_DIR
@@ -135,7 +128,7 @@ def extract_req_tags_from_feature(feature_file, verbose=False):
                 f"  Warning: Could not decode {feature_file} (encoding issue): {e}",
                 file=sys.stderr
             )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError, RuntimeError) as e:
         # Unexpected errors - log warning if verbose
         if verbose:
             print(f"  Warning: Unexpected error reading {feature_file}: {e}", file=sys.stderr)
@@ -181,7 +174,7 @@ def extract_req_definitions_from_requirements(req_file, verbose=False):
                     f"in {req_file.name}"
                 )
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError, RuntimeError) as e:
         if verbose:
             print(f"  Warning: Could not read {req_file}: {e}")
 
@@ -230,7 +223,7 @@ def validate_req_format(req_id):
     return bool(_RE_REQ_FORMAT_PATTERN.match(req_id))
 
 
-def validate_req_format_errors(requirements_data, feature_tags, workspace_root, features_dir):
+def validate_req_format_errors(requirements_data, feature_tags, workspace_root, _features_dir):
     """
     Validate format consistency of all requirement IDs.
 
@@ -256,12 +249,12 @@ def validate_req_format_errors(requirements_data, feature_tags, workspace_root, 
     for req_file, req_list in requirements_data.items():
         for req_id, line_num, _ in req_list:
             if not _RE_REQ_FORMAT_PATTERN.match(req_id):
-                format_errors.append(ValidationIssue(
+                format_errors.append(ValidationIssue.create(
                     'format',
                     Path(get_relative_path(req_file, workspace_root)),
                     line_num,
                     line_num,
-                    f"{req_id}: Invalid format: does not match REQ-[A-Z_]+-[0-9]+",
+                    message=f"{req_id}: Invalid format: does not match REQ-[A-Z_]+-[0-9]+",
                     severity='error',
                     req_id=req_id,
                     reason='Invalid format: does not match REQ-[A-Z_]+-[0-9]+'
@@ -271,12 +264,12 @@ def validate_req_format_errors(requirements_data, feature_tags, workspace_root, 
     for req_id, feature_files in feature_tags.items():
         if not _RE_REQ_FORMAT_PATTERN.match(req_id):
             for feature_file in feature_files:
-                format_errors.append(ValidationIssue(
+                format_errors.append(ValidationIssue.create(
                     'format',
                     Path(get_relative_path(feature_file, workspace_root)),
                     1,
                     1,
-                    f"{req_id}: Invalid format: does not match REQ-[A-Z_]+-[0-9]+",
+                    message=f"{req_id}: Invalid format: does not match REQ-[A-Z_]+-[0-9]+",
                     severity='error',
                     req_id=req_id,
                     reason='Invalid format: does not match REQ-[A-Z_]+-[0-9]+'
@@ -347,7 +340,7 @@ def check_sequential_numbering(requirements_data, workspace_root):
     for req_file, req_list in requirements_data.items():
         # Group by category prefix
         category_reqs = defaultdict(list)
-        for req_id, line_num, req_type in req_list:
+        for req_id, line_num, _req_type in req_list:
             category = get_category_from_req_id(req_id)
             if category:
                 # Extract numeric suffix
@@ -375,18 +368,50 @@ def check_sequential_numbering(requirements_data, workspace_root):
 
             if missing_numbers:
                 missing_str = ', '.join(str(num) for num in missing_numbers)
-                sequential_warnings.append(ValidationIssue(
+                sequential_warnings.append(ValidationIssue.create(
                     'sequential',
                     Path(get_relative_path(req_file, workspace_root)),
                     1,
                     1,
-                    f"REQ-{category}-* (Missing numbers: {missing_str})",
+                    message=f"REQ-{category}-* (Missing numbers: {missing_str})",
                     severity='warning',
                     category=category,
                     missing_numbers=missing_numbers
                 ))
 
     return sequential_warnings
+
+
+def _collect_feature_files_for_stub_check(features_dir, target_paths, verbose):
+    """Return list of feature file paths to check for stubs."""
+    if target_paths:
+        out = []
+        for target_path in target_paths:
+            target = Path(target_path)
+            if not target.exists():
+                if verbose:
+                    print(f"Warning: Target path does not exist: {target_path}")
+                continue
+            if target.is_file():
+                if target.suffix == '.feature':
+                    out.append(target)
+                elif verbose:
+                    print(f"Warning: Target file is not a .feature file: {target_path}")
+            else:
+                out.extend(f for f in target.rglob('*.feature') if not is_in_dot_directory(f))
+        return out
+    return [f for f in features_dir.rglob('*.feature') if not is_in_dot_directory(f)]
+
+
+def _count_content_lines(path: Path) -> int:
+    """Return number of non-empty, non-comment lines in a feature file."""
+    count = 0
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            stripped = line.strip()
+            if stripped and not stripped.startswith('#'):
+                count += 1
+    return count
 
 
 def check_feature_stubs(features_dir, verbose=False, target_paths=None):
@@ -405,107 +430,46 @@ def check_feature_stubs(features_dir, verbose=False, target_paths=None):
         List of feature files that are stubs (each entry is a dict with
         'file' and 'line_count' keys)
     """
-    # Note: This function is called before OutputBuilder is used,
-    # so we can't use output.add_verbose_line here.
-    # The message will be handled by the caller if needed.
-
-    # Determine which files to scan (same logic as validate_req_references)
-    feature_files = []
-    if target_paths:
-        for target_path in target_paths:
-            target = Path(target_path)
-            if not target.exists():
-                if verbose:
-                    print(f"Warning: Target path does not exist: {target_path}")
-                continue
-
-            if target.is_file():
-                if target.suffix == '.feature':
-                    feature_files.append(target)
-                elif verbose:
-                    print(f"Warning: Target file is not a .feature file: {target_path}")
-            else:
-                feature_files.extend([
-                    f for f in target.rglob('*.feature')
-                    if not is_in_dot_directory(f)
-                ])
-    else:
-        feature_files = [
-            f for f in features_dir.rglob('*.feature')
-            if not is_in_dot_directory(f)
-        ]
-
+    feature_files = _collect_feature_files_for_stub_check(
+        features_dir, target_paths, verbose
+    )
     stub_files = []
-
     for feature_file in feature_files:
         try:
-            content_line_count = 0
-            with open(feature_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    stripped = line.strip()
-                    # Skip empty lines and comments
-                    if stripped and not stripped.startswith('#'):
-                        content_line_count += 1
-
+            content_line_count = _count_content_lines(feature_file)
             if content_line_count <= 8:
-                stub_files.append(ValidationIssue(
-                    'stub_file',
-                    feature_file,
-                    1,
-                    1,
-                    f"Feature file is a stub ({content_line_count} content lines)",
-                    severity='warning',
-                    line_count=content_line_count
+                stub_files.append(ValidationIssue.create(
+                    'stub_file', feature_file, 1, 1,
+                    message=f"Feature file is a stub ({content_line_count} content lines)",
+                    severity='warning', line_count=content_line_count,
                 ))
                 if verbose:
                     print(f"  Found stub: {feature_file.name} ({content_line_count} content lines)")
-
         except (IOError, OSError) as e:
-            # File read errors - log warning if verbose
             if verbose:
                 print(f"  Warning: Could not read {feature_file}: {e}", file=sys.stderr)
         except UnicodeDecodeError as e:
-            # Encoding errors - log warning if verbose
             if verbose:
                 print(
                     f"  Warning: Could not decode {feature_file} (encoding issue): {e}",
-                    file=sys.stderr
+                    file=sys.stderr,
                 )
-        except Exception as e:
-            # Unexpected errors - log warning if verbose
+        except (ValueError, KeyError, TypeError, AttributeError, RuntimeError) as e:
             if verbose:
                 print(f"  Warning: Unexpected error reading {feature_file}: {e}", file=sys.stderr)
-
     if verbose:
         print()
-
     return stub_files
 
 
-def validate_req_references(
-    features_dir, requirements_dir, output, verbose=False, target_paths=None, no_color=False
-):
-    """
-    Validate that all REQ tags in feature files exist in requirements files.
-
-    Args:
-        features_dir: Path to the features directory
-        requirements_dir: Path to the requirements directory
-        verbose: Whether to show detailed progress
-        target_paths: Optional list of specific files or directories to check
-        no_color: Whether to disable colored output
-
-    Returns:
-        Tuple of (total_refs, invalid_refs, missing_refs, errors, format_errors,
-                 duplicate_errors, sequential_warnings)
-    """
-    # Determine workspace root (requirements_dir is docs/requirements, so parent.parent is root)
-    workspace_root = requirements_dir.parent.parent
-
-    # Load all requirement definitions from requirements files with line numbers
-    all_requirements = {}
-    req_files = {}
-    requirements_data = {}  # req_file -> list of (req_id, line_num) tuples
+def _load_requirement_definitions(
+    requirements_dir: Path,
+    output: OutputBuilder,
+    verbose: bool,
+) -> Tuple[Dict[str, str], Dict[Path, List[Tuple[str, int, int]]]]:
+    all_requirements: Dict[str, str] = {}
+    req_files: Dict[str, str] = {}
+    requirements_data: Dict[Path, List[Tuple[str, int, int]]] = {}
 
     output.add_verbose_line("Loading requirement definitions...")
     if verbose:
@@ -532,14 +496,15 @@ def validate_req_references(
         f"from {len(req_files)} files"
     )
     output.add_blank_line("working_verbose")
+    return all_requirements, requirements_data
 
-    # Scan all feature files for REQ tags
-    output.add_verbose_line("Scanning feature files...")
-    if verbose:
-        output.add_blank_line("working_verbose")
 
-    # Determine which files to scan
-    feature_files = []
+def _collect_feature_files(
+    features_dir: Path,
+    target_paths: Optional[List[str]],
+    output: OutputBuilder,
+) -> List[Path]:
+    feature_files: List[Path] = []
     if target_paths:
         for target_path in target_paths:
             target = Path(target_path)
@@ -551,7 +516,9 @@ def validate_req_references(
                 if target.suffix == '.feature':
                     feature_files.append(target)
                 else:
-                    output.add_warning_line(f"Target file is not a .feature file: {target_path}")
+                    output.add_warning_line(
+                        f"Target file is not a .feature file: {target_path}"
+                    )
             else:
                 feature_files.extend([
                     f for f in target.rglob('*.feature')
@@ -562,13 +529,205 @@ def validate_req_references(
             f for f in features_dir.rglob('*.feature')
             if not is_in_dot_directory(f)
         ]
+    return feature_files
 
-    all_req_tags = defaultdict(list)  # req_id -> list of feature files
 
+def _collect_req_tags(
+    feature_files: List[Path],
+    verbose: bool,
+) -> Dict[str, List[Path]]:
+    all_req_tags: Dict[str, List[Path]] = defaultdict(list)
     for feature_file in feature_files:
         req_tags = extract_req_tags_from_feature(feature_file, verbose)
         for req_id in req_tags:
             all_req_tags[req_id].append(feature_file)
+    return all_req_tags
+
+
+def _validate_req_tags(
+    all_req_tags: Dict[str, List[Path]],
+    all_requirements: Dict[str, str],
+) -> Tuple[List[ValidationIssue], List[ValidationIssue], List[ValidationIssue]]:
+    invalid_refs: List[ValidationIssue] = []
+    missing_refs: List[ValidationIssue] = []
+    errors: List[ValidationIssue] = []
+
+    for req_id in sorted(all_req_tags.keys()):
+        category = get_category_from_req_id(req_id)
+
+        if not category:
+            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
+            if first_file:
+                errors.append(ValidationIssue.create(
+                    'invalid_req_format',
+                    first_file,
+                    1,
+                    1,
+                    message=f"{req_id}: Invalid REQ ID format",
+                    severity='error',
+                    req_id=req_id,
+                    reason='Invalid REQ ID format',
+                    files=list(all_req_tags[req_id])
+                ))
+            continue
+
+        # Block legacy/lookalike prefixes early with a clear fix hint.
+        if category in DEPRECATED_CATEGORY_PREFIXES:
+            replacement = DEPRECATED_CATEGORY_PREFIXES.get(category)
+            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
+            if first_file:
+                if replacement:
+                    errors.append(ValidationIssue.create(
+                        'deprecated_category',
+                        first_file,
+                        1,
+                        1,
+                        message=(
+                            f"{req_id}: Deprecated category prefix: {category} "
+                            f"(use {replacement})"
+                        ),
+                        severity='error',
+                        req_id=req_id,
+                        reason=f'Deprecated category prefix: {category} (use {replacement})',
+                        files=list(all_req_tags[req_id]),
+                        category=category,
+                        suggested_category=replacement,
+                    ))
+                else:
+                    errors.append(ValidationIssue.create(
+                        'invalid_category',
+                        first_file,
+                        1,
+                        1,
+                        message=f"{req_id}: Invalid category prefix: {category}",
+                        severity='error',
+                        req_id=req_id,
+                        reason=f'Invalid category prefix: {category}',
+                        files=list(all_req_tags[req_id]),
+                        category=category,
+                    ))
+            continue
+
+        expected_file = get_expected_req_file(category)
+
+        if not expected_file:
+            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
+            if first_file:
+                errors.append(ValidationIssue.create(
+                    'unknown_category',
+                    first_file,
+                    1,
+                    1,
+                    message=f"{req_id}: Unknown category: {category}",
+                    severity='error',
+                    req_id=req_id,
+                    reason=f'Unknown category: {category}',
+                    files=list(all_req_tags[req_id])
+                ))
+            continue
+
+        if req_id not in all_requirements:
+            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
+            if first_file:
+                missing_refs.append(ValidationIssue.create(
+                    'missing_ref',
+                    first_file,
+                    1,
+                    1,
+                    message=f"{req_id} not found in {expected_file}",
+                    severity='error',
+                    req_id=req_id,
+                    expected_file=expected_file,
+                    files=list(all_req_tags[req_id])
+                ))
+        elif all_requirements[req_id] != expected_file:
+            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
+            if first_file:
+                invalid_refs.append(ValidationIssue.create(
+                    'invalid_ref',
+                    first_file,
+                    1,
+                    1,
+                    message=(
+                        f"{req_id} found in {all_requirements[req_id]}, "
+                        f"expected {expected_file}"
+                    ),
+                    severity='error',
+                    req_id=req_id,
+                    expected_file=expected_file,
+                    actual_file=all_requirements[req_id],
+                    files=list(all_req_tags[req_id])
+                ))
+    return invalid_refs, missing_refs, errors
+
+
+def _display_path(feature_file: Path, base_dir: Path) -> str:
+    try:
+        return str(feature_file.relative_to(base_dir))
+    except ValueError:
+        return str(feature_file)
+
+
+def _emit_issue_list(
+    output: OutputBuilder,
+    issues: List[ValidationIssue],
+    no_color: bool,
+    *,
+    header: str,
+    features_dir: Optional[Path] = None,
+    show_files: bool = False,
+) -> None:
+    if not issues:
+        return
+    if header == "warning":
+        output.add_warnings_header()
+    else:
+        output.add_errors_header()
+    for issue in issues:
+        issue_msg = issue.format_message(no_color=no_color)
+        if header == "warning":
+            output.add_warning_line(issue_msg)
+        else:
+            output.add_error_line(issue_msg)
+        if show_files and features_dir:
+            files = issue.extra_fields.get('files', [])
+            for feature_file in files[1:]:
+                output.add_error_line(
+                    f"    Also in: {_display_path(feature_file, features_dir)}"
+                )
+
+
+def validate_req_references(
+    features_dir, requirements_dir, output, *, verbose=False, target_paths=None, no_color=False
+):
+    """
+    Validate that all REQ tags in feature files exist in requirements files.
+
+    Args:
+        features_dir: Path to the features directory
+        requirements_dir: Path to the requirements directory
+        verbose: Whether to show detailed progress
+        target_paths: Optional list of specific files or directories to check
+        no_color: Whether to disable colored output
+
+    Returns:
+        Tuple of (total_refs, invalid_refs, missing_refs, errors, format_errors,
+                 duplicate_errors, sequential_warnings)
+    """
+    # Determine workspace root (requirements_dir is docs/requirements, so parent.parent is root)
+    workspace_root = requirements_dir.parent.parent
+
+    all_requirements, requirements_data = _load_requirement_definitions(
+        requirements_dir, output, verbose
+    )
+
+    # Scan all feature files for REQ tags
+    output.add_verbose_line("Scanning feature files...")
+    if verbose:
+        output.add_blank_line("working_verbose")
+
+    feature_files = _collect_feature_files(features_dir, target_paths, output)
+    all_req_tags = _collect_req_tags(feature_files, verbose)
 
     if verbose:
         output.add_blank_line("working_verbose")
@@ -589,183 +748,38 @@ def validate_req_references(
     # Check sequential numbering (warnings, not errors)
     sequential_warnings = check_sequential_numbering(requirements_data, workspace_root)
 
-    invalid_refs = []
-    missing_refs = []
-    errors = []
-
-    for req_id in sorted(all_req_tags.keys()):
-        category = get_category_from_req_id(req_id)
-
-        if not category:
-            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
-            if first_file:
-                errors.append(ValidationIssue(
-                    'invalid_req_format',
-                    first_file,
-                    1,
-                    1,
-                    f"{req_id}: Invalid REQ ID format",
-                    severity='error',
-                    req_id=req_id,
-                    reason='Invalid REQ ID format',
-                    files=list(all_req_tags[req_id])
-                ))
-            continue
-
-        # Block legacy/lookalike prefixes early with a clear fix hint.
-        if category in DEPRECATED_CATEGORY_PREFIXES:
-            replacement = DEPRECATED_CATEGORY_PREFIXES.get(category)
-            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
-            if first_file:
-                if replacement:
-                    errors.append(ValidationIssue(
-                        'deprecated_category',
-                        first_file,
-                        1,
-                        1,
-                        f"{req_id}: Deprecated category prefix: {category} (use {replacement})",
-                        severity='error',
-                        req_id=req_id,
-                        reason=f'Deprecated category prefix: {category} (use {replacement})',
-                        files=list(all_req_tags[req_id]),
-                        category=category,
-                        suggested_category=replacement,
-                    ))
-                else:
-                    errors.append(ValidationIssue(
-                        'invalid_category',
-                        first_file,
-                        1,
-                        1,
-                        f"{req_id}: Invalid category prefix: {category}",
-                        severity='error',
-                        req_id=req_id,
-                        reason=f'Invalid category prefix: {category}',
-                        files=list(all_req_tags[req_id]),
-                        category=category,
-                    ))
-            continue
-
-        expected_file = get_expected_req_file(category)
-
-        if not expected_file:
-            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
-            if first_file:
-                errors.append(ValidationIssue(
-                    'unknown_category',
-                    first_file,
-                    1,
-                    1,
-                    f"{req_id}: Unknown category: {category}",
-                    severity='error',
-                    req_id=req_id,
-                    reason=f'Unknown category: {category}',
-                    files=list(all_req_tags[req_id])
-                ))
-            continue
-
-        if req_id not in all_requirements:
-            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
-            if first_file:
-                missing_refs.append(ValidationIssue(
-                    'missing_ref',
-                    first_file,
-                    1,
-                    1,
-                    f"{req_id} not found in {expected_file}",
-                    severity='error',
-                    req_id=req_id,
-                    expected_file=expected_file,
-                    files=list(all_req_tags[req_id])
-                ))
-        elif all_requirements[req_id] != expected_file:
-            first_file = list(all_req_tags[req_id])[0] if all_req_tags[req_id] else None
-            if first_file:
-                invalid_refs.append(ValidationIssue(
-                    'invalid_ref',
-                    first_file,
-                    1,
-                    1,
-                    f"{req_id} found in {all_requirements[req_id]}, expected {expected_file}",
-                    severity='error',
-                    req_id=req_id,
-                    expected_file=expected_file,
-                    actual_file=all_requirements[req_id],
-                    files=list(all_req_tags[req_id])
-                ))
-
-    # Helper function to display file paths relative to features_dir or absolute
-    def display_path(feature_file, base_dir):
-        try:
-            return str(feature_file.relative_to(base_dir))
-        except ValueError:
-            return str(feature_file)
+    invalid_refs, missing_refs, errors = _validate_req_tags(
+        all_req_tags, all_requirements
+    )
 
     # Report warnings first (sequential numbering gaps)
-    if sequential_warnings:
-        output.add_warnings_header()
-        for warning in sequential_warnings:
-            # warning is a ValidationIssue
-            warning_msg = warning.format_message(no_color=no_color)
-            output.add_warning_line(warning_msg)
-
-    # Report format errors
-    if format_errors:
-        output.add_errors_header()
-        for error in format_errors:
-            # error is a ValidationIssue
-            error_msg = error.format_message(no_color=no_color)
-            output.add_error_line(error_msg)
-
-    # Report duplicate errors
-    if duplicate_errors:
-        output.add_errors_header()
-        for error in duplicate_errors:
-            # error is a ValidationIssue
-            error_msg = error.format_message(no_color=no_color)
-            output.add_error_line(error_msg)
-
-    # Report errors (invalid format or unknown category from feature tags)
-    if errors:
-        output.add_errors_header()
-        for error in errors:
-            # error is a ValidationIssue
-            error_msg = error.format_message(no_color=no_color)
-            output.add_error_line(error_msg)
-            # Show additional files if any
-            files = error.extra_fields.get('files', [])
-            for feature_file in files[1:]:
-                output.add_error_line(
-                    f"    Also in: {display_path(feature_file, features_dir)}"
-                )
-
-    # Report invalid references (wrong file)
-    if invalid_refs:
-        output.add_errors_header()
-        for ref in invalid_refs:
-            # ref is a ValidationIssue
-            error_msg = ref.format_message(no_color=no_color)
-            output.add_error_line(error_msg)
-            # Show additional files if any
-            files = ref.extra_fields.get('files', [])
-            for feature_file in files[1:]:
-                output.add_error_line(
-                    f"    Also in: {display_path(feature_file, features_dir)}"
-                )
-
-    # Report missing references
-    if missing_refs:
-        output.add_errors_header()
-        for ref in missing_refs:
-            # ref is a ValidationIssue
-            error_msg = ref.format_message(no_color=no_color)
-            output.add_error_line(error_msg)
-            # Show additional files if any
-            files = ref.extra_fields.get('files', [])
-            for feature_file in files[1:]:
-                output.add_error_line(
-                    f"    Also in: {display_path(feature_file, features_dir)}"
-                )
+    _emit_issue_list(output, sequential_warnings, no_color, header="warning")
+    _emit_issue_list(output, format_errors, no_color, header="error")
+    _emit_issue_list(output, duplicate_errors, no_color, header="error")
+    _emit_issue_list(
+        output,
+        errors,
+        no_color,
+        header="error",
+        features_dir=features_dir,
+        show_files=True
+    )
+    _emit_issue_list(
+        output,
+        invalid_refs,
+        no_color,
+        header="error",
+        features_dir=features_dir,
+        show_files=True
+    )
+    _emit_issue_list(
+        output,
+        missing_refs,
+        no_color,
+        header="error",
+        features_dir=features_dir,
+        show_files=True
+    )
 
     # Summary
     total_refs = len(all_req_tags)
@@ -885,10 +899,11 @@ def main():
 
     # Validate requirement references
     (
-        total, invalid, missing, errors, format_errors, duplicate_errors,
-        sequential_warnings
+        _total, invalid, missing, errors, format_errors, duplicate_errors,
+        _sequential_warnings
     ) = validate_req_references(
-        features_dir, requirements_dir, output, args.verbose, target_paths, no_color
+        features_dir, requirements_dir, output,
+        verbose=args.verbose, target_paths=target_paths, no_color=no_color
     )
 
     # Return error code only if errors found (warnings don't cause failure)
@@ -898,7 +913,12 @@ def main():
     )
 
     if not has_errors:
-        output.add_success_message("All requirement references are valid!")
+        if output.has_warnings():
+            output.add_warnings_only_message(
+                verbose_hint="Run with --verbose to see the full warning details.",
+            )
+        else:
+            output.add_success_message("All requirement references are valid!")
     else:
         output.add_failure_message("Validation failed. Please fix the errors above.")
 

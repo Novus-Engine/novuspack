@@ -479,12 +479,12 @@ def _collect_coverage_issues(
         )
 
         if not count:
-            issues.append(ValidationIssue(
+            issues.append(ValidationIssue.create(
                 "missing_feature_coverage",
                 req_file,
                 line_num,
                 line_num,
-                f"Requirement {req_id} has no feature files referencing it",
+                message=f"Requirement {req_id} has no feature files referencing it",
                 severity='error',
                 req_id=req_id
             ))
@@ -498,12 +498,12 @@ def _collect_coverage_issues(
                 f"Required: {', '.join(sorted(expected_specs))}. "
                 f"Missing: {', '.join(sorted(missing_specs))}"
             )
-            issues.append(ValidationIssue(
+            issues.append(ValidationIssue.create(
                 "spec_mismatch",
                 req_file,
                 line_num,
                 line_num,
-                message,
+                message=message,
                 severity='error',
                 req_id=req_id,
                 feature_file=str(feature_file),

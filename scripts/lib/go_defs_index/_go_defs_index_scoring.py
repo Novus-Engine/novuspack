@@ -22,17 +22,52 @@ from lib.go_defs_index._go_defs_index_scoring_rules_core import (
     score_kind_positive_match,
     score_strict_kind_matching,
 )
+from lib.go_defs_index._go_defs_index_scoring_rules_core_domain import (
+    score_type_name_patterns,
+)
 from lib.go_defs_index._go_defs_index_scoring_rules_methods import (
+    score_file_entry_method_categories,
     score_method_name_preferences,
     score_method_patterns,
     score_method_type_classification,
 )
 from lib.go_defs_index._go_defs_index_scoring_rules_penalties import (
+    score_error_helper_functions,
+    score_error_methods,
     score_error_domain_match,
+    score_error_context_types,
+    score_error_context_domain_mismatch,
     score_general_heuristics,
     score_hash_optional_types,
     score_kind_section_map,
+    score_metadata_tag_helpers,
+    score_package_config_preference,
+    score_readonly_package_interface,
+    score_readonly_type_preference,
+    score_streaming_helper_functions,
+    score_streaming_helper_mismatch,
     score_type_operation_penalty,
+)
+from lib.go_defs_index._go_defs_index_scoring_rules_type_keywords import (
+    score_create_options_preference,
+    score_error_type_keywords,
+    score_file_entry_type_keywords,
+    score_file_info_preference,
+    score_generic_helper_functions,
+    score_generic_type_keywords,
+    score_metadata_type_keywords,
+    score_other_type_helper_functions,
+    score_other_types_suffix,
+    score_recovery_file_header_preference,
+    score_signature_type_keywords,
+    score_generic_core_type_preference,
+    score_package_error_constructor,
+    score_signature_comment_helpers,
+    score_security_error_context_types,
+    score_package_open_helpers,
+    score_package_read_header_helpers,
+    score_metadata_destpath_helpers,
+    score_package_helper_overrides,
 )
 from lib.go_defs_index._go_defs_index_scoring_rules_sections import (
     score_camelcase_match,
@@ -112,6 +147,18 @@ def calculate_confidence_score(
     score += delta
     reasoning.extend(delta_reasoning)
 
+    delta, delta_reasoning = score_type_name_patterns(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_error_context_types(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_error_context_domain_mismatch(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
     delta, delta_reasoning = score_domain_type_subsection(ctx)
     score += delta
     reasoning.extend(delta_reasoning)
@@ -160,11 +207,123 @@ def calculate_confidence_score(
     score += delta
     reasoning.extend(delta_reasoning)
 
+    delta, delta_reasoning = score_file_entry_method_categories(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
     delta, delta_reasoning = score_hash_optional_types(ctx)
     score += delta
     reasoning.extend(delta_reasoning)
 
     delta, delta_reasoning = score_error_domain_match(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_error_methods(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_metadata_tag_helpers(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_error_helper_functions(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_package_config_preference(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_other_types_suffix(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_generic_type_keywords(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_metadata_type_keywords(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_streaming_helper_functions(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_streaming_helper_mismatch(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_generic_helper_functions(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_create_options_preference(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_signature_type_keywords(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_error_type_keywords(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_file_entry_type_keywords(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_file_info_preference(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_recovery_file_header_preference(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_other_type_helper_functions(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_generic_core_type_preference(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_package_error_constructor(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_signature_comment_helpers(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_security_error_context_types(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_package_open_helpers(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_package_read_header_helpers(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_metadata_destpath_helpers(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_package_helper_overrides(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_readonly_type_preference(ctx)
+    score += delta
+    reasoning.extend(delta_reasoning)
+
+    delta, delta_reasoning = score_readonly_package_interface(ctx)
     score += delta
     reasoning.extend(delta_reasoning)
 

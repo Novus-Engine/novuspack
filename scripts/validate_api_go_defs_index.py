@@ -19,41 +19,26 @@ import re
 import os
 import sys
 from pathlib import Path
+from typing import Dict, Optional
 
-scripts_dir = Path(__file__).parent
-lib_dir = scripts_dir / "lib"
-go_defs_dir = lib_dir / "go_defs_index"
+from lib import _validation_utils
+from lib import _index_utils
+from lib.go_defs_index import _go_defs_index_discovery as _discovery
+from lib.go_defs_index import _go_defs_index_models as _models
+from lib.go_defs_index import _go_defs_index_indexfile as _indexfile
+from lib.go_defs_index import _go_defs_index_matching as _matching
+from lib.go_defs_index import _go_defs_index_comparison as _comparison
+from lib.go_defs_index import _go_defs_index_descriptions as _descriptions
+from lib.go_defs_index import _go_defs_index_ordering as _ordering
+from lib.go_defs_index import _go_defs_index_reporting as _reporting
 
-# Import shared utilities
-for module_path in (str(scripts_dir), str(lib_dir), str(go_defs_dir)):
-    if module_path not in sys.path:
-        sys.path.insert(0, module_path)
-
-# Import shared utilities
-import lib._validation_utils as _validation_utils  # noqa: E402
-
-import lib._index_utils as _index_utils  # noqa: E402
 ParsedIndex = _index_utils.ParsedIndex
-
-import lib.go_defs_index._go_defs_index_discovery as _discovery  # noqa: E402
 discover_all_definitions_phase1 = _discovery.discover_all_definitions
-
-
-import lib.go_defs_index._go_defs_index_indexfile as _indexfile  # noqa: E402
+DetectedDefinition = _models.DetectedDefinition
 parse_index_indexfile = _indexfile.parse_index
-
-import lib.go_defs_index._go_defs_index_matching as _matching  # noqa: E402
-
-import lib.go_defs_index._go_defs_index_comparison as _comparison  # noqa: E402
 compare_with_index_phase4 = _comparison.compare_with_index
-
-import lib.go_defs_index._go_defs_index_descriptions as _descriptions  # noqa: E402
 check_entry_descriptions_phase5 = _descriptions.check_entry_descriptions
-
-import lib.go_defs_index._go_defs_index_ordering as _ordering  # noqa: E402
 determine_ordering_phase6 = _ordering.determine_ordering
-
-import lib.go_defs_index._go_defs_index_reporting as _reporting  # noqa: E402
 generate_report_phase7 = _reporting.generate_report
 
 INDEX_FILENAME = "api_go_defs_index.md"
@@ -450,6 +435,7 @@ def _apply_index_updates(
             parsed_index.get_removed_entries(),
             parsed_index.get_orphans(),
             parsed_index.get_link_update_entries(),
+            parsed_index.get_reordered_entries(),
             has_description_fix_candidates,
         ]
     )
@@ -521,12 +507,12 @@ def _read_index_file_or_exit(
         _fatal_validation_issue(
             output=output,
             no_fail=no_fail,
-            issue=ValidationIssue(
+            issue=ValidationIssue.create(
                 "index_file_read_error",
                 index_file,
                 0,
                 0,
-                f"Could not read index file: {e}",
+                message=f"Could not read index file: {e}",
                 severity="error",
             ),
         )
@@ -534,25 +520,25 @@ def _read_index_file_or_exit(
         _fatal_validation_issue(
             output=output,
             no_fail=no_fail,
-            issue=ValidationIssue(
+            issue=ValidationIssue.create(
                 "index_file_decode_error",
                 index_file,
                 0,
                 0,
-                f"Could not decode index file (encoding issue): {e}",
+                message=f"Could not decode index file (encoding issue): {e}",
                 severity="error",
             ),
         )
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (ValueError, KeyError, TypeError, RuntimeError, MemoryError, BufferError) as e:
         _fatal_validation_issue(
             output=output,
             no_fail=no_fail,
-            issue=ValidationIssue(
+            issue=ValidationIssue.create(
                 "index_file_unexpected_error",
                 index_file,
                 0,
                 0,
-                f"Unexpected error reading index file: {e}",
+                message=f"Unexpected error reading index file: {e}",
                 severity="error",
             ),
         )
@@ -572,12 +558,12 @@ def _parse_index_or_exit(
         _fatal_validation_issue(
             output=output,
             no_fail=no_fail,
-            issue=ValidationIssue(
+            issue=ValidationIssue.create(
                 "duplicate_headings",
                 index_file,
                 0,
                 0,
-                f"{e}",
+                message=f"{e}",
                 severity="error",
             ),
         )
@@ -590,6 +576,7 @@ def _add_index_summary(
     definitions_count: int,
     parsed_index: ParsedIndex,
     description_errors: int,
+    zero_confidence_counts: Optional[Dict[str, int]] = None,
 ) -> int:
     added_entries = len(parsed_index.get_added_entries())
     moved_entries = len(parsed_index.get_moved_entries())
@@ -628,21 +615,49 @@ def _add_index_summary(
         if summary_items:
             output.add_summary_header()
             summary_items.insert(0, ("Total issues:", total_issues))
+            if zero_confidence_counts:
+                summary_items.extend(_format_zero_confidence_summary(zero_confidence_counts))
             output.add_summary_section(summary_items)
             output.add_failure_message("Validation failed. Please fix the errors above.")
         return total_issues
 
     output.add_summary_header()
-    output.add_summary_section(
-        [
-            ("Definitions checked:", definitions_count),
-            ("All definitions indexed:", definitions_count),
-        ]
-    )
-    output.add_success_message(
-        "No errors or suggestions found. All definitions are correctly indexed."
-    )
+    summary_items = [
+        ("Definitions checked:", definitions_count),
+        ("All definitions indexed:", definitions_count),
+    ]
+    if zero_confidence_counts:
+        summary_items.extend(_format_zero_confidence_summary(zero_confidence_counts))
+    output.add_summary_section(summary_items)
     return 0
+
+
+def _format_zero_confidence_summary(
+    zero_confidence_counts: Dict[str, int],
+) -> list[tuple[str, int]]:
+    summary_items: list[tuple[str, int]] = []
+    for label, key in (
+        ("Zero-confidence types:", "type"),
+        ("Zero-confidence functions:", "func"),
+        ("Zero-confidence methods:", "method"),
+        ("Zero-confidence total:", "total"),
+    ):
+        count = zero_confidence_counts.get(key, 0)
+        if count:
+            summary_items.append((label, count))
+    return summary_items
+
+
+def _count_zero_confidence(definitions: list[DetectedDefinition]) -> Dict[str, int]:
+    counts = {"type": 0, "func": 0, "method": 0, "total": 0}
+    for definition in definitions:
+        score = definition.confidence_score
+        if score is None or score > 0.0:
+            continue
+        if definition.kind in counts:
+            counts[definition.kind] += 1
+        counts["total"] += 1
+    return counts
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -711,12 +726,12 @@ def main() -> None:
         _fatal_validation_issue(
             output=output,
             no_fail=args.no_fail,
-            issue=ValidationIssue(
+            issue=ValidationIssue.create(
                 "tech_specs_dir_not_found",
                 tech_specs_dir,
                 0,
                 0,
-                f"Tech specs directory not found: {tech_specs_dir}",
+                message=f"Tech specs directory not found: {tech_specs_dir}",
                 severity="error",
             ),
         )
@@ -725,12 +740,12 @@ def main() -> None:
         _fatal_validation_issue(
             output=output,
             no_fail=args.no_fail,
-            issue=ValidationIssue(
+            issue=ValidationIssue.create(
                 "index_file_not_found",
                 index_file,
                 0,
                 0,
-                f"Index file not found: {index_file}",
+                message=f"Index file not found: {index_file}",
                 severity="error",
             ),
         )
@@ -792,15 +807,15 @@ def main() -> None:
             index_file,
             output,
         )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError, RuntimeError) as e:
         if output:
             output.add_error_line(
-                ValidationIssue(
+                ValidationIssue.create(
                     "error_parsing_descriptions",
                     index_file,
                     0,
                     0,
-                    f"Could not parse index file for description checking: {e}",
+                    message=f"Could not parse index file for description checking: {e}",
                     severity="error",
                 ).format_message(no_color=output.no_color)
             )
@@ -820,12 +835,32 @@ def main() -> None:
         index_file_name,
     )
 
-    _add_index_summary(
+    zero_confidence_counts = _count_zero_confidence(definitions)
+    total_issues = _add_index_summary(
         output=output,
         definitions_count=len(definitions),
         parsed_index=parsed_index,
         description_errors=description_errors,
+        zero_confidence_counts=zero_confidence_counts,
     )
+
+    if output.verbose:
+        output.add_blank_line("final_message")
+        output.add_line("Expected index (full tree):", section="final_message")
+        output.add_blank_line("final_message")
+        for line in parsed_index.render_full_tree():
+            output.add_line(line, section="final_message")
+        output.add_blank_line("final_message")
+
+    if not total_issues:
+        if output.has_warnings():
+            output.add_warnings_only_message(
+                verbose_hint="Run with --verbose to see the full warning details.",
+            )
+        else:
+            output.add_success_message(
+                "No errors or suggestions found. All definitions are correctly indexed."
+            )
 
     final_exit_code = output.get_exit_code(args.no_fail)
     output.print()

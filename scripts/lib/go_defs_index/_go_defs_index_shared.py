@@ -11,8 +11,6 @@ _IMPLEMENTATION_TO_INTERFACE: Dict[str, str] = {
     "filePackage": "Package",
     "readOnlyPackage": "Package",
     "readOnlyPackageImpl": "Package",
-    "packageReader": "PackageReader",
-    "packageWriter": "PackageWriter",
 }
 
 
