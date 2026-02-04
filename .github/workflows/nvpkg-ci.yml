@@ -1,0 +1,116 @@
+name: nvpkg CI
+
+# NOTE: This workflow must be kept in sync with the 'ci' target in cli/nvpkg/Makefile.
+#       When adding or modifying CI checks, update both this workflow and cli/nvpkg/Makefile.
+#       Runs test, lint, build, and coverage for the nvpkg CLI.
+
+on:
+  push:
+    paths:
+      - 'cli/nvpkg/**'
+      - 'api/go/**'
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-nvpkg:
+    name: Test nvpkg
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli/nvpkg
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: cli/nvpkg/go.sum
+
+      - name: Verify go.mod is tidy
+        run: go mod tidy && git diff --exit-code go.mod go.sum
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run unit tests
+        run: go test -v ./...
+
+  lint-nvpkg:
+    name: Lint nvpkg
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli/nvpkg
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: cli/nvpkg/go.sum
+
+      - name: Check formatting
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Code is not formatted. Run 'go fmt ./...'"
+            gofmt -s -d .
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.7.0
+          working-directory: cli/nvpkg
+
+  build-nvpkg:
+    name: Build nvpkg
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli/nvpkg
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: cli/nvpkg/go.sum
+
+      - name: Install UPX
+        run: sudo apt-get update && sudo apt-get install -y upx-ucl
+
+      - name: Build
+        run: make build
+
+  coverage-nvpkg:
+    name: Coverage nvpkg
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli/nvpkg
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: cli/nvpkg/go.sum
+
+      - name: Run tests with coverage
+        run: make coverage

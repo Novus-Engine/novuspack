@@ -1,0 +1,108 @@
+name: nvpkg Build and Publish
+
+# Builds release (Go -ldflags -s -w + UPX) and dev binaries in separate per-OS/arch jobs (matrix).
+# Output: one folder per target (e.g. linux-amd64/, darwin-arm64/, windows-amd64/, freebsd-amd64/)
+# with nvpkg and nvpkg-dev (Unix) or nvpkg.exe and nvpkg-dev.exe (Windows).
+# Platforms match cli/nvpkg/Makefile: Linux, macOS (darwin), Windows, FreeBSD (amd64, arm64 each where applicable).
+# Uploads artifacts and attaches to GitHub Release.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  build:
+    name: Build nvpkg ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: freebsd
+            goarch: amd64
+          - goos: freebsd
+            goarch: arm64
+    defaults:
+      run:
+        working-directory: cli/nvpkg
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: cli/nvpkg/go.sum
+
+      - name: Install UPX
+        run: sudo apt-get update && sudo apt-get install -y upx-ucl
+
+      - name: Build release and dev binaries
+        run: |
+          set -e
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
+          dir="../dist/${GOOS}-${GOARCH}"
+          mkdir -p "$dir"
+          if [ "$GOOS" = "windows" ]; then
+            release_name="nvpkg.exe"
+            dev_name="nvpkg-dev.exe"
+          else
+            release_name="nvpkg"
+            dev_name="nvpkg-dev"
+          fi
+          CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" go build -ldflags="-s -w" -trimpath -o "$release_name" .
+          upx --best "$release_name" 2>/dev/null || true
+          mv "$release_name" "$dir/"
+          GOOS="$GOOS" GOARCH="$GOARCH" go build -o "$dev_name" .
+          mv "$dev_name" "$dir/"
+          find "$dir" -type f | sort
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.goos }}-${{ matrix.goarch }}
+          path: cli/dist/${{ matrix.goos }}-${{ matrix.goarch }}
+          retention-days: 90
+
+  publish:
+    name: Publish to Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'release'
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create archives per platform
+        run: |
+          for dir in */; do
+            (cd "$dir" && zip -r "../${dir%/}.zip" .)
+          done
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            *.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

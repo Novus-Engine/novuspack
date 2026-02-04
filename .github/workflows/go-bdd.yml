@@ -9,6 +9,13 @@ on:
       - 'api/go/**/*.go'
       - 'features/**/*.feature'
       - 'api/go/**/_bdd/**/*.go'
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/go/**/*.go'
+      - 'features/**/*.feature'
+      - 'api/go/**/_bdd/**/*.go'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
