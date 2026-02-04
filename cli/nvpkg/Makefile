@@ -75,6 +75,10 @@ tidy:
 	@echo "Dependencies tidied successfully."
 
 # Lint: gofmt, go vet, golangci-lint (same strategy as api/go; uses .golangci.yml)
+# Use latest golangci-lint so local and CI (.github/workflows/nvpkg-ci.yml) stay in sync.
+GOLANGCI_LINT_VERSION ?= latest
+GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
 lint:
 	@echo "Checking code formatting..."
 	@if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then \
@@ -86,8 +90,8 @@ lint:
 	@echo "Running go vet..."
 	@go vet ./...
 	@echo ""
-	@echo "Running golangci-lint..."
-	@golangci-lint run ./...
+	@echo "Running golangci-lint $(GOLANGCI_LINT_VERSION)..."
+	@$(GOLANGCI_LINT) run ./...
 
 # Native release build for current OS/arch only. Outputs to $(OUT_DIR)/<goos>-<goarch>/nvpkg (or nvpkg.exe on Windows).
 BUILD_GOOS := $(shell go env GOOS)

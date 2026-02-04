@@ -652,7 +652,7 @@ func runInteractiveCreate(args []string, flags map[string]string, cwd string) (n
 	}
 	setCreateFlags(flags)
 	pathArg := expandTilde(args[0])
-	if err = runCreate(nil, []string{pathArg}); err != nil {
+	if err := runCreate(nil, []string{pathArg}); err != nil {
 		return "", false, false, err
 	}
 	absPath, e := filepath.Abs(pathArg)

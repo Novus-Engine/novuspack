@@ -131,6 +131,10 @@ bdd-domain:
 	echo "Exit code: $$exit_code"; \
 	exit $$exit_code
 
+# Use latest golangci-lint so local and CI (.github/workflows/go-ci.yml) stay in sync.
+GOLANGCI_LINT_VERSION ?= latest
+GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
 lint:
 	@echo "Checking code formatting..."
 	@if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then \
@@ -142,8 +146,8 @@ lint:
 	@echo "Running go vet..."
 	@go vet ./...
 	@echo ""
-	@echo "Running golangci-lint..."
-	@golangci-lint run ./...
+	@echo "Running golangci-lint $(GOLANGCI_LINT_VERSION)..."
+	@$(GOLANGCI_LINT) run ./...
 
 # Go signature validation - validates Go signatures in implementation against tech specs
 # NOTE: This target must be kept in sync with .github/workflows/docs-check.yml.
@@ -249,19 +253,19 @@ ci:
 		GOCACHE="$$CACHE_DIR" go vet ./...; \
 	fi
 	@echo ""
-	@echo "6. Running golangci-lint..."
+	@echo "6. Running golangci-lint $(GOLANGCI_LINT_VERSION)..."
 	@if ( [ -w "$(HOME)/.cache/go-build" ] 2>/dev/null && touch "$(HOME)/.cache/go-build/.write-test" 2>/dev/null && rm -f "$(HOME)/.cache/go-build/.write-test" ) || [ -z "$(HOME)" ]; then \
-		golangci-lint run ./...; \
-		golangci-lint run --build-tags=bdd ./...; \
+		$(GOLANGCI_LINT) run ./...; \
+		$(GOLANGCI_LINT) run --build-tags=bdd ./...; \
 	else \
 		CACHE_DIR="$$(cd ../.. && pwd)/tmp/go-cache"; \
 		mkdir -p "$$CACHE_DIR"; \
-		GOCACHE="$$CACHE_DIR" golangci-lint run ./... || { \
+		GOCACHE="$$CACHE_DIR" $(GOLANGCI_LINT) run ./... || { \
 			echo "Error: golangci-lint failed. This may be due to Go module cache permissions."; \
 			echo "Try running 'go mod tidy' or check Go module cache permissions."; \
 			exit 1; \
 		}; \
-		GOCACHE="$$CACHE_DIR" golangci-lint run --build-tags=bdd ./... || { \
+		GOCACHE="$$CACHE_DIR" $(GOLANGCI_LINT) run --build-tags=bdd ./... || { \
 			echo "Error: golangci-lint (BDD) failed. This may be due to Go module cache permissions."; \
 			echo "Try running 'go mod tidy' or check Go module cache permissions."; \
 			exit 1; \
