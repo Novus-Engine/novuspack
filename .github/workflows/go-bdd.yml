@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.25'
           cache-dependency-path: api/go/go.sum
@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload BDD test output
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bdd-test-output
           path: tmp/bdd_test_output_*.txt
