@@ -9,7 +9,9 @@ package file_format
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -1290,6 +1292,109 @@ func aHashEntryWithAllFieldsSet(ctx context.Context) error {
 	return nil
 }
 
+// BDD-local helpers for HashEntry/OptionalDataEntry (API serialize/validate methods are unexported).
+// Format matches package_file_format.md and metadata package.
+
+func writeHashEntryTo(w io.Writer, h *novuspack.HashEntry) (int64, error) {
+	var n int64
+	if err := binary.Write(w, binary.LittleEndian, h.HashType); err != nil {
+		return n, err
+	}
+	n++
+	if err := binary.Write(w, binary.LittleEndian, h.HashPurpose); err != nil {
+		return n, err
+	}
+	n++
+	if err := binary.Write(w, binary.LittleEndian, h.HashLength); err != nil {
+		return n, err
+	}
+	n += 2
+	written, err := w.Write(h.HashData)
+	if err != nil {
+		return n, err
+	}
+	return n + int64(written), nil
+}
+
+func readHashEntryFrom(r io.Reader) (novuspack.HashEntry, int64, error) {
+	var h novuspack.HashEntry
+	var n int64
+	if err := binary.Read(r, binary.LittleEndian, &h.HashType); err != nil {
+		return h, n, err
+	}
+	n++
+	if err := binary.Read(r, binary.LittleEndian, &h.HashPurpose); err != nil {
+		return h, n, err
+	}
+	n++
+	if err := binary.Read(r, binary.LittleEndian, &h.HashLength); err != nil {
+		return h, n, err
+	}
+	n += 2
+	h.HashData = make([]byte, h.HashLength)
+	read, err := io.ReadFull(r, h.HashData)
+	if err != nil {
+		return h, n, err
+	}
+	return h, n + int64(read), nil
+}
+
+func validateHashEntry(h *novuspack.HashEntry) error {
+	if h == nil || len(h.HashData) == 0 {
+		return fmt.Errorf("hash data cannot be nil or empty")
+	}
+	if h.HashLength != uint16(len(h.HashData)) {
+		return fmt.Errorf("HashLength %d does not match HashData length %d", h.HashLength, len(h.HashData))
+	}
+	return nil
+}
+
+func writeOptionalDataEntryTo(w io.Writer, o *novuspack.OptionalDataEntry) (int64, error) {
+	var n int64
+	if err := binary.Write(w, binary.LittleEndian, o.DataType); err != nil {
+		return n, err
+	}
+	n++
+	if err := binary.Write(w, binary.LittleEndian, o.DataLength); err != nil {
+		return n, err
+	}
+	n += 2
+	written, err := w.Write(o.Data)
+	if err != nil {
+		return n, err
+	}
+	return n + int64(written), nil
+}
+
+func readOptionalDataEntryFrom(r io.Reader) (*novuspack.OptionalDataEntry, int64, error) {
+	o := &novuspack.OptionalDataEntry{}
+	var n int64
+	if err := binary.Read(r, binary.LittleEndian, &o.DataType); err != nil {
+		return nil, n, err
+	}
+	n++
+	if err := binary.Read(r, binary.LittleEndian, &o.DataLength); err != nil {
+		return nil, n, err
+	}
+	n += 2
+	o.Data = make([]byte, o.DataLength)
+	read, err := io.ReadFull(r, o.Data)
+	if err != nil {
+		return nil, n, err
+	}
+	return o, n + int64(read), nil
+}
+
+func validateOptionalDataEntry(o *novuspack.OptionalDataEntry) error {
+	if o == nil || len(o.Data) == 0 {
+		return fmt.Errorf("optional data cannot be nil or empty")
+	}
+	if o.DataLength != uint16(len(o.Data)) {
+		return fmt.Errorf("DataLength %d does not match Data length %d", o.DataLength, len(o.Data))
+	}
+	return nil
+}
+
 func hashEntryWriteToIsCalledWithWriter(ctx context.Context) (context.Context, error) {
 	world := getWorldFileFormat(ctx)
 	if world == nil {
@@ -1301,14 +1406,12 @@ func hashEntryWriteToIsCalledWithWriter(ctx context.Context) (context.Context, e
 	}
 	// Update HashLength to match actual data
 	hashEntry.HashLength = uint16(len(hashEntry.HashData))
-	// Serialize using WriteTo
 	var buf bytes.Buffer
-	_, err := hashEntry.WriteTo(&buf)
+	_, err := writeHashEntryTo(&buf, hashEntry)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return ctx, fmt.Errorf("WriteTo failed: %w", err)
 	}
-	// Store serialized data
 	world.SetPackageMetadata("hashentry_serialized", buf.Bytes())
 	return ctx, nil
 }
@@ -1346,13 +1449,10 @@ func writtenDataMatchesHashEntryContent(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("serialized data is not a byte slice")
 	}
-	// Deserialize and compare
-	var readHashEntry novuspack.HashEntry
-	_, err := readHashEntry.ReadFrom(bytes.NewReader(buf))
+	readHashEntry, _, err := readHashEntryFrom(bytes.NewReader(buf))
 	if err != nil {
 		return fmt.Errorf("failed to read back serialized data: %w", err)
 	}
-	// Compare key fields
 	if readHashEntry.HashType != originalHashEntry.HashType {
 		return fmt.Errorf("HashType mismatch: %d != %d", readHashEntry.HashType, originalHashEntry.HashType)
 	}
@@ -1376,7 +1476,7 @@ func aReaderWithValidHashEntryData(ctx context.Context) (context.Context, error)
 	}
 	hashEntry.HashLength = uint16(len(hashEntry.HashData))
 	var buf bytes.Buffer
-	_, err := hashEntry.WriteTo(&buf)
+	_, err := writeHashEntryTo(&buf, hashEntry)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to serialize hash entry: %w", err)
 	}
@@ -1398,15 +1498,12 @@ func hashEntryReadFromIsCalledWithReader(ctx context.Context) (context.Context, 
 	if !ok {
 		return ctx, fmt.Errorf("reader data is not a byte slice")
 	}
-	// Read hash entry using ReadFrom
-	hashEntry := &novuspack.HashEntry{}
-	_, err := hashEntry.ReadFrom(bytes.NewReader(buf))
+	entry, _, err := readHashEntryFrom(bytes.NewReader(buf))
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
-		// Return nil to allow error scenarios to continue and check for the error
 		return ctx, nil
 	}
-	world.SetHashEntry(hashEntry)
+	world.SetHashEntry(&entry)
 	return ctx, nil
 }
 
@@ -1454,7 +1551,7 @@ func hashEntryIsValid(ctx context.Context) error {
 	if hashEntry == nil {
 		return fmt.Errorf("no hash entry available")
 	}
-	err := hashEntry.Validate()
+	err := validateHashEntry(hashEntry)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return fmt.Errorf("hash entry validation failed: %w", err)
@@ -1550,16 +1647,13 @@ func optionalDataEntryWriteToIsCalledWithWriter(ctx context.Context) (context.Co
 	if optionalDataEntry == nil {
 		return ctx, fmt.Errorf("no optional data entry available")
 	}
-	// Update DataLength to match actual data
 	optionalDataEntry.DataLength = uint16(len(optionalDataEntry.Data))
-	// Serialize using WriteTo
 	var buf bytes.Buffer
-	_, err := optionalDataEntry.WriteTo(&buf)
+	_, err := writeOptionalDataEntryTo(&buf, optionalDataEntry)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return ctx, fmt.Errorf("WriteTo failed: %w", err)
 	}
-	// Store serialized data
 	world.SetPackageMetadata("optionaldataentry_serialized", buf.Bytes())
 	return ctx, nil
 }
@@ -1597,13 +1691,10 @@ func writtenDataMatchesOptionalDataEntryContent(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("serialized data is not a byte slice")
 	}
-	// Deserialize and compare
-	var readOptionalDataEntry novuspack.OptionalDataEntry
-	_, err := readOptionalDataEntry.ReadFrom(bytes.NewReader(buf))
+	readOptionalDataEntry, _, err := readOptionalDataEntryFrom(bytes.NewReader(buf))
 	if err != nil {
 		return fmt.Errorf("failed to read back serialized data: %w", err)
 	}
-	// Compare key fields
 	if readOptionalDataEntry.DataType != originalOptionalDataEntry.DataType {
 		return fmt.Errorf("DataType mismatch: %d != %d", readOptionalDataEntry.DataType, originalOptionalDataEntry.DataType)
 	}
@@ -1626,7 +1717,7 @@ func aReaderWithValidOptionalDataEntryData(ctx context.Context) (context.Context
 	}
 	optionalDataEntry.DataLength = uint16(len(optionalDataEntry.Data))
 	var buf bytes.Buffer
-	_, err := optionalDataEntry.WriteTo(&buf)
+	_, err := writeOptionalDataEntryTo(&buf, optionalDataEntry)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to serialize optional data entry: %w", err)
 	}
@@ -1648,15 +1739,12 @@ func optionalDataEntryReadFromIsCalledWithReader(ctx context.Context) (context.C
 	if !ok {
 		return ctx, fmt.Errorf("reader data is not a byte slice")
 	}
-	// Read optional data entry using ReadFrom
-	optionalDataEntry := &novuspack.OptionalDataEntry{}
-	_, err := optionalDataEntry.ReadFrom(bytes.NewReader(buf))
+	entry, _, err := readOptionalDataEntryFrom(bytes.NewReader(buf))
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
-		// Return nil to allow error scenarios to continue and check for the error
 		return ctx, nil
 	}
-	world.SetOptionalData(optionalDataEntry)
+	world.SetOptionalData(entry)
 	return ctx, nil
 }
 
@@ -1704,7 +1792,7 @@ func optionalDataEntryIsValid(ctx context.Context) error {
 	if optionalDataEntry == nil {
 		return fmt.Errorf("no optional data entry available")
 	}
-	err := optionalDataEntry.Validate()
+	err := validateOptionalDataEntry(optionalDataEntry)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return fmt.Errorf("optional data entry validation failed: %w", err)
@@ -2204,7 +2292,7 @@ func offsetsAreCalculatedCorrectly(ctx context.Context) error {
 	if entry.HashDataOffset != uint32(pathsSize) {
 		return fmt.Errorf("HashDataOffset = %d, want %d", entry.HashDataOffset, pathsSize)
 	}
-	hashSize := lo.SumBy(entry.Hashes, func(h novuspack.HashEntry) int { return h.Size() })
+	hashSize := lo.SumBy(entry.Hashes, func(h novuspack.HashEntry) int { return 4 + int(h.HashLength) })
 	if entry.OptionalDataOffset != uint32(pathsSize+hashSize) {
 		return fmt.Errorf("OptionalDataOffset = %d, want %d", entry.OptionalDataOffset, pathsSize+hashSize)
 	}

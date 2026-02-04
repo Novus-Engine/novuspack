@@ -652,6 +652,172 @@ func TestRemoveFile_ErrorCases(t *testing.T) {
 }
 
 // ====================
+// RemoveFilePattern (stub) Tests
+// ====================
+
+// TestRemoveFilePattern_ReturnsUnsupported tests that RemoveFilePattern returns ErrTypeUnsupported (stub).
+func TestRemoveFilePattern_ReturnsUnsupported(t *testing.T) {
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	ctx := context.Background()
+	tmpPath := filepath.Join(t.TempDir(), "pkg.nvpk")
+	if err := pkg.Create(ctx, tmpPath); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	removed, err := pkg.RemoveFilePattern(ctx, "*.tmp")
+	if err == nil {
+		t.Fatal("RemoveFilePattern succeeded, want ErrTypeUnsupported")
+	}
+	if removed != nil {
+		t.Errorf("RemoveFilePattern returned %v, want nil slice", removed)
+	}
+	pkgErr, ok := err.(*pkgerrors.PackageError)
+	if !ok {
+		t.Fatalf("Error type = %T, want *pkgerrors.PackageError", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeUnsupported {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeUnsupported)
+	}
+}
+
+// TestRemoveFilePattern_EmptyPattern tests validation error for empty pattern.
+func TestRemoveFilePattern_EmptyPattern(t *testing.T) {
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	ctx := context.Background()
+	tmpPath := filepath.Join(t.TempDir(), "pkg.nvpk")
+	if err := pkg.Create(ctx, tmpPath); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	_, err = pkg.RemoveFilePattern(ctx, "")
+	if err == nil {
+		t.Fatal("RemoveFilePattern(empty) succeeded, want validation error")
+	}
+	pkgErr, ok := err.(*pkgerrors.PackageError)
+	if !ok {
+		t.Fatalf("Error type = %T, want *pkgerrors.PackageError", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeValidation {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
+	}
+}
+
+// TestRemoveFilePattern_ContextCancelled tests context cancellation.
+func TestRemoveFilePattern_ContextCancelled(t *testing.T) {
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	tmpPath := filepath.Join(t.TempDir(), "pkg.nvpk")
+	if err := pkg.Create(context.Background(), tmpPath); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = pkg.RemoveFilePattern(ctx, "*.tmp")
+	if err == nil {
+		t.Fatal("RemoveFilePattern with cancelled context succeeded, want error")
+	}
+	pkgErr, ok := err.(*pkgerrors.PackageError)
+	if !ok {
+		t.Fatalf("Error type = %T, want *pkgerrors.PackageError", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeContext {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeContext)
+	}
+}
+
+// ====================
+// RemoveDirectory (stub) Tests
+// ====================
+
+// TestRemoveDirectory_ReturnsUnsupported tests that RemoveDirectory returns ErrTypeUnsupported (stub).
+func TestRemoveDirectory_ReturnsUnsupported(t *testing.T) {
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	ctx := context.Background()
+	tmpPath := filepath.Join(t.TempDir(), "pkg.nvpk")
+	if err := pkg.Create(ctx, tmpPath); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	removed, err := pkg.RemoveDirectory(ctx, "/subdir/", nil)
+	if err == nil {
+		t.Fatal("RemoveDirectory succeeded, want ErrTypeUnsupported")
+	}
+	if removed != nil {
+		t.Errorf("RemoveDirectory returned %v, want nil slice", removed)
+	}
+	pkgErr, ok := err.(*pkgerrors.PackageError)
+	if !ok {
+		t.Fatalf("Error type = %T, want *pkgerrors.PackageError", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeUnsupported {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeUnsupported)
+	}
+}
+
+// TestRemoveDirectory_EmptyPath tests validation error for empty path.
+func TestRemoveDirectory_EmptyPath(t *testing.T) {
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	ctx := context.Background()
+	tmpPath := filepath.Join(t.TempDir(), "pkg.nvpk")
+	if err := pkg.Create(ctx, tmpPath); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	_, err = pkg.RemoveDirectory(ctx, "", nil)
+	if err == nil {
+		t.Fatal("RemoveDirectory(empty) succeeded, want validation error")
+	}
+	pkgErr, ok := err.(*pkgerrors.PackageError)
+	if !ok {
+		t.Fatalf("Error type = %T, want *pkgerrors.PackageError", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeValidation {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeValidation)
+	}
+}
+
+// TestRemoveDirectory_ContextCancelled tests context cancellation.
+func TestRemoveDirectory_ContextCancelled(t *testing.T) {
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	tmpPath := filepath.Join(t.TempDir(), "pkg.nvpk")
+	if err := pkg.Create(context.Background(), tmpPath); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = pkg.RemoveDirectory(ctx, "/dir/", nil)
+	if err == nil {
+		t.Fatal("RemoveDirectory with cancelled context succeeded, want error")
+	}
+	pkgErr, ok := err.(*pkgerrors.PackageError)
+	if !ok {
+		t.Fatalf("Error type = %T, want *pkgerrors.PackageError", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeContext {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeContext)
+	}
+}
+
+// ====================
 // File Integration Tests
 // ====================
 

@@ -9,8 +9,10 @@ package file_format
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/cucumber/godog"
@@ -52,7 +54,38 @@ type worldFileFormat interface {
 	GetPackageMetadata(string) (interface{}, bool)
 }
 
-// Helper functions are defined in file_entry.go to avoid duplication
+// writePackageHeaderTo and readPackageHeaderFrom replicate header I/O (API methods are unexported).
+func writePackageHeaderTo(w io.Writer, header *novuspack.PackageHeader) (int64, error) {
+	if err := binary.Write(w, binary.LittleEndian, header); err != nil {
+		return 0, err
+	}
+	return novuspack.PackageHeaderSize, nil
+}
+
+func readPackageHeaderFrom(r io.Reader) (*novuspack.PackageHeader, int64, error) {
+	h := &novuspack.PackageHeader{}
+	if err := binary.Read(r, binary.LittleEndian, h); err != nil {
+		return nil, 0, err
+	}
+	return h, novuspack.PackageHeaderSize, nil
+}
+
+// validatePackageHeader replicates header validation (API validate is unexported).
+func validatePackageHeader(header *novuspack.PackageHeader) error {
+	if header == nil {
+		return fmt.Errorf("header is nil")
+	}
+	if header.Magic != novuspack.NVPKMagic {
+		return fmt.Errorf("invalid magic number: 0x%08X", header.Magic)
+	}
+	if header.FormatVersion != novuspack.FormatVersion {
+		return fmt.Errorf("unsupported format version: %d", header.FormatVersion)
+	}
+	if header.Reserved != 0 {
+		return fmt.Errorf("reserved field must be 0")
+	}
+	return nil
+}
 
 // RegisterFileFormatHeaderSteps registers step definitions for package header operations.
 func RegisterFileFormatHeaderSteps(ctx *godog.ScenarioContext) {
@@ -175,7 +208,7 @@ func theHeaderIsParsed(ctx context.Context) (context.Context, error) {
 	if header == nil {
 		return ctx, fmt.Errorf("no header available to parse")
 	}
-	err := header.Validate()
+	err := validatePackageHeader(header)
 	if err != nil {
 		// Wrap fileformat errors as PackageError for BDD test expectations
 		pkgErr := pkgerrors.NewPackageError[struct{}](pkgerrors.ErrTypeValidation, "invalid package header", err, struct{}{})
@@ -414,21 +447,18 @@ func archivePartInfoPacksPartAndTotalCorrectly(ctx context.Context) error {
 	if header == nil {
 		return fmt.Errorf("no header available")
 	}
-	// Test that GetArchivePart and GetArchiveTotal work correctly
-	part := header.GetArchivePart()
-	total := header.GetArchiveTotal()
-	// Verify the values can be extracted
+	part := uint16(header.ArchivePartInfo >> 16)
+	total := uint16(header.ArchivePartInfo & 0xFFFF)
 	_ = part
 	_ = total
-	// Verify SetArchivePartInfo works
 	testPart := uint16(2)
 	testTotal := uint16(3)
-	header.SetArchivePartInfo(testPart, testTotal)
-	if header.GetArchivePart() != testPart {
-		return fmt.Errorf("GetArchivePart returned %d, expected %d", header.GetArchivePart(), testPart)
+	header.ArchivePartInfo = (uint32(testPart) << 16) | uint32(testTotal)
+	if uint16(header.ArchivePartInfo>>16) != testPart {
+		return fmt.Errorf("ArchivePartInfo part = %d, expected %d", header.ArchivePartInfo>>16, testPart)
 	}
-	if header.GetArchiveTotal() != testTotal {
-		return fmt.Errorf("GetArchiveTotal returned %d, expected %d", header.GetArchiveTotal(), testTotal)
+	if uint16(header.ArchivePartInfo&0xFFFF) != testTotal {
+		return fmt.Errorf("ArchivePartInfo total = %d, expected %d", header.ArchivePartInfo&0xFFFF, testTotal)
 	}
 	return nil
 }
@@ -492,7 +522,7 @@ func aStructuredInvalidFormatErrorIsReturned(ctx context.Context) error {
 	if header == nil {
 		return fmt.Errorf("no header available")
 	}
-	err := header.Validate()
+	err := validatePackageHeader(header)
 	if err == nil {
 		return fmt.Errorf("expected validation error but got none")
 	}
@@ -530,7 +560,7 @@ func aStructuredInvalidHeaderErrorIsReturned(ctx context.Context) error {
 	if header == nil {
 		return fmt.Errorf("no header available")
 	}
-	err := header.Validate()
+	err := validatePackageHeader(header)
 	if err == nil {
 		return fmt.Errorf("expected validation error but got none")
 	}
@@ -701,9 +731,8 @@ func writeToIsCalledWithWriter(ctx context.Context) (context.Context, error) {
 	if header == nil {
 		return ctx, fmt.Errorf("no header available")
 	}
-	// Serialize header using WriteTo
 	var buf bytes.Buffer
-	_, err := header.WriteTo(&buf)
+	_, err := writePackageHeaderTo(&buf, header)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return ctx, fmt.Errorf("WriteTo failed: %w", err)
@@ -765,13 +794,10 @@ func writtenDataMatchesHeaderContent(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("serialized data is not a byte slice")
 	}
-	// Deserialize and compare
-	var readHeader novuspack.PackageHeader
-	_, err := readHeader.ReadFrom(bytes.NewReader(buf))
+	readHeader, _, err := readPackageHeaderFrom(bytes.NewReader(buf))
 	if err != nil {
 		return fmt.Errorf("failed to read back serialized data: %w", err)
 	}
-	// Compare key fields
 	if readHeader.Magic != originalHeader.Magic {
 		return fmt.Errorf("Magic mismatch: %x != %x", readHeader.Magic, originalHeader.Magic)
 	}
@@ -786,16 +812,14 @@ func aReaderWithValidHeaderData(ctx context.Context) (context.Context, error) {
 	if world == nil {
 		return ctx, godog.ErrUndefined
 	}
-	// Create a valid header and serialize it
 	header := novuspack.NewPackageHeader()
 	header.PackageDataVersion = 1
 	header.MetadataVersion = 1
 	var buf bytes.Buffer
-	_, err := header.WriteTo(&buf)
+	_, err := writePackageHeaderTo(&buf, header)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to serialize header: %w", err)
 	}
-	// Store the reader data
 	world.SetPackageMetadata("header_reader_data", buf.Bytes())
 	return ctx, nil
 }
@@ -814,13 +838,9 @@ func readFromIsCalledWithReader(ctx context.Context) (context.Context, error) {
 	if !ok {
 		return ctx, fmt.Errorf("reader data is not a byte slice")
 	}
-	// Read header using ReadFrom
-	header := &novuspack.PackageHeader{}
-	_, err := header.ReadFrom(bytes.NewReader(buf))
+	header, _, err := readPackageHeaderFrom(bytes.NewReader(buf))
 	if err != nil {
-		// Wrap fileformat errors as PackageError for BDD test expectations
 		world.SetError(wrapFileFormatError(err))
-		// Return nil to allow error scenarios to continue and check for the error
 		return ctx, nil
 	}
 	world.SetHeader(header)
@@ -871,7 +891,7 @@ func headerIsValid(ctx context.Context) error {
 	if header == nil {
 		return fmt.Errorf("no header available")
 	}
-	err := header.Validate()
+	err := validatePackageHeader(header)
 	if err != nil {
 		// Wrap fileformat errors as PackageError for BDD test expectations
 		pkgErr := pkgerrors.NewPackageError[struct{}](pkgerrors.ErrTypeValidation, "invalid package header", err, struct{}{})
@@ -950,11 +970,10 @@ func aReaderWithHeaderDataWhereMagicIsInvalid(ctx context.Context) (context.Cont
 	if world == nil {
 		return ctx, godog.ErrUndefined
 	}
-	// Create a header with invalid magic and serialize it
 	header := novuspack.NewPackageHeader()
 	header.Magic = 0xDEADBEEF // Invalid magic
 	var buf bytes.Buffer
-	_, err := header.WriteTo(&buf)
+	_, err := writePackageHeaderTo(&buf, header)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to serialize header: %w", err)
 	}

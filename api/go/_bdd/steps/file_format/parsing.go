@@ -321,8 +321,7 @@ func bits15To8EncodePackageCompressionType(ctx context.Context) error {
 	if header == nil {
 		return fmt.Errorf("no header available")
 	}
-	// Verify GetCompressionType extracts bits 15-8 correctly
-	compressionType := header.GetCompressionType()
+	compressionType := uint8((header.Flags & novuspack.FlagsMaskCompressionType) >> novuspack.FlagsShiftCompressionType)
 	// Verify it's in the valid range (0-3)
 	if compressionType > 3 {
 		return fmt.Errorf("compression type %d is out of valid range (0-3)", compressionType)
@@ -339,8 +338,7 @@ func bits7To0EncodePackageFeatures(ctx context.Context) error {
 	if header == nil {
 		return fmt.Errorf("no header available")
 	}
-	// Verify GetFeatures extracts bits 7-0 correctly
-	features := header.GetFeatures()
+	features := uint8(header.Flags & novuspack.FlagsMaskFeatures)
 	_ = features // Features are just a bitmask, no specific validation needed
 	return nil
 }
@@ -371,7 +369,7 @@ func packageCompressionTypeIsSetToNumeric(ctx context.Context, compressionType s
 		world.SetError(pkgErr)
 		return ctx, nil // Don't fail here, let validation step check the error
 	}
-	header.SetCompressionType(uint8(ct))
+	header.Flags = (header.Flags & ^uint32(novuspack.FlagsMaskCompressionType)) | (uint32(ct) << novuspack.FlagsShiftCompressionType)
 	return ctx, nil
 }
 
@@ -396,7 +394,7 @@ func packageCompressionTypeIsSetToValueGreaterThan(ctx context.Context, threshol
 	}
 	// Set to a value greater than threshold (for error testing)
 	invalidValue := uint8(thresh + 1)
-	header.SetCompressionType(invalidValue)
+	header.Flags = (header.Flags & ^uint32(novuspack.FlagsMaskCompressionType)) | (uint32(invalidValue) << novuspack.FlagsShiftCompressionType)
 	// Wrap as PackageError for BDD test expectations
 	pkgErr := pkgerrors.NewPackageError[struct{}](pkgerrors.ErrTypeValidation,
 		fmt.Sprintf("compression type %d exceeds maximum value 3", invalidValue), nil, struct{}{})
@@ -425,8 +423,7 @@ func packageCompressionTypeIsSpecifiedInHeaderFlags(ctx context.Context) error {
 		}
 		world.SetHeader(header)
 	}
-	// Verify compression type is encoded in bits 15-8
-	compressionType := header.GetCompressionType()
+	compressionType := uint8((header.Flags & novuspack.FlagsMaskCompressionType) >> novuspack.FlagsShiftCompressionType)
 	// Verify it can be extracted correctly (this validates the encoding location)
 	_ = compressionType
 	// Verify bits 15-8 contain the compression type
@@ -453,7 +450,7 @@ func flagsBits15To8Equal(ctx context.Context, encodedValue string) error {
 	if err != nil {
 		return fmt.Errorf("invalid encoded value format: %s", encodedValue)
 	}
-	actual := header.GetCompressionType()
+	actual := uint8((header.Flags & novuspack.FlagsMaskCompressionType) >> novuspack.FlagsShiftCompressionType)
 	if actual != uint8(expected) {
 		return fmt.Errorf("compression type is %d, expected %d", actual, expected)
 	}
@@ -469,11 +466,11 @@ func compressionTypeCanBeDecodedCorrectly(ctx context.Context) error {
 	if header == nil {
 		return fmt.Errorf("no header available")
 	}
-	// Test that SetCompressionType and GetCompressionType work correctly
 	for i := uint8(0); i <= 3; i++ {
-		header.SetCompressionType(i)
-		if header.GetCompressionType() != i {
-			return fmt.Errorf("compression type %d was set but GetCompressionType returned %d", i, header.GetCompressionType())
+		header.Flags = (header.Flags & ^uint32(novuspack.FlagsMaskCompressionType)) | (uint32(i) << novuspack.FlagsShiftCompressionType)
+		got := uint8((header.Flags & novuspack.FlagsMaskCompressionType) >> novuspack.FlagsShiftCompressionType)
+		if got != i {
+			return fmt.Errorf("compression type %d was set but got %d", i, got)
 		}
 	}
 	return nil

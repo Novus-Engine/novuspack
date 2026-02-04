@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -222,34 +221,24 @@ func openPackageIsCalled(ctx context.Context) (context.Context, error) {
 	testCtx := world.NewContext()
 	path := world.TempPath("test-package.nvpk")
 
-	// First create a minimal valid package file on disk using raw binary writes.
-	// This mirrors the test helper createTestPackageFile in package tests.
-	file, err := os.Create(path)
+	// Create a minimal valid package file using the public API (Create + SafeWrite + Close).
+	pkg, err := novuspack.NewPackage()
 	if err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
-	defer func() { _ = file.Close() }()
-
-	header := novuspack.NewPackageHeader()
-	index := novuspack.NewFileIndex()
-	index.EntryCount = 0
-	index.FirstEntryOffset = uint64(novuspack.PackageHeaderSize)
-
-	header.IndexStart = uint64(novuspack.PackageHeaderSize)
-	header.IndexSize = uint64(index.Size())
-
-	if _, err := header.WriteTo(file); err != nil {
+	if err := pkg.Create(testCtx, path); err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
-	if _, err := index.WriteTo(file); err != nil {
+	if err := pkg.SafeWrite(testCtx, true); err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
+	_ = pkg.Close()
 
 	// Now open the package
-	pkg, err := novuspack.OpenPackage(testCtx, path)
+	pkg, err = novuspack.OpenPackage(testCtx, path)
 	if err != nil {
 		world.SetError(err)
 		return ctx, err
@@ -267,33 +256,24 @@ func openPackageReadOnlyIsCalled(ctx context.Context) (context.Context, error) {
 	testCtx := world.NewContext()
 	path := world.TempPath("test-package.nvpk")
 
-	// First create a minimal valid package file on disk using raw binary writes.
-	file, err := os.Create(path)
+	// Create a minimal valid package file using the public API (Create + SafeWrite + Close).
+	pkg, err := novuspack.NewPackage()
 	if err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
-	defer func() { _ = file.Close() }()
-
-	header := novuspack.NewPackageHeader()
-	index := novuspack.NewFileIndex()
-	index.EntryCount = 0
-	index.FirstEntryOffset = uint64(novuspack.PackageHeaderSize)
-
-	header.IndexStart = uint64(novuspack.PackageHeaderSize)
-	header.IndexSize = uint64(index.Size())
-
-	if _, err := header.WriteTo(file); err != nil {
+	if err := pkg.Create(testCtx, path); err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
-	if _, err := index.WriteTo(file); err != nil {
+	if err := pkg.SafeWrite(testCtx, true); err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
+	_ = pkg.Close()
 
 	// Now open the package in read-only mode
-	pkg, err := novuspack.OpenPackageReadOnly(testCtx, path)
+	pkg, err = novuspack.OpenPackageReadOnly(testCtx, path)
 	if err != nil {
 		world.SetError(err)
 		return ctx, err
@@ -318,30 +298,21 @@ func openPackageReadOnlyHasBeenCalledSuccessfully(ctx context.Context) (context.
 	testCtx := world.NewContext()
 	path := world.TempPath("test-package.nvpk")
 
-	// Always create a valid package file (overwrite placeholder if it exists)
-	file, err := os.Create(path)
+	// Create a minimal valid package file using the public API (Create + SafeWrite + Close).
+	pkg, err := novuspack.NewPackage()
 	if err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
-	defer func() { _ = file.Close() }()
-
-	header := novuspack.NewPackageHeader()
-	index := novuspack.NewFileIndex()
-	index.EntryCount = 0
-	index.FirstEntryOffset = uint64(novuspack.PackageHeaderSize)
-
-	header.IndexStart = uint64(novuspack.PackageHeaderSize)
-	header.IndexSize = uint64(index.Size())
-
-	if _, err := header.WriteTo(file); err != nil {
+	if err := pkg.Create(testCtx, path); err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
-	if _, err := index.WriteTo(file); err != nil {
+	if err := pkg.SafeWrite(testCtx, true); err != nil {
 		world.SetError(err)
 		return ctx, err
 	}
+	_ = pkg.Close()
 
 	// Now open the package in read-only mode
 	pkg, err = novuspack.OpenPackageReadOnly(testCtx, path)
