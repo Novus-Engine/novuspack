@@ -18,6 +18,7 @@ The repository supports multiple language implementations (Go, Rust, Zig, and fu
 
 - 📚 **Technical specifications**: [`docs/tech_specs/_main.md`](docs/tech_specs/_main.md)
 - 🧾 **Requirements**: [`docs/requirements/README.md`](docs/requirements/README.md)
+- 📐 **Documentation standards**: [`docs/docs_standards/README.md`](docs/docs_standards/README.md)
 - 🧪 **Shared feature files (BDD)**: [`features/`](features/)
 - 🧩 **Go implementation (v1)**: [`api/go/`](api/go/)
 - 🖥️ **CLI implementations**: [`cli/`](cli/) – language-specific CLIs (nvpkg Go, nvpkr Rust, nvpkz Zig); see [cli/README.md](cli/README.md).
@@ -172,6 +173,7 @@ novuspack/
 │   └── nvpkg/                # Go CLI
 ├── features/                 # Shared Gherkin feature files (all implementations)
 ├── docs/                     # Shared documentation and specifications
+│   ├── docs_standards/       # Documentation standards (structure, style, linking)
 │   ├── tech_specs/           # API specifications (language-agnostic)
 │   └── requirements/         # Requirements documentation
 └── README.md                 # This file
@@ -227,6 +229,7 @@ For complete versioning policy, see [Versioning Documentation](docs/specs_versio
 ## Documentation
 
 See [Quick Links](#quick-links) and [Spec Highlights](#spec-highlights) for the canonical documentation entry points.
+For how docs are structured and maintained, see [Documentation standards](docs/docs_standards/README.md).
 
 ## AI-Assisted Development
 

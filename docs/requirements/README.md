@@ -42,38 +42,12 @@ Requirements are organized by domain, with each domain having its own file:
 
 ### Domain Prefixes
 
-Each requirements file has a single canonical `REQ-<DOMAIN>-NNN` prefix.
-
-| Requirements file              | Canonical prefix   |
-| ------------------------------ | ------------------ |
-| `basic_ops.md`                 | `REQ-API_BASIC-`   |
-| `compression.md`               | `REQ-COMPR-`       |
-| `core.md`                      | `REQ-CORE-`        |
-| `dedup.md`                     | `REQ-DEDUP-`       |
-| `file_format.md`               | `REQ-FILEFMT-`     |
-| `file_mgmt.md`                 | `REQ-FILEMGMT-`    |
-| `file_types.md`                | `REQ-FILETYPES-`   |
-| `generics.md`                  | `REQ-GEN-`         |
-| `metadata.md`                  | `REQ-META-`        |
-| `metadata_system.md`           | `REQ-METASYS-`     |
-| `security.md`                  | `REQ-SEC-`         |
-| `security_encryption.md`       | `REQ-CRYPTO-`      |
-| `signatures.md`                | `REQ-SIG-`         |
-| `streaming.md`                 | `REQ-STREAM-`      |
-| `testing.md`                   | `REQ-TEST-`        |
-| `transformation_pipeline.md`   | `REQ-PIPELINE-`    |
-| `validation.md`                | `REQ-VALID-`       |
-| `writing.md`                   | `REQ-WRITE-`       |
+Each requirements file has a single canonical `REQ-<DOMAIN>-NNN` prefix. The authoritative list of domains and their requirements files is maintained in [Documentation Standards](../docs_standards/requirements_domains.md). Prefix format: `REQ-<DOMAIN>-` where `<DOMAIN>` is the domain tag from that document.
 
 ### Disallowed or Legacy Prefixes
 
 Do not introduce additional lookalike prefixes.
-
-- `REQ-FILEFORMAT-` => use `REQ-FILEFMT-`.
-- `REQ-FILETYPE-` => use `REQ-FILETYPES-`.
-- `REQ-GENERIC-` => use `REQ-GEN-`.
-- `REQ-SECURITY-` => use `REQ-SEC-`.
-- `REQ-SEC_ENC-` => use `REQ-CRYPTO-`.
+See [requirements_domains.md – Disallowed or legacy domain tags](../docs_standards/requirements_domains.md#disallowed-or-legacy-domain-tags) for the canonical list.
 
 `traceability.md` is a matrix document and is not a requirements domain file.
 

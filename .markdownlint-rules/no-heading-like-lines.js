@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   names: ["no-heading-like-lines"],
   description: "Disallow heading-like lines that should be proper headings",
   tags: ["headings"],

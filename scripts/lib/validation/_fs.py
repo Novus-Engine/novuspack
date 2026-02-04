@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Set
 
 
 _DEFAULT_EXCLUDE_DIRS: Set[str] = {
-    'node_modules', 'vendor', 'tmp', '.git', '.venv', 'venv',
+    'node_modules', 'vendor', 'tmp', 'md_test_files', '.git', '.venv', 'venv',
     '__pycache__', '.pytest_cache', 'dist', 'build',
     '.idea', '.vscode', '.cache'
 }

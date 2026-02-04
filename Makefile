@@ -65,18 +65,28 @@ venv:
 #       the workflow file to ensure local 'make lint-markdown' matches CI behavior.
 #       Requires: npm install -g markdownlint-cli2
 #       NOTE: The workflow runs: markdownlint-cli2 "**/*.md"
-#             This relies on .markdownlint-cli2.jsonc to ignore tmp/** and other local dirs.
-# Usage: make lint-markdown [PATHS="file1.md,dir1,file2.md"]
+#             Excludes are configured in .markdownlint-cli2.jsonc (e.g. tmp/).
+# Usage: make lint-markdown [PATHS="file1.md,dir1,file2.md"] [MDL_CONFIG="path/to/.markdownlint-cli2.jsonc"]
 #        - PATHS: Comma-separated list of files/directories to check (default: all .md files)
+#        - MDL_CONFIG: Optional config file path to pass via --config
 lint-markdown:
 	@command -v markdownlint-cli2 >/dev/null 2>&1 || { \
 		echo "Error: markdownlint-cli2 not found. Install with: npm install -g markdownlint-cli2"; \
 		exit 1; \
 	}
 	@if [ -n "$(PATHS)" ]; then \
-		NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 $$(echo "$(PATHS)" | tr ',' ' '); \
+		LINT_PATHS=$$(echo "$(PATHS)" | tr ',' ' '); \
+		if [ -n "$(MDL_CONFIG)" ]; then \
+			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 --config "$(MDL_CONFIG)" $$LINT_PATHS; \
+		else \
+			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 $$LINT_PATHS; \
+		fi; \
 	else \
-		NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md"; \
+		if [ -n "$(MDL_CONFIG)" ]; then \
+			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 --config "$(MDL_CONFIG)" "**/*.md"; \
+		else \
+			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md"; \
+		fi; \
 	fi
 
 # Python linting - performs same checks as GitHub Actions workflow

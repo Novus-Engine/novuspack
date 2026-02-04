@@ -151,4 +151,4 @@ jobs:
 
       - name: Run markdown linting
         if: always()
-        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md" "#tmp/**"
+        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md" "#tmp/**" "#md_test_files/**"

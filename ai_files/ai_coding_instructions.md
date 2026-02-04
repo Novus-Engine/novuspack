@@ -7,6 +7,13 @@
 **Focus:** Development of novuspack library
 **Methodology:** BDD/TDD with strict adherence to specifications
 
+## Documentation Standards (Markdown)
+
+- Markdown authoring conventions are defined in:
+  - [`docs/docs_standards/markdown_conventions.md`](../docs/docs_standards/markdown_conventions.md) (single source of truth)
+- Repository-wide AI workflow rules, tooling, and enforcement guidance are defined in:
+  - [`.github/copilot-instructions.md`](../.github/copilot-instructions.md)
+
 ## 1. Core Principles
 
 The following principles guide all development work on this project.
@@ -32,22 +39,16 @@ The following principles guide all development work on this project.
 - **Incremental:** Small, focused changes with immediate feedback
 - **Quality Gates:** All tests must pass before proceeding
 
-### 1.4 No Lint Disabling
+### 1.4 Repository-Wide Conventions
 
-- **Do not disable linter checks.**
-- Fix the underlying issue instead of suppressing it.
-- Do not bypass linting in CI, Make targets, or tooling configuration.
-- Do not add ignore directives (e.g., `# noqa`, `# pylint: disable=...`, `//nolint`) to silence failures unless explicitly instructed.
-
-### 1.5 Shell Quoting with Backticks
-
-- **Critical Rule:** Avoid passing markdown headings (especially ones containing backticks like `` `code` ``) as command-line string arguments.
-- **Why:** Backticks are command substitution in shells, and quoting/escaping is error-prone for both humans and AI agents.
-- **Fallback (when text must be on the command line):** Use single quotes (not double quotes) wherever possible and escape backticks in all other cases.
-- **Correct Examples (preferred, file-based):**
-  - `` make generate-anchor LINE='docs/tech_specs/api_core.md:224' ``
-  - `` make generate-anchor FILE='docs/tech_specs/api_core.md' ``
-- **Applies To:** Any tooling that needs to work with markdown headings containing backticks.
+- Do not disable or bypass linters; fix issues instead.
+- Prefer Make targets over direct script execution.
+- Be careful with shell quoting text containing backticks; use single-quotes instead of double-quotes or avoid passing the text string via shell commands.
+- For workflow conventions and guidance, follow [`.github/copilot-instructions.md`](../.github/copilot-instructions.md).
+- The canonical command surface is the Makefiles:
+  - [`Makefile`](../Makefile)
+  - [`api/go/Makefile`](../api/go/Makefile)
+  - [`cli/nvpkg/Makefile`](../cli/nvpkg/Makefile)
 
 ## 2. Development Workflow
 
@@ -116,68 +117,42 @@ This phase involves setting up the development environment and analyzing the cod
 
 ### Phase 3: Quality Assurance
 
-#### Code Quality Checks
+#### Default Gate (Before Committing or Pushing)
 
-Use the provided Makefile targets for all quality checks:
+- Run `make ci`.
+  This is the closest local equivalent to CI and should be treated as authoritative.
 
-- **Run linters:** `make lint` (Go + markdown + Python) or `make lint-go` (Go only)
-  - Checks code formatting (gofmt)
-  - Runs go vet
-  - Runs golangci-lint (including BDD tests)
-- **Fix all issues before committing**
+#### While Iterating (Pick What Matches Your Change)
 
-#### Regression Testing
+- **Go code changes**:
+  - `make lint-go`
+  - `make test`
+  - `make bdd` (or a narrower domain run while iterating)
+- **Docs changes**:
+  - `make docs-check PATHS=<path/to/file.md>`
+  - If links or anchors changed, also run `make validate-links PATHS=<path/to/file.md>`
+  - If you need a fast style check, run `make markdown-lint PATHS=<path/to/file.md>`
+- **Tooling scripts (Python) changes**:
+  - `make lint-python PATHS="scripts"`
 
-Use the provided Makefile targets for testing:
+#### Focused BDD Runs (Go Implementation)
 
-- **Run all unit tests:** `make test` or `make test-go`
-- **Run all BDD tests:** `make bdd` or `make bdd-go`
-- **Run BDD tests for specific domain (Go implementation):** `make -C api/go bdd-domain BDD_DOMAIN='@domain:xxx'`
-  - Available domains: basic_ops, core, file_format, file_mgmt, file_types, compression, signatures, streaming, dedup, metadata, metadata_system, security_validation, security_encryption, generics, validation, testing, writing
-- **Run BDD tests in CI mode:** `make bdd-ci`
-- **Critical:** All tests must pass
+- Run a domain-specific suite:
+  - `make -C api/go bdd-domain BDD_DOMAIN='@domain:xxx'`
+  - Example: `make -C api/go bdd-domain BDD_DOMAIN='@domain:core'`
 
-#### Coverage Analysis
+#### Coverage (When Needed)
 
-Use coverage targets to ensure adequate test coverage:
+- `make coverage`
+- `make coverage-html`
+- `make coverage-report`
 
-- **Generate coverage report:** `make coverage`
-  - Creates coverage.out file
-- **View HTML coverage report:** `make coverage-html`
-  - Opens interactive HTML report in browser
-- **View terminal coverage report:** `make coverage-report`
-  - Shows coverage statistics in terminal
+#### Where the Full Tooling Reference Lives
 
-#### Documentation Quality
-
-For complete documentation on all validation scripts, their options, and usage examples, see [scripts/README.md](../scripts/README.md).
-
-Quick reference:
-
-- **Run all documentation checks:** `make docs-check [PATHS="file1.md,dir1,file2.md"] [VERBOSE=1] [OUTPUT="file.txt"] [CHECK_COVERAGE=1]`
-  - Runs all documentation validation checks in the correct order
-  - Note: Some checks (signatures index, requirement references, coverage audits) are skipped when PATHS is specified, as they require checking all files
-  - See [scripts/README.md](../scripts/README.md) for all available options
-- **Validate markdown links:** `make validate-links [PATHS="file1.md,dir1"] [VERBOSE=1] [OUTPUT="file.txt"] [CHECK_COVERAGE=1]`
-- **Validate Go code blocks:** `make validate-go-code-blocks [PATHS="file1.md,dir1"] [VERBOSE=1] [OUTPUT="file.txt"]`
-- **Validate heading numbering:** `make validate-heading-numbering [PATHS="file1.md,dir1"] [VERBOSE=1] [OUTPUT="file.txt"]`
-- **Apply heading corrections:** `make apply-heading-corrections [INPUT="file.txt"] [DRY_RUN=1] [VERBOSE=1]`
-- **Validate Go definitions index:** `make validate-go-defs-index [VERBOSE=1]`
-  - Note: This check is skipped when PATHS is specified, as it requires checking all tech specs
-- **Validate requirement references:** `make validate-req-references [VERBOSE=1]`
-  - Note: This check is skipped when PATHS is specified, as it requires checking all feature files
-- **Lint markdown files:** `make lint-markdown [PATHS="file1.md,dir1"]`
-- **Lint Python scripts:** `make lint-python [PATHS="path1,path2"]`
-
-#### Coverage Audits
-
-- **Audit feature coverage:** `make audit-feature-coverage [VERBOSE=1]`
-  - Note: This check is skipped when PATHS is specified, as it requires checking all requirements and feature files
-- **Audit requirements coverage:** `make audit-requirements-coverage [VERBOSE=1]`
-  - Note: This check is skipped when PATHS is specified, as it requires checking all tech specs and requirements
-- **Run all coverage audits:** `make audit-coverage`
-
-See [scripts/README.md](../scripts/README.md) for detailed information about all options and usage examples.
+- Repository-wide tooling conventions and the canonical command list:
+  [`.github/copilot-instructions.md`](../.github/copilot-instructions.md)
+- Full documentation for validation scripts and options:
+  [`scripts/README.md`](../scripts/README.md)
 
 #### Security Validation
 
@@ -198,117 +173,24 @@ See [scripts/README.md](../scripts/README.md) for detailed information about all
 
 1. **Format code:** Execute gofmt on all Go files
 2. **Run CI checks locally:** `make ci`
-   - Runs documentation checks (Go code blocks, Go spec signature consistency, heading numbering, Go definitions index, requirement references, coverage audits, link validation, markdown linting)
-   - Runs coverage audits
-   - Runs Python linting
-   - Verifies dependencies
-   - Runs all unit tests
-   - Builds code
-   - Checks formatting
-   - Runs static analysis (go vet)
-   - Runs linters
+   - Treat this as the authoritative “everything” check (docs validation + lint + tests + build).
+   - Details and the canonical list live in [`.github/copilot-instructions.md`](../.github/copilot-instructions.md).
 3. **Fix any issues:** Address all failures before committing
 4. **Commit:** Use conventional commit format
 5. **Push:** Immediately push to development branch
 
 #### CI Integration
 
-The `make ci` target runs the exact same checks as GitHub Actions workflows:
-
-- **Markdown Linting:** Checks markdown style and formatting
-- **Go Code Blocks Validation:** Validates Go code blocks follow conventions
-- **Heading Numbering Validation:** Validates markdown heading numbering consistency
-- **Go Definitions Index Validation:** Validates all Go definitions in tech specs are present in the index
-- **Link Validation:** Validates all internal documentation links
-- **Requirement Reference Validation:** Validates REQ references in feature files
-- **Coverage Audits:** Ensures specs have feature and requirement coverage
-- **Python Linting:** Lints and audits Python scripts used by tooling
-- **Go CI:** Runs dependency verification, tests, build, formatting, vet, and lint
+The `make ci` target is intended to match GitHub Actions CI behavior.
 
 **Important:** Always run `make ci` before pushing to ensure your changes will pass CI.
 
-## Available Tooling
+## Tooling Reference
 
-The repository provides comprehensive Make targets and Python scripts for all development tasks. **Always use Makefile targets instead of running commands directly.**
+This document intentionally does not duplicate the full tooling/command reference.
 
-### Primary Make Targets
-
-#### Complete CI Check
-
-- **`make ci`** - Run all CI checks locally
-  - Note: Keep `Makefile` CI targets in sync with GitHub Actions workflows (`docs-check.yml`, `python-lint.yml`, `go-ci.yml`).
-  - Documentation checks (`make docs-check`)
-    - Go code blocks validation
-    - Go spec signature consistency validation
-    - Heading numbering validation
-    - Go definitions index validation
-    - Requirement reference validation
-    - Coverage audits (features and requirements)
-    - Link validation
-    - Markdown linting
-  - Python linting (`make lint-python` or `make lint-python PATHS="path1,path2"`)
-  - Go CI (`make ci-go`)
-  - **Use this before every commit to ensure CI will pass**
-
-#### Testing Targets
-
-- **`make test`** - Run all unit tests
-- **`make bdd`** - Run all BDD tests (output saved to tmp/ directory)
-- **`make bdd-ci`** - Run BDD tests in CI mode with tag filtering (~@skip && ~@wip)
-- **`make -C api/go bdd-domain BDD_DOMAIN='@domain:xxx'`** - Run BDD tests for specific domain (Go implementation)
-  - Available domains: basic_ops, core, file_format, file_mgmt, file_types, compression, signatures, streaming, dedup, metadata, metadata_system, security_validation, security_encryption, generics, validation, testing, writing
-  - Example: `make -C api/go bdd-domain BDD_DOMAIN='@domain:basic_ops'`
-
-#### Coverage Targets
-
-- **`make coverage`** - Generate test coverage report (creates coverage.out)
-- **`make coverage-html`** - Generate and open HTML coverage report in browser
-- **`make coverage-report`** - Display coverage statistics in terminal
-
-#### Linting Targets
-
-- **`make lint`** - Run all linters (Go + markdown + Python)
-- **`make lint-go`** - Run Go linters only (gofmt, go vet, golangci-lint)
-- **`make lint-markdown`** - Lint markdown files for style compliance
-- **`make lint-python [PATHS="path1,path2"]`** - Lint Python scripts (flake8, pylint, xenon -b C, radon mi gate; plus non-gating radon/vulture/bandit)
-  - PATHS: Comma-separated list of files/directories to check (default: scripts)
-  - Fails if any block has cyclomatic complexity > C (via xenon -b C)
-  - Fails if any module has maintainability index rank C (MI 0-9)
-
-#### Documentation Validation Targets
-
-For complete documentation on all validation scripts, their options, and usage examples, see [scripts/README.md](../scripts/README.md).
-
-Quick reference:
-
-- **`make docs-check [PATHS="file1.md,dir1,file2.md"] [VERBOSE=1] [OUTPUT="file.txt"] [CHECK_COVERAGE=1]`** - Run all documentation validation checks
-- **`make markdown-lint [PATHS="file1.md,dir1,file2.md"]`** - Lint markdown files for style compliance
-  - Supports PATHS for checking specific files or directories
-- **`make validate-links [PATHS="file1.md,dir1"] [VERBOSE=1] [OUTPUT="file.txt"] [CHECK_COVERAGE=1]`** - Validate all internal markdown links and anchors
-- **`make validate-go-code-blocks [PATHS="file1.md,dir1"] [VERBOSE=1] [OUTPUT="file.txt"]`** - Validate Go code blocks in tech specs
-- **`make validate-heading-numbering [PATHS="file1.md,dir1"] [VERBOSE=1] [OUTPUT="file.txt"]`** - Validate markdown heading numbering
-- **`make apply-heading-corrections [INPUT="file.txt"] [DRY_RUN=1] [VERBOSE=1]`** - Apply heading numbering corrections
-- **`make validate-go-defs-index [VERBOSE=1]`** - Validate Go API definitions index
-  - Note: Skipped when PATHS is specified (requires all tech specs)
-- **`make validate-req-references [VERBOSE=1]`** - Validate requirement references
-  - Note: Skipped when PATHS is specified (requires all feature files)
-- **`make generate-anchor FILE='path/to/file.md'`** - Print anchors for all headings in a file
-- **`make generate-anchor LINE='path/to/file.md:224'`** - Print anchor for the heading at a specific line in a file
-  - See [Shell Quoting with Backticks](#15-shell-quoting-with-backticks) for details
-
-#### Coverage Audit Targets
-
-- **`make audit-feature-coverage [VERBOSE=1]`** - Check requirements have BDD feature coverage
-  - Note: Skipped when PATHS is specified (requires all requirements and feature files)
-- **`make audit-requirements-coverage [VERBOSE=1]`** - Check tech specs are referenced by requirements
-  - Note: Skipped when PATHS is specified (requires all tech specs and requirements)
-- **`make audit-coverage`** - Run both coverage audits
-
-### Python Scripts
-
-For complete documentation on all Python scripts, their options, and usage examples, see [scripts/README.md](../scripts/README.md).
-
-**Note:** Always prefer Make targets over direct script execution.
+- Repository tooling and “approved” workflow conventions: [`.github/copilot-instructions.md`](../.github/copilot-instructions.md)
+- Validation scripts documentation and options: [`scripts/README.md`](../scripts/README.md)
 
 ### Project Manager
 

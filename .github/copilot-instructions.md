@@ -12,7 +12,9 @@ alwaysApply: true
 - **Review all README files for context** - see [README Files for Context](#readme-files-for-context) below.
 - See [../ai_files/](../ai_files/) for AI assisted coding instructions.
 - See [../docs/tech_specs/](../docs/tech_specs/) for technical specifications.
-- For markdown files, always abide by the [markdown standards](#markdown-standards) below.
+- For Markdown files, follow the repository standards in:
+  - [../docs/docs_standards/markdown_conventions.md](../docs/docs_standards/markdown_conventions.md) (single source of truth)
+  - Anchor exception rules (when applicable): [../docs/docs_standards/spec_authoring_writing_and_validation.md](../docs/docs_standards/spec_authoring_writing_and_validation.md)
 - **Use Make targets for all development tasks** - see [Available Tooling](#available-tooling) below.
   - Do NOT use direct script calls; use the `make` targets instead.
 - Do not create or call scripts directly unless instructed to do so.
@@ -74,25 +76,8 @@ These README files contain essential context about project structure, convention
 
 ## Markdown Standards
 
-- Avoid pseudo-headings or heading-like lines.
-  - Use proper Markdown headings instead of `^\*\*.*:\*\*$`, `^\*\*.*\*\*:$`, `^[0-9]+\. \*\*.*\*\*$` or similar.
-- Use "=>" instead of "→".
-- Avoid using non-ASCII characters, with the following exceptions:
-  - The following may be used in work tracking documents (dev_docs): ✅, ❌, 📊, ⚠️
-- Always include a blank line after any heading lines.
-- Always include a blank line before and after a list.
-- Put one sentence on a line, except in tables.
-- Code blocks that are part of a list should be indented by four spaces.
-- All headings within a document must be unique
-- All headings must have proper numbering.
-- Ensure there is no content duplication; use references instead.
-- When referencing a file or path, make it a link.
-- Whenever you create or modify a markdown file, run `make docs-check PATHS=<path/to/markdown.md>`
-  - Fix errors and re-run the make command until no errors remain.
-
-### Markdown Standards Exceptions
-
-- The top level [README](../README.md) file should have useful emoji, badges, and other "nice" visual elements.
+- **Single source of truth**: [../docs/docs_standards/markdown_conventions.md](../docs/docs_standards/markdown_conventions.md)
+- **Validate after changes**: run `make docs-check PATHS=<path/to/file.md>` and iterate until it passes.
 
 ## Tech Specs Docs
 
