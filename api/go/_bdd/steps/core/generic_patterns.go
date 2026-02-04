@@ -2623,7 +2623,7 @@ func commentIsInEmptyState(ctx context.Context) error {
 	if comment == nil {
 		return fmt.Errorf("PackageComment is nil")
 	}
-	if !comment.IsEmpty() {
+	if comment.CommentLength != 0 {
 		return fmt.Errorf("IsEmpty() = false, want true for empty state")
 	}
 	return nil

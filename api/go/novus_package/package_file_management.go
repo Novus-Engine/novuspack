@@ -1011,6 +1011,7 @@ func (p *filePackage) captureFilesystemMetadata(storedPath string, fileInfo os.F
 			preserveOwnership = options.PreserveOwnership.GetOrDefault(false)
 		}
 		if preserveOwnership {
+			// FIXME: syscall.Stat_t is Unix-only; prevents cross-compiling for Windows (e.g. nvpkg build-windows-amd64). Use build tags or a Windows-specific path.
 			if sys, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
 				uid := uint32(sys.Uid)
 				gid := uint32(sys.Gid)

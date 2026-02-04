@@ -9,7 +9,9 @@ package file_format
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/cucumber/godog"
 	novuspack "github.com/novus-engine/novuspack/api/go"
@@ -38,7 +40,88 @@ func getWorldFileFormatIndex(ctx context.Context) worldFileFormatIndex {
 	return nil
 }
 
-// Helper functions are defined in file_entry.go to avoid duplication
+// BDD-local helpers for FileIndex (API WriteTo/ReadFrom/Validate are unexported).
+
+func fileIndexSize(index *novuspack.FileIndex) int {
+	if index == nil {
+		return 16
+	}
+	return 16 + len(index.Entries)*int(novuspack.IndexEntrySize)
+}
+
+func writeFileIndexTo(w io.Writer, index *novuspack.FileIndex) (int64, error) {
+	if index == nil {
+		return 0, fmt.Errorf("file index is nil")
+	}
+	entryCount := uint32(len(index.Entries))
+	if err := binary.Write(w, binary.LittleEndian, entryCount); err != nil {
+		return 0, err
+	}
+	if err := binary.Write(w, binary.LittleEndian, index.Reserved); err != nil {
+		return 4, err
+	}
+	if err := binary.Write(w, binary.LittleEndian, index.FirstEntryOffset); err != nil {
+		return 8, err
+	}
+	n := int64(16)
+	for i := range index.Entries {
+		if err := binary.Write(w, binary.LittleEndian, &index.Entries[i]); err != nil {
+			return n, err
+		}
+		n += novuspack.IndexEntrySize
+	}
+	return n, nil
+}
+
+func readFileIndexFrom(r io.Reader) (*novuspack.FileIndex, int64, error) {
+	index := &novuspack.FileIndex{}
+	var n int64
+	if err := binary.Read(r, binary.LittleEndian, &index.EntryCount); err != nil {
+		return nil, n, err
+	}
+	n += 4
+	if err := binary.Read(r, binary.LittleEndian, &index.Reserved); err != nil {
+		return nil, n, err
+	}
+	n += 4
+	if err := binary.Read(r, binary.LittleEndian, &index.FirstEntryOffset); err != nil {
+		return nil, n, err
+	}
+	n += 8
+	index.Entries = make([]novuspack.IndexEntry, 0, index.EntryCount)
+	for i := uint32(0); i < index.EntryCount; i++ {
+		var e novuspack.IndexEntry
+		if err := binary.Read(r, binary.LittleEndian, &e); err != nil {
+			return nil, n, err
+		}
+		index.Entries = append(index.Entries, e)
+		n += novuspack.IndexEntrySize
+	}
+	return index, n, nil
+}
+
+func validateFileIndex(index *novuspack.FileIndex) error {
+	if index == nil {
+		return fmt.Errorf("file index is nil")
+	}
+	if index.Reserved != 0 {
+		return fmt.Errorf("reserved field must be zero")
+	}
+	if uint32(len(index.Entries)) != index.EntryCount {
+		return fmt.Errorf("EntryCount %d does not match Entries length %d", index.EntryCount, len(index.Entries))
+	}
+	seen := make(map[uint64]bool)
+	for _, e := range index.Entries {
+		if e.FileID == 0 {
+			return fmt.Errorf("FileID must be non-zero")
+		}
+		if seen[e.FileID] {
+			return fmt.Errorf("duplicate FileID %d", e.FileID)
+		}
+		seen[e.FileID] = true
+	}
+	return nil
+}
 
 // RegisterFileFormatIndexSteps registers step definitions for file index operations.
 func RegisterFileFormatIndexSteps(ctx *godog.ScenarioContext) {
@@ -186,14 +269,12 @@ func fileIndexWriteToIsCalledWithWriter(ctx context.Context) (context.Context, e
 	if index == nil {
 		return ctx, fmt.Errorf("no file index available")
 	}
-	// Serialize using WriteTo
 	var buf bytes.Buffer
-	_, err := index.WriteTo(&buf)
+	_, err := writeFileIndexTo(&buf, index)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return ctx, fmt.Errorf("WriteTo failed: %w", err)
 	}
-	// Store serialized data
 	world.SetPackageMetadata("fileindex_serialized", buf.Bytes())
 	return ctx, nil
 }
@@ -277,13 +358,10 @@ func writtenDataMatchesFileIndexContent(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("serialized data is not a byte slice")
 	}
-	// Deserialize and compare
-	var readIndex novuspack.FileIndex
-	_, err := readIndex.ReadFrom(bytes.NewReader(buf))
+	readIndex, _, err := readFileIndexFrom(bytes.NewReader(buf))
 	if err != nil {
 		return fmt.Errorf("failed to read back serialized data: %w", err)
 	}
-	// Compare key fields
 	if readIndex.EntryCount != originalIndex.EntryCount {
 		return fmt.Errorf("EntryCount mismatch: %d != %d", readIndex.EntryCount, originalIndex.EntryCount)
 	}
@@ -305,7 +383,7 @@ func aReaderWithValidFileIndexData(ctx context.Context) (context.Context, error)
 	}
 	index.EntryCount = uint32(len(index.Entries))
 	var buf bytes.Buffer
-	_, err := index.WriteTo(&buf)
+	_, err := writeFileIndexTo(&buf, index)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to serialize index: %w", err)
 	}
@@ -327,12 +405,9 @@ func fileIndexReadFromIsCalledWithReader(ctx context.Context) (context.Context, 
 	if !ok {
 		return ctx, fmt.Errorf("reader data is not a byte slice")
 	}
-	// Read index using ReadFrom
-	index := &novuspack.FileIndex{}
-	_, err := index.ReadFrom(bytes.NewReader(buf))
+	index, _, err := readFileIndexFrom(bytes.NewReader(buf))
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
-		// Return nil to allow error scenarios to continue and check for the error
 		return ctx, nil
 	}
 	world.SetFileIndex(index)
@@ -385,7 +460,7 @@ func fileIndexIsValid(ctx context.Context) error {
 	if index == nil {
 		return fmt.Errorf("no file index available")
 	}
-	err := index.Validate()
+	err := validateFileIndex(index)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return fmt.Errorf("file index validation failed: %w", err)

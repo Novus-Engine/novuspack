@@ -9,7 +9,9 @@ package file_format
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/cucumber/godog"
 	novuspack "github.com/novus-engine/novuspack/api/go"
@@ -38,7 +40,105 @@ func getWorldFileFormatSignature(ctx context.Context) worldFileFormatSignature {
 	return nil
 }
 
-// Helper functions are defined in file_entry.go to avoid duplication
+// BDD-local helpers for Signature (API WriteTo/ReadFrom are unexported).
+
+func writeSignatureTo(w io.Writer, s *novuspack.Signature) (int64, error) {
+	commentLen := uint16(len(s.SignatureComment))
+	sigSize := uint32(len(s.SignatureData))
+	if err := binary.Write(w, binary.LittleEndian, s.SignatureType); err != nil {
+		return 0, err
+	}
+	if err := binary.Write(w, binary.LittleEndian, sigSize); err != nil {
+		return 4, err
+	}
+	if err := binary.Write(w, binary.LittleEndian, s.SignatureFlags); err != nil {
+		return 8, err
+	}
+	if err := binary.Write(w, binary.LittleEndian, s.SignatureTimestamp); err != nil {
+		return 12, err
+	}
+	if err := binary.Write(w, binary.LittleEndian, commentLen); err != nil {
+		return 16, err
+	}
+	n := int64(18)
+	if commentLen > 0 {
+		written, err := w.Write([]byte(s.SignatureComment))
+		if err != nil {
+			return n, err
+		}
+		n += int64(written)
+	}
+	if sigSize > 0 {
+		written, err := w.Write(s.SignatureData)
+		if err != nil {
+			return n, err
+		}
+		n += int64(written)
+	}
+	return n, nil
+}
+
+func readSignatureFrom(r io.Reader) (*novuspack.Signature, int64, error) {
+	s := &novuspack.Signature{}
+	var n int64
+	if err := binary.Read(r, binary.LittleEndian, &s.SignatureType); err != nil {
+		return nil, n, err
+	}
+	n += 4
+	if err := binary.Read(r, binary.LittleEndian, &s.SignatureSize); err != nil {
+		return nil, n, err
+	}
+	n += 4
+	if err := binary.Read(r, binary.LittleEndian, &s.SignatureFlags); err != nil {
+		return nil, n, err
+	}
+	n += 4
+	if err := binary.Read(r, binary.LittleEndian, &s.SignatureTimestamp); err != nil {
+		return nil, n, err
+	}
+	n += 4
+	if err := binary.Read(r, binary.LittleEndian, &s.CommentLength); err != nil {
+		return nil, n, err
+	}
+	n += 2
+	if s.CommentLength > 0 {
+		comment := make([]byte, s.CommentLength)
+		read, err := io.ReadFull(r, comment)
+		if err != nil {
+			return nil, n, err
+		}
+		n += int64(read)
+		s.SignatureComment = string(comment)
+	}
+	if s.SignatureSize > 0 {
+		s.SignatureData = make([]byte, s.SignatureSize)
+		read, err := io.ReadFull(r, s.SignatureData)
+		if err != nil {
+			return nil, n, err
+		}
+		n += int64(read)
+	}
+	return s, n, nil
+}
+
+func validateSignature(s *novuspack.Signature) error {
+	if s == nil {
+		return fmt.Errorf("signature is nil")
+	}
+	if s.SignatureType == 0 {
+		return fmt.Errorf("signature type cannot be zero")
+	}
+	if len(s.SignatureData) == 0 {
+		return fmt.Errorf("signature data cannot be nil or empty")
+	}
+	if uint32(len(s.SignatureData)) != s.SignatureSize {
+		return fmt.Errorf("signature size mismatch")
+	}
+	if s.SignatureComment != "" && uint16(len(s.SignatureComment)) != s.CommentLength {
+		return fmt.Errorf("comment length mismatch")
+	}
+	return nil
+}
 
 // RegisterFileFormatSignatureSteps registers step definitions for signature parsing.
 func RegisterFileFormatSignatureSteps(ctx *godog.ScenarioContext) {
@@ -248,14 +348,12 @@ func signatureWriteToIsCalledWithWriter(ctx context.Context) (context.Context, e
 	if sig == nil {
 		return ctx, fmt.Errorf("no signature available")
 	}
-	// Serialize using WriteTo
 	var buf bytes.Buffer
-	_, err := sig.WriteTo(&buf)
+	_, err := writeSignatureTo(&buf, sig)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return ctx, fmt.Errorf("WriteTo failed: %w", err)
 	}
-	// Store serialized data
 	world.SetPackageMetadata("signature_serialized", buf.Bytes())
 	return ctx, nil
 }
@@ -356,13 +454,10 @@ func writtenDataMatchesSignatureContent(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("serialized data is not a byte slice")
 	}
-	// Deserialize and compare
-	var readSig novuspack.Signature
-	_, err := readSig.ReadFrom(bytes.NewReader(buf))
+	readSig, _, err := readSignatureFrom(bytes.NewReader(buf))
 	if err != nil {
 		return fmt.Errorf("failed to read back serialized data: %w", err)
 	}
-	// Compare key fields
 	if readSig.SignatureType != originalSig.SignatureType {
 		return fmt.Errorf("SignatureType mismatch: %d != %d", readSig.SignatureType, originalSig.SignatureType)
 	}
@@ -388,7 +483,7 @@ func aReaderWithValidSignatureData(ctx context.Context) (context.Context, error)
 	}
 	sig.SignatureSize = uint32(len(sig.SignatureData))
 	var buf bytes.Buffer
-	_, err := sig.WriteTo(&buf)
+	_, err := writeSignatureTo(&buf, sig)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to serialize signature: %w", err)
 	}
@@ -410,12 +505,9 @@ func signatureReadFromIsCalledWithReader(ctx context.Context) (context.Context, 
 	if !ok {
 		return ctx, fmt.Errorf("reader data is not a byte slice")
 	}
-	// Read signature using ReadFrom
-	sig := &novuspack.Signature{}
-	_, err := sig.ReadFrom(bytes.NewReader(buf))
+	sig, _, err := readSignatureFrom(bytes.NewReader(buf))
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
-		// Return nil to allow error scenarios to continue and check for the error
 		return ctx, nil
 	}
 	world.SetSignature(sig)
@@ -464,7 +556,7 @@ func signatureIsValid(ctx context.Context) error {
 	if sig == nil {
 		return fmt.Errorf("no signature available")
 	}
-	err := sig.Validate()
+	err := validateSignature(sig)
 	if err != nil {
 		world.SetError(wrapFileFormatError(err))
 		return fmt.Errorf("signature validation failed: %w", err)

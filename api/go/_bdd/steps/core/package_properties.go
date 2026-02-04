@@ -132,7 +132,7 @@ func packageCommentHasInvalidUTF8Bytes(ctx context.Context) error {
 		}
 		wf.SetHeader(header)
 	}
-	header.SetFeature(novuspack.FlagHasPackageComment)
+	header.Flags |= novuspack.FlagHasPackageComment
 	header.CommentSize = uint32(len(invalidUTF8))
 
 	return nil
@@ -177,9 +177,8 @@ func packageHasAComment(ctx context.Context) error {
 	// Create a valid package comment using SetComment
 	commentText := "test comment"
 	comment := novuspack.NewPackageComment()
-	if err := comment.SetComment(commentText); err != nil {
-		return fmt.Errorf("failed to set comment: %w", err)
-	}
+	comment.Comment = commentText + "\x00"
+	comment.CommentLength = uint32(len(commentText) + 1)
 
 	// Validate comment
 	if err := comment.Validate(); err != nil {
@@ -199,7 +198,7 @@ func packageHasAComment(ctx context.Context) error {
 		}
 		wf.SetHeader(header)
 	}
-	header.SetFeature(novuspack.FlagHasPackageComment)
+	header.Flags |= novuspack.FlagHasPackageComment
 	header.CommentSize = comment.CommentLength
 
 	return nil
@@ -225,7 +224,7 @@ func packageHasNoComment(ctx context.Context) error {
 		}
 		wf.SetHeader(header)
 	}
-	header.ClearFeature(novuspack.FlagHasPackageComment)
+	header.Flags &^= novuspack.FlagHasPackageComment
 	header.CommentSize = 0
 	header.CommentStart = 0
 
@@ -274,7 +273,7 @@ func packageHasDigitalSignatures(ctx context.Context) error {
 		}
 		wf.SetHeader(header)
 	}
-	header.SetFeature(novuspack.FlagHasSignatures)
+	header.Flags |= novuspack.FlagHasSignatures
 	header.SignatureOffset = 1000 // Example offset
 	return nil
 }
@@ -295,7 +294,7 @@ func packageHasFilesWithPerFileTags(ctx context.Context) error {
 		}
 		wf.SetHeader(header)
 	}
-	header.SetFeature(novuspack.FlagHasPerFileTags)
+	header.Flags |= novuspack.FlagHasPerFileTags
 	return nil
 }
 

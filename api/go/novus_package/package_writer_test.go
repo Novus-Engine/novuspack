@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/novus-engine/novuspack/api/go/pkgerrors"
 )
 
 func TestPackage_WriteFile(t *testing.T) {
@@ -166,12 +168,38 @@ func TestPackage_SafeWrite_RoundTrip(t *testing.T) {
 	}
 }
 
+// assertStubUnsupported runs fn on a created package and asserts ErrTypeUnsupported.
+func assertStubUnsupported(t *testing.T, name string, fn func(Package, context.Context) error) {
+	t.Helper()
+	pkg, err := NewPackage()
+	if err != nil {
+		t.Fatalf("NewPackage failed: %v", err)
+	}
+	defer func() { _ = pkg.Close() }()
+	ctx := context.Background()
+	tmpPath := filepath.Join(t.TempDir(), "pkg.nvpk")
+	if err := pkg.Create(ctx, tmpPath); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	err = fn(pkg, ctx)
+	if err == nil {
+		t.Fatalf("%s succeeded, want ErrTypeUnsupported", name)
+	}
+	pkgErr, ok := err.(*pkgerrors.PackageError)
+	if !ok {
+		t.Fatalf("Error type = %T, want *pkgerrors.PackageError", err)
+	}
+	if pkgErr.Type != pkgerrors.ErrTypeUnsupported {
+		t.Errorf("Error type = %v, want %v", pkgErr.Type, pkgerrors.ErrTypeUnsupported)
+	}
+}
+
 func TestPackage_FastWrite(t *testing.T) {
-	t.Skip("TODO(Priority 5): FastWrite not implemented yet")
+	assertStubUnsupported(t, "FastWrite", func(pkg Package, ctx context.Context) error { return pkg.FastWrite(ctx) })
 }
 
 func TestPackage_Defragment(t *testing.T) {
-	t.Skip("TODO(Priority 2): Defragment implementation pending")
+	assertStubUnsupported(t, "Defragment", func(pkg Package, ctx context.Context) error { return pkg.Defragment(ctx) })
 }
 
 func TestPackage_WriteFile_InvalidPath(t *testing.T) {

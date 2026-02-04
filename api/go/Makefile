@@ -11,7 +11,7 @@ ifneq ($(MAKE),$(SYSTEM_MAKE))
   override MAKE := $(SYSTEM_MAKE)
 endif
 
-.PHONY: test bdd bdd-ci bdd-domain ci tidy go-fmt coverage coverage-html coverage-report validate-go-spec-references apply-go-spec-references
+.PHONY: test bdd bdd-ci bdd-domain ci tidy go-fmt coverage coverage-html coverage-report clean validate-go-spec-references apply-go-spec-references
 
 BDD_TAGS ?= '~@skip && ~@wip'
 BDD_DOMAIN ?= ''
@@ -29,6 +29,11 @@ go-fmt:
 	@echo "Running go fmt..."
 	@go fmt ./...
 	@echo "Formatting complete."
+
+# Remove test and coverage artifacts
+clean:
+	@go clean -testcache
+	@rm -f coverage.out coverage.html
 
 # Run all unit tests
 # Set GOCACHE to a writable location if the default cache is not writable
