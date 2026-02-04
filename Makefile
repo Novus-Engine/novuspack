@@ -11,13 +11,16 @@ ifneq ($(MAKE),$(SYSTEM_MAKE))
   override MAKE := $(SYSTEM_MAKE)
 endif
 
-.PHONY: test test-go test-go-v1 bdd bdd-go bdd-go-v1 bdd-ci test-unified ci ci-go ci-go-v1 venv lint-markdown lint-python validate-links validate-heading-numbering apply-heading-corrections generate-anchor validate-req-references validate-go-defs-index validate-go-code-blocks validate-go-spec-signature-consistency validate-go-signatures validate-go-signatures-go validate-go-signatures-go-v1 validate-go-spec-references apply-go-spec-references audit-feature-coverage audit-requirements-coverage audit-coverage docs-check lint lint-go lint-go-v1 coverage coverage-go coverage-go-v1 coverage-html coverage-html-go coverage-html-go-v1 coverage-report coverage-report-go coverage-report-go-v1
+.PHONY: test test-go test-go-v1 test-nvpkg bdd bdd-go bdd-go-v1 bdd-ci test-unified ci ci-go ci-go-v1 ci-nvpkg venv lint-markdown lint-python lint-nvpkg validate-links validate-heading-numbering apply-heading-corrections generate-anchor validate-req-references validate-go-defs-index validate-go-code-blocks validate-go-spec-signature-consistency validate-go-signatures validate-go-signatures-go validate-go-signatures-go-v1 validate-go-spec-references apply-go-spec-references audit-feature-coverage audit-requirements-coverage audit-coverage docs-check lint lint-go lint-go-v1 coverage coverage-go coverage-go-v1 coverage-nvpkg coverage-html coverage-html-go coverage-html-go-v1 coverage-html-nvpkg coverage-report coverage-report-go coverage-report-go-v1 coverage-report-nvpkg build build-nvpkg build-dev-nvpkg clean clean-go clean-nvpkg
 
 # Test targets - delegate to language implementations
-test: test-go
+test: test-go test-nvpkg
 test-go: test-go-v1
 test-go-v1:
 	$(MAKE) -C api/go test
+
+test-nvpkg:
+	$(MAKE) -C cli/nvpkg test
 
 # BDD test targets - delegate to language implementations
 bdd: bdd-go
@@ -32,13 +35,16 @@ bdd-ci:
 # NOTE: The 'ci' target must be kept in sync with GitHub Actions workflows.
 #       When adding or modifying CI checks, update both this Makefile and the
 #       corresponding workflow files to ensure local 'make ci' matches CI behavior.
-#       Current workflows: docs-check.yml, python-lint.yml, go-ci.yml
+#       Current workflows: docs-check.yml, python-lint.yml, go-ci.yml, nvpkg-ci.yml.
 # NOTE: Order matters - validate-heading-numbering runs before validate-links because
 #       fixing heading numbering changes anchor IDs, which would break link validation.
-ci: docs-check lint-python ci-go
+ci: docs-check lint-python ci-go ci-nvpkg
 ci-go: ci-go-v1
 ci-go-v1:
 	/usr/bin/make -C api/go ci
+
+ci-nvpkg:
+	$(MAKE) -C cli/nvpkg ci
 
 # Python venv for lint tooling - creates .venv and installs scripts/requirements-lint.txt
 # Run once (or after adding/updating scripts/requirements-lint.txt) so make lint-python uses the venv.
@@ -451,25 +457,57 @@ test-unified:
 	@echo "Unified test runner not yet implemented"
 	# Future: $(MAKE) -C test-runner run
 
-lint: lint-go lint-markdown lint-python
+lint: lint-go lint-nvpkg lint-markdown lint-python
 lint-go: lint-go-v1
 lint-go-v1:
 	$(MAKE) -C api/go lint
 
+lint-nvpkg:
+	$(MAKE) -C cli/nvpkg lint
+
 # Coverage targets - delegate to language implementations
-coverage: coverage-go
+coverage: coverage-go coverage-nvpkg
 coverage-go: coverage-go-v1
 coverage-go-v1:
 	$(MAKE) -C api/go coverage
 
+coverage-nvpkg:
+	$(MAKE) -C cli/nvpkg coverage
+
 # HTML coverage report targets - delegate to language implementations
-coverage-html: coverage-html-go
+coverage-html: coverage-html-go coverage-html-nvpkg
 coverage-html-go: coverage-html-go-v1
 coverage-html-go-v1:
 	$(MAKE) -C api/go coverage-html
 
+coverage-html-nvpkg:
+	$(MAKE) -C cli/nvpkg coverage-html
+
 # Coverage report targets - delegate to language implementations
-coverage-report: coverage-report-go
+coverage-report: coverage-report-go coverage-report-nvpkg
 coverage-report-go: coverage-report-go-v1
 coverage-report-go-v1:
 	$(MAKE) -C api/go coverage-report
+
+coverage-report-nvpkg:
+	$(MAKE) -C cli/nvpkg coverage-report
+
+# Build nvpkg CLI (minimal-size release binary)
+# Build nvpkg for current OS/arch (delegates to cli/nvpkg).
+build: build-nvpkg
+
+build-nvpkg:
+	$(MAKE) -C cli/nvpkg build
+
+# Build nvpkg development binary (with debug symbols, outputs nvpkg-dev)
+build-dev-nvpkg:
+	$(MAKE) -C cli/nvpkg build-dev
+
+# Remove build and coverage artifacts (delegates to all sub-makefiles).
+clean: clean-go clean-nvpkg
+
+clean-go:
+	$(MAKE) -C api/go clean
+
+clean-nvpkg:
+	$(MAKE) -C cli/nvpkg clean
