@@ -390,17 +390,18 @@ def suggest_heading(heading: str, search_term: str, kind_word: str) -> str:
         pattern = re.compile(r'\b' + re.escape(search_term) + r'\b', re.IGNORECASE)
     normalized = pattern.sub('', normalized, count=1)
 
-    # Remove kind_word (case-insensitive, whole word)
-    kind_pattern = re.compile(r'\b' + re.escape(kind_word) + r'\b', re.IGNORECASE)
-    normalized = kind_pattern.sub('', normalized, count=1)
-    # Also remove common long form (e.g. "Structure" when kind is "Struct")
-    if kind_word == 'Struct':
-        normalized = re.sub(r'\bStructure\b', '', normalized, count=1, flags=re.IGNORECASE)
+    # Use the exact kind word from the heading (e.g. "Structure", "Struct", "Method")
+    # so we never change Struct <-> Structure or other wording.
+    parts = normalized.split()
+    if parts:
+        kind_word_used = parts[0]
+        remaining = ' '.join(parts[1:])
+    else:
+        kind_word_used = kind_word
+        remaining = ''
 
-    remaining = ' '.join(normalized.split())
-
-    # Prefer definition name in backticks
-    suggested = f"`{search_term}` {kind_word} {remaining}".strip()
+    # Prefer definition name in backticks; keep original kind word unchanged
+    suggested = f"`{search_term}` {kind_word_used} {remaining}".strip()
 
     if numbering_prefix:
         suggested = f"{numbering_prefix} {suggested}"
