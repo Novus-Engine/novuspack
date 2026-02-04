@@ -1,0 +1,9 @@
+dist/
+nvpkg
+nvpkg.exe
+nvpkg-dev
+nvpkg-dev.exe
+nvpkg.upx
+nvpkg.lvl*
+coverage.out
+coverage.html
