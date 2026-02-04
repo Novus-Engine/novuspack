@@ -3,6 +3,7 @@
 [![Docs Check][badge-docs-check]][workflow-docs-check]
 [![Go CI][badge-go-ci]][workflow-go-ci]
 [![Go BDD][badge-go-bdd]][workflow-go-bdd]
+[![nvpkg CI][badge-nvpkg-ci]][workflow-nvpkg-ci]
 [![Python Lint][badge-python-lint]][workflow-python-lint]
 [![License][badge-license]][license-file]
 
@@ -19,6 +20,7 @@ The repository supports multiple language implementations (Go, Rust, Zig, and fu
 - 🧾 **Requirements**: [`docs/requirements/README.md`](docs/requirements/README.md)
 - 🧪 **Shared feature files (BDD)**: [`features/`](features/)
 - 🧩 **Go implementation (v1)**: [`api/go/`](api/go/)
+- 🖥️ **CLI implementations**: [`cli/`](cli/) – language-specific CLIs (nvpkg Go, nvpkr Rust, nvpkz Zig); see [cli/README.md](cli/README.md).
 - 🧰 **Python validation tooling**: [`scripts/`](scripts/)
 - 🤝 **Contributing guide**: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
@@ -29,6 +31,11 @@ The repository supports multiple language implementations (Go, Rust, Zig, and fu
 - **Code**: [`api/go/`](api/go/)
 - **CI**: [Go CI][workflow-go-ci], [Go BDD][workflow-go-bdd]
 - **Local**: See [Testing Standards - Running Tests](#running-tests).
+
+### CLI implementations (language-specific)
+
+- **Overview**: [`cli/README.md`](cli/README.md) – nvpkg (Go), nvpkr (Rust), nvpkz (Zig), and future CLIs.
+- **Go CLI (nvpkg)**: [`cli/nvpkg/`](cli/nvpkg/) – build: `make build-nvpkg`, tests: `make test-nvpkg`.
 
 ### Python (validation tooling)
 
@@ -154,18 +161,46 @@ For deeper details, see these canonical documents:
 
 ```text
 novuspack/
-├── api/                      # Language-specific implementations
+├── api/                      # Language-specific API implementations
 │   └── go/                   # Go implementation
 │       └── v1/               # API version 1
 │           ├── bdd/          # BDD test infrastructure
 │           ├── go.mod        # Go module
 │           └── README.md     # Implementation-specific docs
+├── cli/                      # Language-specific CLI implementations
+│   ├── README.md             # CLI overview (nvpkg, nvpkr, nvpkz, etc.)
+│   └── nvpkg/                # Go CLI
 ├── features/                 # Shared Gherkin feature files (all implementations)
 ├── docs/                     # Shared documentation and specifications
 │   ├── tech_specs/           # API specifications (language-agnostic)
 │   └── requirements/         # Requirements documentation
 └── README.md                 # This file
 ```
+
+## Building
+
+All builds are run from the repository root via the root [Makefile](Makefile).
+
+### Prerequisites
+
+- **Go 1.25+** – required for the Go API ([`api/go/`](api/go/)) and the nvpkg CLI.
+- **Python 3** – required for [documentation and validation tooling](scripts/README.md) (e.g. `make docs-check`, `make lint-python`).
+- **UPX** – optional; needed for the nvpkg release binary (`make build-nvpkg`) to produce a compressed executable.
+
+### nvpkg (Go CLI)
+
+From the repository root:
+
+- `make build-nvpkg` – build release binary `nvpkg` (ldflags -s -w + UPX; requires [UPX](https://upx.github.io/) on PATH).
+- `make build-dev-nvpkg` – build development binary `nvpkg-dev` (with debug symbols).
+
+The binary is produced inside [`cli/nvpkg/`](cli/nvpkg/).
+For build options, scripts, and usage, see [cli/nvpkg/README.md](cli/nvpkg/README.md).
+
+### Go API (library)
+
+The Go implementation in [`api/go/`](api/go/) is a library, not a standalone binary.
+Use it as a Go module dependency; see [api/go/README.md](api/go/README.md) for usage and versioning.
 
 ## Architecture
 
@@ -220,7 +255,8 @@ For detailed information on how the Make targets and Python validation scripts a
 
 From the repository root:
 
-- `make test` - Run unit tests (currently delegates to `api/go/`)
+- `make test` - Run unit tests (Go API and nvpkg CLI)
+- `make test-nvpkg` - Run nvpkg (Go CLI) tests only
 - `make bdd` - Run Go BDD tests (writes output into `tmp/`)
 - `make bdd-ci` - Run Go BDD tests in CI mode (tag-filtered)
 - `make coverage` - Generate `coverage.out`
@@ -301,11 +337,13 @@ For detailed security information, see the [Security Architecture](docs/tech_spe
 [badge-docs-check]: https://github.com/novus-engine/novuspack/actions/workflows/docs-check.yml/badge.svg?branch=main
 [badge-go-ci]: https://github.com/novus-engine/novuspack/actions/workflows/go-ci.yml/badge.svg?branch=main
 [badge-go-bdd]: https://github.com/novus-engine/novuspack/actions/workflows/go-bdd.yml/badge.svg?branch=main
+[badge-nvpkg-ci]: https://github.com/novus-engine/novuspack/actions/workflows/nvpkg-ci.yml/badge.svg?branch=main
 [badge-python-lint]: https://github.com/novus-engine/novuspack/actions/workflows/python-lint.yml/badge.svg?branch=main
 [badge-license]: https://img.shields.io/badge/license-Apache%202.0-blue
 
 [workflow-docs-check]: https://github.com/novus-engine/novuspack/actions/workflows/docs-check.yml
 [workflow-go-ci]: https://github.com/novus-engine/novuspack/actions/workflows/go-ci.yml
 [workflow-go-bdd]: https://github.com/novus-engine/novuspack/actions/workflows/go-bdd.yml
+[workflow-nvpkg-ci]: https://github.com/novus-engine/novuspack/actions/workflows/nvpkg-ci.yml
 [workflow-python-lint]: https://github.com/novus-engine/novuspack/actions/workflows/python-lint.yml
 [license-file]: LICENSE.txt
