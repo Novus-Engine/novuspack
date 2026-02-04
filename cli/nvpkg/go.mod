@@ -7,7 +7,7 @@ replace github.com/novus-engine/novuspack => ../..
 replace github.com/novus-engine/novuspack/api/go => ../../api/go
 
 require (
-	github.com/creack/pty v1.1.21
+	github.com/creack/pty v1.1.24
 	github.com/novus-engine/novuspack/api/go v0.0.0
 	github.com/peterh/liner v1.2.2
 	github.com/spf13/cobra v1.8.1
