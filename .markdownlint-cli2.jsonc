@@ -12,6 +12,11 @@
   ],
   "customRules": [
     ".markdownlint-rules/no-heading-like-lines.js",
-    ".markdownlint-rules/allow-novuspack-anchors.js"
+    ".markdownlint-rules/allow-novuspack-anchors.js",
+    ".markdownlint-rules/novuspack-no-duplicate-headings-normalized.js",
+    ".markdownlint-rules/novuspack-heading-numbering-segment-count.js",
+    ".markdownlint-rules/novuspack-heading-numbering-sequence.js",
+    ".markdownlint-rules/novuspack-ascii-only.js",
+    ".markdownlint-rules/novuspack-no-unicode-arrows.js"
   ]
 }

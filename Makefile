@@ -74,12 +74,13 @@ venv:
 # 3. Write a one-line find script to tmp/.find_mdl_$$.sh: find "$1" <EXCL_EXPR> -name '*.md' -print0.
 #    Running the script with sh makes the shell parse the line and split EXCL_EXPR;
 #    using find ... $EXCL_EXPR directly in the recipe would pass it as one argument.
-# 4. If PATHS is unset: run the script with . as $1, pipe null-separated paths to
-#    xargs -0 -r, which invokes markdownlint-cli2 (with optional --config).
-# 5. If PATHS is set: split on comma; for each path, if it is a .md file emit it
-#    (null-terminated), else if it is a directory run the find script with that path;
-#    pipe the merged output to xargs -> markdownlint-cli2 as in (4).
-# 6. Remove the temp script.
+# 4. Collect all .md paths into tmp/.mdl_list_$$ (null-terminated). If PATHS is unset:
+#    run the find script with . as $1 and redirect output to the list file. If PATHS
+#    is set: for each comma-separated entry, emit the path (null-terminated) if it is
+#    a .md file, else run the find script on it if it is a directory; append to the list file.
+# 5. Run markdownlint-cli2 once with all paths via xargs -0 -a <list file> -r sh -c '...'
+#    (with optional --config). A single invocation ensures the linter exit code is preserved.
+# 6. Capture exit code, remove tmp/.find_mdl_$$.sh and tmp/.mdl_list_$$, then exit with it.
 #
 # Usage: make lint-markdown [PATHS="file1.md,dir1,file2.md"] [EXCLUDES="tmp,node_modules"] [MDL_CONFIG="path/to/.markdownlint-cli2.jsonc"]
 #        - PATHS: Comma-separated list of files and/or directories (default: . = all .md under cwd)
@@ -99,13 +100,12 @@ lint-markdown:
 		done; \
 	fi; \
 	export MDL_CFG="$(MDL_CONFIG)"; \
-	FIND_TMP="tmp/.find_mdl_$$.sh"; mkdir -p tmp; \
+	FIND_TMP="tmp/.find_mdl_$$.sh"; LIST_FILE="tmp/.mdl_list_$$"; mkdir -p tmp; \
 	printf 'find "$$1" %s -name '\''*.md'\'' -print0\n' "$$EXCL_EXPR" > "$$FIND_TMP"; \
 	if [ -z "$(PATHS)" ]; then \
-		sh "$$FIND_TMP" . | xargs -0 -r sh -c ' \
-			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 \
-			$${MDL_CFG:+--config "$$MDL_CFG"} "$$@"' _; \
+		sh "$$FIND_TMP" . > "$$LIST_FILE"; \
 	else \
+		: > "$$LIST_FILE"; \
 		printf '%s\n' "$(PATHS)" | tr ',' '\n' | while IFS= read -r p; do \
 			[ -z "$$p" ] && continue; \
 			if [ -f "$$p" ]; then \
@@ -113,11 +113,12 @@ lint-markdown:
 			elif [ -d "$$p" ]; then \
 				sh "$$FIND_TMP" "$$p"; \
 			fi; \
-		done | xargs -0 -r sh -c ' \
-			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 \
-			$${MDL_CFG:+--config "$$MDL_CFG"} "$$@"' _; \
+		done >> "$$LIST_FILE"; \
 	fi; \
-	rm -f "$$FIND_TMP"
+	xargs -0 -a "$$LIST_FILE" -r sh -c ' \
+		NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 \
+		$${MDL_CFG:+--config "$$MDL_CFG"} "$$@"' _; \
+	ec=$$?; rm -f "$$FIND_TMP" "$$LIST_FILE"; exit $$ec
 
 # Python linting - performs same checks as GitHub Actions workflow
 # NOTE: This target must be kept in sync with .github/workflows/python-lint.yml.
