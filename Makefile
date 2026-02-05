@@ -489,7 +489,7 @@ audit-coverage: audit-requirements-coverage audit-feature-coverage
 #        - CHECK_COVERAGE: Set to 1 to check that all requirements reference tech specs (applies to validate-links only)
 #        - NO_FAIL: Set to 1 to exit with code 0 even if errors are found (applies to all validation scripts)
 #        - NO_COLOR: Set to 1 to disable colored output (applies to all validation scripts)
-docs-check: validate-go-code-blocks validate-go-spec-signature-consistency validate-heading-numbering validate-go-defs-index validate-req-references audit-coverage validate-links lint-markdown
+docs-check: lint-markdown validate-go-code-blocks validate-go-spec-signature-consistency validate-heading-numbering validate-go-defs-index validate-req-references audit-coverage validate-links
 
 # Unified test runner (future implementation)
 # This will run tests across all language implementations

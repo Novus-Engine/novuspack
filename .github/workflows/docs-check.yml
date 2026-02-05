@@ -61,7 +61,11 @@ jobs:
       - name: Create tmp directory
         run: mkdir -p tmp
 
+      - name: Run markdown linting
+        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md" "#tmp/**"
+
       - name: Run Go code blocks validation
+        if: always()
         run: python3 scripts/validate_go_code_blocks.py --output tmp/go_code_blocks_report.md --verbose
 
       - name: Upload Go code blocks report
@@ -148,7 +152,3 @@ jobs:
           name: link-validation-report
           path: tmp/validation_report.txt
           if-no-files-found: ignore
-
-      - name: Run markdown linting
-        if: always()
-        run: NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md" "#tmp/**"
