@@ -1,17 +1,8 @@
 "use strict";
 
-const DEFAULT_ALLOWED_ID_PATTERNS = [
-  "^spec-[a-z0-9-]+$",
-  "^ref-[a-z0-9]+-[a-z0-9-]+$",
-  "^algo-[a-z0-9-]+$",
-  "^algo-[a-z0-9-]+-step-[0-9]+(?:-[0-9]+)*$",
-];
-
 function getConfig(params) {
   const c = params.config || {};
-  const raw = Array.isArray(c.allowedIdPatterns)
-    ? c.allowedIdPatterns
-    : DEFAULT_ALLOWED_ID_PATTERNS;
+  const raw = Array.isArray(c.allowedIdPatterns) ? c.allowedIdPatterns : [];
   const allowedIdPatterns = raw
     .filter((p) => typeof p === "string")
     .map((p) => new RegExp(p));

@@ -4,8 +4,10 @@ This directory contains custom rules used by [markdownlint-cli2](https://github.
 
 ## Overview
 
-- **Rule modules**: Each `*.js` file under this directory (except `utils.js`) is a custom rule. `utils.js` is a shared helper and is not a rule.
-- **Config**: Rule-specific options are set in `.markdownlint.yml` under the rule name. Only rules that accept options are documented with a config section below.
+- **Rule modules**: Each `*.js` file under this directory (except `utils.js`) is a custom rule.
+  `utils.js` is a shared helper and is not a rule.
+- **Config**: Rule-specific options are set in `.markdownlint.yml` under the rule name.
+  Only rules that accept options are documented with a config section below.
 
 ## Rules
 
@@ -17,10 +19,10 @@ This directory contains custom rules used by [markdownlint-cli2](https://github.
 
 **Configuration:** In `.markdownlint.yml` under `allow-custom-anchors`:
 
-| Option               | Type    | Default | Meaning |
-| -------------------- | ------- | ------- | ------- |
-| `allowedIdPatterns`  | list of regex strings | spec/ref/algo patterns | Regex strings for allowed anchor `id` values. |
-| `strictPlacement`    | boolean | `true`  | If `true`, enforce spec/ref/algo placement rules; if `false`, only validate id match and anchor at end of line. |
+| Option              | Type                  | Default                | Meaning                                                                                                         |
+| ------------------- | --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `allowedIdPatterns` | list of regex strings | none (required)        | Regex strings for allowed anchor `id` values. No built-in default.                                              |
+| `strictPlacement`   | boolean               | `true`                 | If `true`, enforce spec/ref/algo placement rules; if `false`, only validate id match and anchor at end of line. |
 
 **Behavior:**
 
@@ -43,26 +45,27 @@ This directory contains custom rules used by [markdownlint-cli2](https://github.
 
 **File:** `ascii-only.js`
 
-**Description:** Disallow non-ASCII except in configured paths; optional replacement suggestions via a pairing config.
+**Description:** Disallow non-ASCII except in configured paths; optional replacement suggestions via `unicodeReplacements`.
 
 **Configuration:** In `.markdownlint.yml` under `ascii-only`:
 
-| Option                         | Type                             | Default | Meaning                                                                   |
-| ------------------------------ | -------------------------------- | ------- | ------------------------------------------------------------------------- |
-| `allowedPathPatternsUnicode`   | list of strings                  | none    | Glob patterns for files where any non-ASCII is allowed.                   |
-| `allowedPathPatternsEmoji`     | list of strings                  | none    | Glob patterns for files where only `allowedEmoji` characters are allowed. |
-| `allowedEmoji`                 | list of single-character strings | none    | Characters allowed in paths matching `allowedPathPatternsEmoji`.          |
-| `allowedUnicode`               | list of single-character strings | none    | Optional. Characters allowed in all files (global allowlist).             |
-| `unicodeReplacements`          | object or array of [char, replacement] | built-in | Map of single Unicode character to suggested ASCII replacement in error messages. When omitted, rule uses built-in defaults (arrows, quotes, ≤≥×). |
+| Option                       | Type                                   | Default  | Meaning                                                                                                                                                |
+| ---------------------------- | -------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `allowedPathPatternsUnicode` | list of strings                        | none     | Glob patterns for files where any non-ASCII is allowed.                                                                                                |
+| `allowedPathPatternsEmoji`   | list of strings                        | none     | Glob patterns for files where only `allowedEmoji` characters are allowed.                                                                              |
+| `allowedEmoji`               | list of strings                        | none     | Emoji (or other chars) allowed in paths matching `allowedPathPatternsEmoji`; each entry may be multi-codepoint (e.g. ⚠️); all code points are allowed. |
+| `allowedUnicode`             | list of single-character strings       | none     | Optional. Characters allowed in all files (global allowlist).                                                                                          |
+| `unicodeReplacements`        | object or array of [char, replacement] | built-in | Map of single Unicode character to suggested ASCII replacement in error messages. When omitted, rule uses built-in defaults (arrows, quotes, ≤≥×).     |
 
-Glob matching supports `**` (any path) and `*` (within a segment). Paths are normalized (forward slashes, leading `./` removed) before matching.
+Glob matching supports `**` (any path) and `*` (within a segment). Paths are normalized (forward slashes, leading `./` removed). Relative patterns (no leading `/` or `*`) match both path-prefix (e.g. `dev_docs/foo.md`) and mid-path (e.g. absolute paths containing `dev_docs/`).
 
 **Behavior:**
 
 - No built-in path or emoji defaults; configure `allowedPathPatternsUnicode`, `allowedPathPatternsEmoji`, and `allowedEmoji` as needed.
 - If the file path matches `allowedPathPatternsUnicode`, any non-ASCII is allowed in that file.
-- If the file path matches `allowedPathPatternsEmoji`, only characters in `allowedEmoji` are allowed; other non-ASCII is reported.
+- If the file path matches `allowedPathPatternsEmoji`, only characters in `allowedEmoji` (and Unicode variation selectors U+FE00–U+FE0F) are allowed; other non-ASCII is reported with message: "Only the listed emoji (...) are allowed in this path. Replace or remove other non-ASCII characters."
 - Characters in `allowedUnicode` (when configured) are allowed in all files.
+- Non-ASCII is detected by code-point iteration (surrogate pairs treated as one character) and compared after NFC normalization.
 - When reporting a disallowed non-ASCII line, any character present in `unicodeReplacements` is mentioned in the error with its suggested replacement.
 - Inline code (backticks) is stripped before scanning.
 
@@ -80,14 +83,14 @@ Glob matching supports `**` (any path) and `*` (within a segment). Paths are nor
 
 **File:** `heading-numbering.js`
 
-**Description:** Enforces structure and consistency of numbered headings: segment count matches level; numbering is sequential within a parent and matches parent prefix; H2 punctuation is consistent.
+**Description:** Enforces structure and consistency of numbered headings: segment count by numbering root; numbering sequential within each section; period style consistent within section.
 
 **Configuration:** None.
 
 **Behavior:**
 
-1. **Segment count:** For each heading with a numeric prefix (e.g. `### 1.2 Title`), the number of segments (split on `.`) must equal heading level minus one. H2 → 1 segment; H3 → 2 segments; H4 → 3 segments. Headings without a numeric prefix are ignored.
-2. **Sequence (when the doc uses numbering):** If at least one H2 has a number, the rule also checks: sibling headings are numbered sequentially (e.g. 8.2.1, 8.2.2); child number extends parent prefix (e.g. under `## 8.2` use `### 8.2.1`, `### 8.2.2`); all H2 headings use the same style for a period after the number (all `## 1. Title` or all `## 1 Title`).
+1. **Segment count by numbering root:** For each heading with a numeric prefix (e.g. `### 1.2 Title`), the number of segments (split on `.`) must equal heading level minus the numbering root level. The numbering root is the nearest ancestor heading that has no numbering (or document root, level 1). Example: H2 under doc root → 1 segment; H3 under unnumbered `## Section` → 1 segment; H4 under `### 1. First` → 1 segment. Headings without a numeric prefix are ignored.
+2. **Section-scoped consistency:** For each section (siblings under the same parent), if any sibling has numbering then all siblings at that level must be numbered sequentially (e.g. 1., 2., 3.) and use consistent period style (all `## 1. Title` or all `## 1 Title`). Unnumbered siblings in a numbered section are reported.
 
 ## Shared helper
 

@@ -243,7 +243,7 @@ ascii-only:
     - "⚠️"
 
 # allow-custom-anchors: anchor id patterns and placement rules
-# - allowedIdPatterns: array of regex strings for allowed <a id="..."> ids (default: spec/ref/algo patterns)
+# - allowedIdPatterns: array of regex strings for allowed <a id="..."> ids (required; no default)
 # - strictPlacement: if true (default), enforce spec/ref/algo placement; if false, only id + end-of-line
 allow-custom-anchors:
   allowedIdPatterns:
