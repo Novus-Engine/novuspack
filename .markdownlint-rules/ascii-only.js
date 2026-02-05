@@ -5,9 +5,23 @@ const {
   stripInlineCode,
 } = require("./utils.js");
 
-const DEFAULT_UNICODE_PATTERNS = ["**/README.md"];
-const DEFAULT_EMOJI_PATTERNS = ["dev_docs/**"];
-const DEFAULT_ALLOWED_EMOJI = ["✅", "❌", "📊", "⚠️"];
+const DEFAULT_UNICODE_REPLACEMENTS = {
+  "\u2192": "->",
+  "\u2190": "<-",
+  "\u2194": "<=>",
+  "\u21D2": "=>",
+  "\u21D0": "<=",
+  "\u21D4": "<=>",
+  "\u2264": "<=",
+  "\u2265": ">=",
+  "\u00D7": "*",
+  "\u2033": "\"",
+  "\u2032": "'",
+  "\u201C": "\"",
+  "\u201D": "\"",
+  "\u2019": "'",
+  "\u2018": "'",
+};
 
 /**
  * Match path against a single glob pattern. Supports ** (any path) and * (segment).
@@ -70,23 +84,61 @@ function onlyAllowedEmoji(str, allowedSet) {
   return true;
 }
 
+function buildReplacementsMap(unicodeReplacements) {
+  const map = new Map();
+  if (!unicodeReplacements || typeof unicodeReplacements !== "object") {
+    return map;
+  }
+  if (Array.isArray(unicodeReplacements)) {
+    for (const entry of unicodeReplacements) {
+      if (Array.isArray(entry) && entry.length >= 2 && typeof entry[0] === "string" && entry[0].length === 1) {
+        map.set(entry[0], String(entry[1]));
+      }
+    }
+    return map;
+  }
+  for (const [ch, replacement] of Object.entries(unicodeReplacements)) {
+    if (typeof ch === "string" && ch.length === 1 && replacement != null) {
+      map.set(ch, String(replacement));
+    }
+  }
+  return map;
+}
+
+function toCharSet(arr) {
+  const set = new Set();
+  if (!Array.isArray(arr)) {
+    return set;
+  }
+  for (const item of arr) {
+    if (typeof item === "string" && item.length === 1) {
+      set.add(item);
+    }
+  }
+  return set;
+}
+
 function getConfig(params) {
   const c = params.config || {};
   return {
-    allowedPathPatternsUnicode:
-      c.allowedPathPatternsUnicode ?? DEFAULT_UNICODE_PATTERNS,
-    allowedPathPatternsEmoji:
-      c.allowedPathPatternsEmoji ?? DEFAULT_EMOJI_PATTERNS,
-    allowedEmoji: Array.isArray(c.allowedEmoji)
-      ? c.allowedEmoji
-      : DEFAULT_ALLOWED_EMOJI,
+    allowedPathPatternsUnicode: Array.isArray(c.allowedPathPatternsUnicode)
+      ? c.allowedPathPatternsUnicode
+      : [],
+    allowedPathPatternsEmoji: Array.isArray(c.allowedPathPatternsEmoji)
+      ? c.allowedPathPatternsEmoji
+      : [],
+    allowedEmoji: Array.isArray(c.allowedEmoji) ? c.allowedEmoji : [],
+    allowedUnicode: toCharSet(c.allowedUnicode),
+    unicodeReplacements: buildReplacementsMap(
+      c.unicodeReplacements ?? DEFAULT_UNICODE_REPLACEMENTS,
+    ),
   };
 }
 
 module.exports = {
   names: ["ascii-only"],
   description:
-    "Disallow non-ASCII except in configured paths (allowed emoji list).",
+    "Disallow non-ASCII except in configured paths; optional replacement suggestions via unicodeReplacements.",
   tags: ["content"],
   function: function (params, onError) {
     const filePath = params.name || "";
@@ -100,6 +152,7 @@ module.exports = {
       config.allowedPathPatternsEmoji,
     );
     const allowedEmojiSet = new Set(config.allowedEmoji);
+    const allowedUnicodeSet = config.allowedUnicode;
 
     for (const { lineNumber, line } of iterateNonFencedLines(params.lines)) {
       const scan = stripInlineCode(line);
@@ -115,20 +168,47 @@ module.exports = {
         continue;
       }
 
-      if (allowEmojiOnly) {
-        const list = config.allowedEmoji.join(", ");
-        onError({
-          lineNumber,
-          detail: `Non-ASCII only allowed here: ${list}. Use ASCII or remove.`,
-          context: line,
-        });
-      } else {
-        onError({
-          lineNumber,
-          detail: "Non-ASCII characters are not allowed. Use ASCII only.",
-          context: line,
-        });
+      const disallowedChars = [];
+      const nonAsciiInLine = scan.match(/[^\x00-\x7F]/g) || [];
+      for (const ch of nonAsciiInLine) {
+        if (allowedUnicodeSet.has(ch)) {
+          continue;
+        }
+        if (allowEmojiOnly && allowedEmojiSet.has(ch)) {
+          continue;
+        }
+        if (!disallowedChars.includes(ch)) {
+          disallowedChars.push(ch);
+        }
       }
+
+      if (disallowedChars.length === 0) {
+        continue;
+      }
+
+      const suggestions = [];
+      for (const ch of disallowedChars) {
+        const replacement = config.unicodeReplacements.get(ch);
+        if (replacement !== undefined) {
+          suggestions.push(`'${ch}' with '${replacement}'`);
+        }
+      }
+
+      let detail;
+      if (suggestions.length > 0) {
+        detail = `Replace ${suggestions.join("; ")}. Non-ASCII not allowed here.`;
+      } else if (allowEmojiOnly) {
+        const list = config.allowedEmoji.join(", ");
+        detail = `Non-ASCII only allowed here: ${list}. Use ASCII or remove.`;
+      } else {
+        detail = "Non-ASCII characters are not allowed. Use ASCII only.";
+      }
+
+      onError({
+        lineNumber,
+        detail,
+        context: line,
+      });
     }
   },
 };

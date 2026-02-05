@@ -43,24 +43,28 @@ This directory contains custom rules used by [markdownlint-cli2](https://github.
 
 **File:** `ascii-only.js`
 
-**Description:** Disallow non-ASCII except in configured paths, where either full Unicode or a fixed set of emoji is allowed.
+**Description:** Disallow non-ASCII except in configured paths; optional replacement suggestions via a pairing config.
 
 **Configuration:** In `.markdownlint.yml` under `ascii-only`:
 
-| Option                         | Type                             | Default                    | Meaning                                                                   |
-| ------------------------------ | -------------------------------- | -------------------------- | ------------------------------------------------------------------------- |
-| `allowedPathPatternsUnicode`   | list of strings                  | `["**/README.md"]`         | Glob patterns for files where any non-ASCII is allowed.                   |
-| `allowedPathPatternsEmoji`     | list of strings                  | `["dev_docs/**"]`          | Glob patterns for files where only `allowedEmoji` characters are allowed. |
-| `allowedEmoji`                 | list of single-character strings | `["✅", "❌", "📊", "⚠️"]` | Characters allowed in paths matching `allowedPathPatternsEmoji`.          |
+| Option                         | Type                             | Default | Meaning                                                                   |
+| ------------------------------ | -------------------------------- | ------- | ------------------------------------------------------------------------- |
+| `allowedPathPatternsUnicode`   | list of strings                  | none    | Glob patterns for files where any non-ASCII is allowed.                   |
+| `allowedPathPatternsEmoji`     | list of strings                  | none    | Glob patterns for files where only `allowedEmoji` characters are allowed. |
+| `allowedEmoji`                 | list of single-character strings | none    | Characters allowed in paths matching `allowedPathPatternsEmoji`.          |
+| `allowedUnicode`               | list of single-character strings | none    | Optional. Characters allowed in all files (global allowlist).             |
+| `unicodeReplacements`          | object or array of [char, replacement] | built-in | Map of single Unicode character to suggested ASCII replacement in error messages. When omitted, rule uses built-in defaults (arrows, quotes, ≤≥×). |
 
 Glob matching supports `**` (any path) and `*` (within a segment). Paths are normalized (forward slashes, leading `./` removed) before matching.
 
 **Behavior:**
 
-- If the file path matches **only** `allowedPathPatternsUnicode`, any non-ASCII is allowed.
-- If the file path matches **only** `allowedPathPatternsEmoji`, only characters in `allowedEmoji` are allowed; other non-ASCII is reported.
-- If the path matches neither, no non-ASCII is allowed.
-- Inline code (backticks) is stripped before scanning so code snippets are still checked for non-ASCII outside of allowed paths/emoji.
+- No built-in path or emoji defaults; configure `allowedPathPatternsUnicode`, `allowedPathPatternsEmoji`, and `allowedEmoji` as needed.
+- If the file path matches `allowedPathPatternsUnicode`, any non-ASCII is allowed in that file.
+- If the file path matches `allowedPathPatternsEmoji`, only characters in `allowedEmoji` are allowed; other non-ASCII is reported.
+- Characters in `allowedUnicode` (when configured) are allowed in all files.
+- When reporting a disallowed non-ASCII line, any character present in `unicodeReplacements` is mentioned in the error with its suggested replacement.
+- Inline code (backticks) is stripped before scanning.
 
 ### no-duplicate-headings-normalized
 
@@ -91,16 +95,6 @@ Glob matching supports `**` (any path) and `*` (within a segment). Paths are nor
 **Configuration:** None.
 
 **Behavior:** For documents that use numbered headings (determined by the first H2), the rule checks: (1) sibling headings are numbered sequentially (e.g. 8.2.1, 8.2.2, 8.2.3); (2) child prefix extends parent (e.g. under `8.2` children are `8.2.1`, `8.2.2`); (3) all H2 headings use the same style for a period after the number (e.g. all `1.` or all `1`). Non-sequential or mismatched numbers are reported.
-
-### no-unicode-arrows
-
-**File:** `no-unicode-arrows.js`
-
-**Description:** Disallow Unicode arrow characters in prose; use `=>` instead.
-
-**Configuration:** None.
-
-**Behavior:** Scans non-fenced, non-inline-code content for Unicode arrow characters (e.g. `→`, `↔`, `⇒`). Reports them and suggests using ASCII `=>` instead.
 
 ## Shared helper
 

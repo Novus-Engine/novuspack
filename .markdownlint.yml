@@ -228,10 +228,9 @@ MD060:
   # Table column style
   style: "aligned"
 
-# ascii-only: which paths may use non-ASCII and which emoji are allowed
-# - allowedPathPatternsUnicode: globs where any non-ASCII is allowed (e.g. **/README.md)
-# - allowedPathPatternsEmoji: globs where only allowedEmoji are allowed (e.g. dev_docs/**)
-# - allowedEmoji: characters allowed in paths matching allowedPathPatternsEmoji
+# ascii-only: no built-in path/emoji defaults; set paths and emoji in config
+# - allowedUnicode: optional; single chars allowed in all files (no default)
+# - unicodeReplacements: optional; if omitted, rule uses built-in defaults (arrows, quotes, <=>=*)
 ascii-only:
   allowedPathPatternsUnicode:
     - "**/README.md"
