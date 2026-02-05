@@ -76,25 +76,18 @@ Glob matching supports `**` (any path) and `*` (within a segment). Paths are nor
 
 **Behavior:** Extracts all headings, strips numeric prefixes (e.g. `1.2.3`), normalizes the title (case/whitespace), and reports any heading whose normalized title appears more than once in the document. The first occurrence is the reference; duplicates are reported with the line number of the first.
 
-### heading-numbering-segment-count
+### heading-numbering
 
-**File:** `heading-numbering-segment-count.js`
+**File:** `heading-numbering.js`
 
-**Description:** If a heading has a numbering prefix, the number of segments must equal (heading level - 1).
-
-**Configuration:** None.
-
-**Behavior:** For each heading that has a numeric prefix (e.g. `### 1.2 Title`), the prefix is split by `.`; the number of segments must equal the heading level minus one. Examples: H2 may have `1` or `2` (one segment); H3 may have `1.1`, `2.3` (two segments); H4 may have `1.1.1` (three segments). Headings without a numeric prefix are ignored.
-
-### heading-numbering-sequence
-
-**File:** `heading-numbering-sequence.js`
-
-**Description:** Numbering must be sequential within a parent and match the parent prefix; H2 punctuation (period after number) must be consistent.
+**Description:** Enforces structure and consistency of numbered headings: segment count matches level; numbering is sequential within a parent and matches parent prefix; H2 punctuation is consistent.
 
 **Configuration:** None.
 
-**Behavior:** For documents that use numbered headings (determined by the first H2), the rule checks: (1) sibling headings are numbered sequentially (e.g. 8.2.1, 8.2.2, 8.2.3); (2) child prefix extends parent (e.g. under `8.2` children are `8.2.1`, `8.2.2`); (3) all H2 headings use the same style for a period after the number (e.g. all `1.` or all `1`). Non-sequential or mismatched numbers are reported.
+**Behavior:**
+
+1. **Segment count:** For each heading with a numeric prefix (e.g. `### 1.2 Title`), the number of segments (split on `.`) must equal heading level minus one. H2 → 1 segment; H3 → 2 segments; H4 → 3 segments. Headings without a numeric prefix are ignored.
+2. **Sequence (when the doc uses numbering):** If at least one H2 has a number, the rule also checks: sibling headings are numbered sequentially (e.g. 8.2.1, 8.2.2); child number extends parent prefix (e.g. under `## 8.2` use `### 8.2.1`, `### 8.2.2`); all H2 headings use the same style for a period after the number (all `## 1. Title` or all `## 1 Title`).
 
 ## Shared helper
 

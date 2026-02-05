@@ -14,8 +14,7 @@
     ".markdownlint-rules/no-heading-like-lines.js",
     ".markdownlint-rules/allow-custom-anchors.js",
     ".markdownlint-rules/no-duplicate-headings-normalized.js",
-    ".markdownlint-rules/heading-numbering-segment-count.js",
-    ".markdownlint-rules/heading-numbering-sequence.js",
+    ".markdownlint-rules/heading-numbering.js",
     ".markdownlint-rules/ascii-only.js"
   ]
 }

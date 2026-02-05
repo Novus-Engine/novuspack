@@ -67,9 +67,9 @@ function getExpectedNumber(sorted, parentIndex, i, firstH2Numbering) {
 }
 
 module.exports = {
-  names: ["heading-numbering-sequence"],
+  names: ["heading-numbering"],
   description:
-    "Numbering must be sequential within a parent and match parent prefix; H2 punctuation consistent.",
+    "Numbered headings: segment count must match level; numbering sequential within parent; H2 punctuation consistent.",
   tags: ["headings"],
   function: function (params, onError) {
     const headings = extractHeadings(params.lines);
@@ -89,20 +89,18 @@ module.exports = {
       firstH2 != null ? parseHeadingNumberPrefix(firstH2.rawText) : null;
     const docUsesNumbering =
       firstH2Num != null && firstH2Num.numbering != null;
-    if (!docUsesNumbering) {
-      return;
-    }
 
     const { sorted, parentIndex } = buildParentIndex(headings);
 
-    const firstH2ByLine = sorted
-      .filter((x) => x.level === 2)
-      .sort((a, b) => a.lineNumber - b.lineNumber)[0];
+    const firstH2ByLine = docUsesNumbering
+      ? sorted
+          .filter((x) => x.level === 2)
+          .sort((a, b) => a.lineNumber - b.lineNumber)[0]
+      : null;
     const firstH2Numbering =
       firstH2ByLine != null
         ? parseHeadingNumberPrefix(firstH2ByLine.rawText).numbering
         : null;
-
     const firstH2Dot =
       firstH2ByLine != null
         ? parseHeadingNumberPrefix(firstH2ByLine.rawText).hasH2Dot
@@ -112,6 +110,21 @@ module.exports = {
       const h = sorted[i];
       const { numbering, hasH2Dot } = parseHeadingNumberPrefix(h.rawText);
       if (numbering == null) {
+        continue;
+      }
+
+      const segments = numbering.split(".");
+      const expectedSegmentCount = h.level - 1;
+      if (segments.length !== expectedSegmentCount) {
+        onError({
+          lineNumber: h.lineNumber,
+          detail: `H${h.level} heading has ${segments.length} number(s), expected ${expectedSegmentCount}.`,
+          context: params.lines[h.lineNumber - 1],
+        });
+        continue;
+      }
+
+      if (!docUsesNumbering) {
         continue;
       }
 
