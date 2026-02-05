@@ -25,7 +25,9 @@ const DEFAULT_UNICODE_REPLACEMENTS = {
 
 /**
  * Match path against a single glob pattern. Supports ** (any path) and * (segment).
- * Path is normalized to forward slashes.
+ * Path is normalized to forward slashes. Relative patterns (no leading / or *) match
+ * both when the path starts with the pattern (e.g. "dev_docs/foo.md") and when the
+ * pattern appears mid-path (e.g. "/abs/path/dev_docs/foo.md").
  */
 function matchGlob(path, pattern) {
   if (!path || !pattern) {
@@ -33,7 +35,16 @@ function matchGlob(path, pattern) {
   }
   const normalized = path.replace(/\\/g, "/").replace(/^\.\//, "");
   const re = globToRegExp(pattern);
-  return re.test(normalized);
+  if (re.test(normalized)) {
+    return true;
+  }
+  const isRelative =
+    pattern[0] !== "/" && pattern[0] !== "*" && !pattern.startsWith("./");
+  if (isRelative) {
+    const reAnywhere = globToRegExp("**/" + pattern);
+    return reAnywhere.test(normalized);
+  }
+  return false;
 }
 
 function globToRegExp(pattern) {
@@ -71,15 +82,37 @@ function hasNonAscii(str) {
   return /[^\x00-\x7F]/.test(str);
 }
 
+/** Return non-ASCII code points (iterating by code point, not code unit, so surrogates stay as one). */
+function getNonAsciiCodePoints(str) {
+  const result = [];
+  for (const ch of str) {
+    if (ch.codePointAt(0) > 0x7f) {
+      result.push(ch);
+    }
+  }
+  return result;
+}
+
+const VARIATION_SELECTOR_MIN = "\uFE00";
+const VARIATION_SELECTOR_MAX = "\uFE0F";
+
 function onlyAllowedEmoji(str, allowedSet) {
-  const nonAscii = str.match(/[^\x00-\x7F]/g);
-  if (!nonAscii) {
+  const nonAscii = getNonAsciiCodePoints(str);
+  if (nonAscii.length === 0) {
     return true;
   }
   for (const ch of nonAscii) {
-    if (!allowedSet.has(ch)) {
-      return false;
+    const n = ch.normalize("NFC");
+    if (allowedSet.has(n)) {
+      continue;
     }
+    if (
+      n >= VARIATION_SELECTOR_MIN &&
+      n <= VARIATION_SELECTOR_MAX
+    ) {
+      continue;
+    }
+    return false;
   }
   return true;
 }
@@ -111,8 +144,11 @@ function toCharSet(arr) {
     return set;
   }
   for (const item of arr) {
-    if (typeof item === "string" && item.length === 1) {
-      set.add(item);
+    if (typeof item === "string" && item.length >= 1) {
+      const normalized = item.normalize("NFC");
+      for (const ch of normalized) {
+        set.add(ch);
+      }
     }
   }
   return set;
@@ -151,7 +187,7 @@ module.exports = {
       filePath,
       config.allowedPathPatternsEmoji,
     );
-    const allowedEmojiSet = new Set(config.allowedEmoji);
+    const allowedEmojiSet = toCharSet(config.allowedEmoji);
     const allowedUnicodeSet = config.allowedUnicode;
 
     for (const { lineNumber, line } of iterateNonFencedLines(params.lines)) {
@@ -169,12 +205,20 @@ module.exports = {
       }
 
       const disallowedChars = [];
-      const nonAsciiInLine = scan.match(/[^\x00-\x7F]/g) || [];
+      const nonAsciiInLine = getNonAsciiCodePoints(scan);
       for (const ch of nonAsciiInLine) {
-        if (allowedUnicodeSet.has(ch)) {
+        const n = ch.normalize("NFC");
+        if (allowedUnicodeSet.has(n)) {
           continue;
         }
-        if (allowEmojiOnly && allowedEmojiSet.has(ch)) {
+        if (allowEmojiOnly && allowedEmojiSet.has(n)) {
+          continue;
+        }
+        if (
+          allowEmojiOnly &&
+          n >= VARIATION_SELECTOR_MIN &&
+          n <= VARIATION_SELECTOR_MAX
+        ) {
           continue;
         }
         if (!disallowedChars.includes(ch)) {
@@ -199,7 +243,7 @@ module.exports = {
         detail = `Replace ${suggestions.join("; ")}. Non-ASCII not allowed here.`;
       } else if (allowEmojiOnly) {
         const list = config.allowedEmoji.join(", ");
-        detail = `Non-ASCII only allowed here: ${list}. Use ASCII or remove.`;
+        detail = `Only the listed emoji (${list}) are allowed in this path. Replace or remove other non-ASCII characters.`;
       } else {
         detail = "Non-ASCII characters are not allowed. Use ASCII only.";
       }
