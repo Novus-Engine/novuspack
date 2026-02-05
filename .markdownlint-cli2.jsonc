@@ -12,11 +12,11 @@
   ],
   "customRules": [
     ".markdownlint-rules/no-heading-like-lines.js",
-    ".markdownlint-rules/allow-novuspack-anchors.js",
-    ".markdownlint-rules/novuspack-no-duplicate-headings-normalized.js",
-    ".markdownlint-rules/novuspack-heading-numbering-segment-count.js",
-    ".markdownlint-rules/novuspack-heading-numbering-sequence.js",
-    ".markdownlint-rules/novuspack-ascii-only.js",
-    ".markdownlint-rules/novuspack-no-unicode-arrows.js"
+    ".markdownlint-rules/allow-custom-anchors.js",
+    ".markdownlint-rules/no-duplicate-headings-normalized.js",
+    ".markdownlint-rules/heading-numbering-segment-count.js",
+    ".markdownlint-rules/heading-numbering-sequence.js",
+    ".markdownlint-rules/ascii-only.js",
+    ".markdownlint-rules/no-unicode-arrows.js"
   ]
 }

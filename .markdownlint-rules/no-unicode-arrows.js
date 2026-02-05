@@ -3,12 +3,12 @@
 const {
   iterateNonFencedLines,
   stripInlineCode,
-} = require("./novuspack-utils.js");
+} = require("./utils.js");
 
 const UNICODE_ARROWS = /[\u2190-\u21FF\u2900-\u297F]/u;
 
 module.exports = {
-  names: ["novuspack-no-unicode-arrows"],
+  names: ["no-unicode-arrows"],
   description: "Disallow Unicode arrow characters in prose; use '=>' instead.",
   tags: ["content"],
   function: function (params, onError) {

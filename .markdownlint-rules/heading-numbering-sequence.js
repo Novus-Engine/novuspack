@@ -3,7 +3,7 @@
 const {
   extractHeadings,
   parseHeadingNumberPrefix,
-} = require("./novuspack-utils.js");
+} = require("./utils.js");
 
 /**
  * Build parent index for each heading (0-based index of parent in sorted list).
@@ -67,7 +67,7 @@ function getExpectedNumber(sorted, parentIndex, i, firstH2Numbering) {
 }
 
 module.exports = {
-  names: ["novuspack-heading-numbering-sequence"],
+  names: ["heading-numbering-sequence"],
   description:
     "Numbering must be sequential within a parent and match parent prefix; H2 punctuation consistent.",
   tags: ["headings"],

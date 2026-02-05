@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * Shared helpers for NovusPack markdownlint custom rules.
+ * Shared helpers for markdownlint custom rules.
  * Used by heading and prose rules (duplicate headings, numbering, ASCII, arrows).
  */
 

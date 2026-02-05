@@ -3,10 +3,10 @@
 const {
   extractHeadings,
   parseHeadingNumberPrefix,
-} = require("./novuspack-utils.js");
+} = require("./utils.js");
 
 module.exports = {
-  names: ["novuspack-heading-numbering-segment-count"],
+  names: ["heading-numbering-segment-count"],
   description:
     "If a heading has a numbering prefix, segment count must equal (heading level - 1).",
   tags: ["headings"],

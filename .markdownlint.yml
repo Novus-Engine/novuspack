@@ -227,4 +227,30 @@ MD048:
 MD060:
   # Table column style
   style: "aligned"
+
+# ascii-only: which paths may use non-ASCII and which emoji are allowed
+# - allowedPathPatternsUnicode: globs where any non-ASCII is allowed (e.g. **/README.md)
+# - allowedPathPatternsEmoji: globs where only allowedEmoji are allowed (e.g. dev_docs/**)
+# - allowedEmoji: characters allowed in paths matching allowedPathPatternsEmoji
+ascii-only:
+  allowedPathPatternsUnicode:
+    - "**/README.md"
+  allowedPathPatternsEmoji:
+    - "dev_docs/**"
+  allowedEmoji:
+    - "✅"
+    - "❌"
+    - "📊"
+    - "⚠️"
+
+# allow-custom-anchors: anchor id patterns and placement rules
+# - allowedIdPatterns: array of regex strings for allowed <a id="..."> ids (default: spec/ref/algo patterns)
+# - strictPlacement: if true (default), enforce spec/ref/algo placement; if false, only id + end-of-line
+allow-custom-anchors:
+  allowedIdPatterns:
+    - "^spec-[a-z0-9-]+$"
+    - "^ref-[a-z0-9]+-[a-z0-9-]+$"
+    - "^algo-[a-z0-9-]+$"
+    - "^algo-[a-z0-9-]+-step-[0-9]+(?:-[0-9]+)*$"
+  strictPlacement: true
 ...

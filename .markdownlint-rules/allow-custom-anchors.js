@@ -1,15 +1,31 @@
+"use strict";
+
+const DEFAULT_ALLOWED_ID_PATTERNS = [
+  "^spec-[a-z0-9-]+$",
+  "^ref-[a-z0-9]+-[a-z0-9-]+$",
+  "^algo-[a-z0-9-]+$",
+  "^algo-[a-z0-9-]+-step-[0-9]+(?:-[0-9]+)*$",
+];
+
+function getConfig(params) {
+  const c = params.config || {};
+  const raw = Array.isArray(c.allowedIdPatterns)
+    ? c.allowedIdPatterns
+    : DEFAULT_ALLOWED_ID_PATTERNS;
+  const allowedIdPatterns = raw
+    .filter((p) => typeof p === "string")
+    .map((p) => new RegExp(p));
+  const strictPlacement = c.strictPlacement !== false;
+  return { allowedIdPatterns, strictPlacement };
+}
+
 module.exports = {
-  names: ["allow-novuspack-anchors"],
+  names: ["allow-custom-anchors"],
   description:
-    "Allow only NovusPack <a id=\"...\"> anchors (spec/ref/algo).",
+    "Allow only configured <a id=\"...\"></a> anchor id patterns; optional placement rules.",
   tags: ["html", "anchors"],
   function: function (params, onError) {
-    const allowedIdPatterns = [
-      /^spec-[a-z0-9-]+$/,
-      /^ref-[a-z0-9]+-[a-z0-9-]+$/,
-      /^algo-[a-z0-9-]+$/,
-      /^algo-[a-z0-9-]+-step-[0-9]+(?:-[0-9]+)*$/,
-    ];
+    const { allowedIdPatterns, strictPlacement } = getConfig(params);
 
     /**
      * Strictly allow only: <a id="SOME_ID"></a>
@@ -17,13 +33,10 @@ module.exports = {
      * - only attribute is id
      * - no inner content
      */
-    // Enforce the exact tag form (no extra whitespace / attributes).
     const anchorTagRegex = /<a id="([^"]+)"><\/a>/;
     const anchorAtEndOfLineRegex = /<a id="([^"]+)"><\/a>\s*$/;
 
     function stripInlineCode(line) {
-      // Small inline-code stripper that supports multi-backtick code spans.
-      // This avoids false positives for "<a ...>" strings shown in inline code.
       let out = "";
       let inCode = false;
       let fence = "";
@@ -35,7 +48,6 @@ module.exports = {
           continue;
         }
 
-        // Count backtick run length.
         let j = i;
         while (j < line.length && line[j] === "`") {
           j++;
@@ -50,7 +62,6 @@ module.exports = {
           fence = "";
         }
 
-        // Preserve the backticks themselves.
         out += run;
         i = j - 1;
       }
@@ -58,7 +69,6 @@ module.exports = {
       return out;
     }
 
-    // Enforce on raw lines to avoid relying on parser internals.
     let inFence = false;
     let fenceMarker = null;
     let inAlgorithmSection = false;
@@ -70,7 +80,6 @@ module.exports = {
       const line = params.lines[index];
       const trimmed = line.trim();
 
-      // Ignore fenced code blocks (``` / ~~~), including their contents.
       const fenceMatch = trimmed.match(/^(```+|~~~+)/);
       if (fenceMatch) {
         const marker = fenceMatch[1][0] === "`" ? "```" : "~~~";
@@ -88,9 +97,6 @@ module.exports = {
         continue;
       }
 
-      // Track whether we're within an `Algorithm` section based on headings.
-      // We only treat headings that include a backticked symbol and the token "Algorithm"
-      // as an Algorithm section start (to avoid matching prose headings like "Algorithm and Processing").
       const headingMatch = trimmed.match(/^(#{1,6})\s+/);
       if (headingMatch) {
         const level = headingMatch[1].length;
@@ -113,7 +119,6 @@ module.exports = {
         continue;
       }
 
-      // Require exactly one <a ...></a> per line, and require it to be at end-of-line.
       if (scanLine.indexOf("<a", anchorIndex + 1) !== -1) {
         onError({
           lineNumber,
@@ -141,13 +146,12 @@ module.exports = {
         onError({
           lineNumber,
           detail:
-            "Anchor id must match one of: spec-*, ref-<lang>-*, algo-*, algo-*-step-<n>[-<n>...].",
+            "Anchor id must match one of the configured allowedIdPatterns.",
           context: line,
         });
         continue;
       }
 
-      // Enforce that the anchor appears at the end of the line (ignoring whitespace).
       const anchorMatch = scanLine.match(anchorAtEndOfLineRegex);
       if (!anchorMatch) {
         onError({
@@ -159,17 +163,19 @@ module.exports = {
         continue;
       }
 
+      if (!strictPlacement) {
+        continue;
+      }
+
       const anchorPosOriginal = line.lastIndexOf("<a");
       const beforeOriginal = (anchorPosOriginal >= 0
         ? line.slice(0, anchorPosOriginal)
         : line).trim();
 
-      // Enforce placement by anchor kind.
       const startsWithList =
         /^\s*(?:[-*+]\s+|\d+[.)]\s+)/.test(beforeOriginal);
 
       if (id.startsWith("spec-")) {
-        // Spec anchors must be on the Spec ID list item line.
         if (!/^\s*-\s+Spec ID:\s+`NP\.[^`]+`/.test(beforeOriginal)) {
           onError({
             lineNumber,
@@ -182,13 +188,6 @@ module.exports = {
       }
 
       if (id.startsWith("ref-")) {
-        // Reference anchors must be on their own line directly above the referenced code block.
-        // Format:
-        // <a id="ref-..."></a>
-        //
-        // ```lang
-        // ...
-        // ```
         const expected = `<a id="${id}"></a>`;
         if (trimmed !== expected) {
           onError({
@@ -214,9 +213,6 @@ module.exports = {
       }
 
       if (id.startsWith("algo-") && !id.includes("-step-")) {
-        // Algorithm anchors must be on their own line at the start of an Algorithm section.
-        // Format:
-        // <a id="algo-..."></a>
         const expected = `<a id="${id}"></a>`;
         if (trimmed !== expected) {
           onError({
@@ -249,7 +245,6 @@ module.exports = {
         }
         seenAlgorithmAnchorInSection = true;
 
-        // Require the previous non-blank line to be the Algorithm heading line.
         let prev = index - 1;
         while (prev >= 0 && params.lines[prev].trim() === "") {
           prev--;
@@ -263,12 +258,6 @@ module.exports = {
           });
         }
 
-        // Require:
-        // <Algorithm heading>
-        //
-        // <a id="algo-..."></a>
-        //
-        // <list item...>
         const next = params.lines[index + 1];
         const next2 = params.lines[index + 2];
         const startsWithListNext2 =

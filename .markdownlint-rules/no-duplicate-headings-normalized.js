@@ -3,10 +3,10 @@
 const {
   extractHeadings,
   normalizedTitleForDuplicate,
-} = require("./novuspack-utils.js");
+} = require("./utils.js");
 
 module.exports = {
-  names: ["novuspack-no-duplicate-headings-normalized"],
+  names: ["no-duplicate-headings-normalized"],
   description:
     "Disallow duplicate heading titles after stripping numbering and normalizing.",
   tags: ["headings"],
