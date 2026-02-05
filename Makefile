@@ -64,30 +64,60 @@ venv:
 #       When adding or modifying markdown linting, update both this Makefile and
 #       the workflow file to ensure local 'make lint-markdown' matches CI behavior.
 #       Requires: npm install -g markdownlint-cli2
-#       NOTE: The workflow runs: markdownlint-cli2 "**/*.md"
-#             Excludes are configured in .markdownlint-cli2.jsonc (e.g. tmp/).
-# Usage: make lint-markdown [PATHS="file1.md,dir1,file2.md"] [MDL_CONFIG="path/to/.markdownlint-cli2.jsonc"]
-#        - PATHS: Comma-separated list of files/directories to check (default: all .md files)
+#
+# Recipe behavior:
+# 1. Check markdownlint-cli2 is on PATH; exit with message if not.
+# 2. Build EXCL_EXPR from EXCLUDES (comma-separated): for each segment e, add
+#    -not -path "*/e/*" -not -path "*/e" so find skips that dir and its contents.
+#    First segment has no leading space so when the find line is run from a script,
+#    the shell word-splits EXCL_EXPR into separate find arguments.
+# 3. Write a one-line find script to tmp/.find_mdl_$$.sh: find "$1" <EXCL_EXPR> -name '*.md' -print0.
+#    Running the script with sh makes the shell parse the line and split EXCL_EXPR;
+#    using find ... $EXCL_EXPR directly in the recipe would pass it as one argument.
+# 4. If PATHS is unset: run the script with . as $1, pipe null-separated paths to
+#    xargs -0 -r, which invokes markdownlint-cli2 (with optional --config).
+# 5. If PATHS is set: split on comma; for each path, if it is a .md file emit it
+#    (null-terminated), else if it is a directory run the find script with that path;
+#    pipe the merged output to xargs -> markdownlint-cli2 as in (4).
+# 6. Remove the temp script.
+#
+# Usage: make lint-markdown [PATHS="file1.md,dir1,file2.md"] [EXCLUDES="tmp,node_modules"] [MDL_CONFIG="path/to/.markdownlint-cli2.jsonc"]
+#        - PATHS: Comma-separated list of files and/or directories (default: . = all .md under cwd)
+#        - EXCLUDES: Comma-separated path segments to exclude under dirs (e.g. tmp, node_modules)
 #        - MDL_CONFIG: Optional config file path to pass via --config
 lint-markdown:
 	@command -v markdownlint-cli2 >/dev/null 2>&1 || { \
 		echo "Error: markdownlint-cli2 not found. Install with: npm install -g markdownlint-cli2"; \
 		exit 1; \
 	}
-	@if [ -n "$(PATHS)" ]; then \
-		LINT_PATHS=$$(echo "$(PATHS)" | tr ',' ' '); \
-		if [ -n "$(MDL_CONFIG)" ]; then \
-			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 --config "$(MDL_CONFIG)" $$LINT_PATHS; \
-		else \
-			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 $$LINT_PATHS; \
-		fi; \
+	@EXCL_EXPR=""; \
+	if [ -n "$(EXCLUDES)" ]; then \
+		first=1; \
+		for e in $$(echo "$(EXCLUDES)" | tr ',' ' '); do \
+			if [ $$first -eq 1 ]; then EXCL_EXPR="-not -path \"*/$$e/*\" -not -path \"*/$$e\""; first=0; \
+			else EXCL_EXPR="$$EXCL_EXPR -not -path \"*/$$e/*\" -not -path \"*/$$e\""; fi; \
+		done; \
+	fi; \
+	export MDL_CFG="$(MDL_CONFIG)"; \
+	FIND_TMP="tmp/.find_mdl_$$.sh"; mkdir -p tmp; \
+	printf 'find "$$1" %s -name '\''*.md'\'' -print0\n' "$$EXCL_EXPR" > "$$FIND_TMP"; \
+	if [ -z "$(PATHS)" ]; then \
+		sh "$$FIND_TMP" . | xargs -0 -r sh -c ' \
+			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 \
+			$${MDL_CFG:+--config "$$MDL_CFG"} "$$@"' _; \
 	else \
-		if [ -n "$(MDL_CONFIG)" ]; then \
-			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 --config "$(MDL_CONFIG)" "**/*.md"; \
-		else \
-			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 "**/*.md"; \
-		fi; \
-	fi
+		printf '%s\n' "$(PATHS)" | tr ',' '\n' | while IFS= read -r p; do \
+			[ -z "$$p" ] && continue; \
+			if [ -f "$$p" ]; then \
+				case "$$p" in (*.md) printf '%s\0' "$$p";; esac; \
+			elif [ -d "$$p" ]; then \
+				sh "$$FIND_TMP" "$$p"; \
+			fi; \
+		done | xargs -0 -r sh -c ' \
+			NODE_OPTIONS="--no-warnings=MODULE_TYPELESS_PACKAGE_JSON" markdownlint-cli2 \
+			$${MDL_CFG:+--config "$$MDL_CFG"} "$$@"' _; \
+	fi; \
+	rm -f "$$FIND_TMP"
 
 # Python linting - performs same checks as GitHub Actions workflow
 # NOTE: This target must be kept in sync with .github/workflows/python-lint.yml.
