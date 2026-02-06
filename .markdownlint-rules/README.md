@@ -77,10 +77,10 @@ Glob matching supports `**` (any path) and `*` (within a segment). Paths are nor
 
 - No built-in path or emoji defaults; configure `allowedPathPatternsUnicode`, `allowedPathPatternsEmoji`, and `allowedEmoji` as needed.
 - If the file path matches `allowedPathPatternsUnicode`, any non-ASCII is allowed in that file.
-- If the file path matches `allowedPathPatternsEmoji`, only characters in `allowedEmoji` (and Unicode variation selectors U+FE00–U+FE0F) are allowed; other non-ASCII is reported with message: "Only the listed emoji (...) are allowed in this path. Replace or remove other non-ASCII characters."
+- If the file path matches `allowedPathPatternsEmoji`, only characters in `allowedEmoji` (and Unicode variation selectors U+FE00–U+FE0F) are allowed; other non-ASCII is reported per occurrence.
 - Characters in `allowedUnicode` (when configured) are allowed in all files.
 - Non-ASCII is detected by code-point iteration (surrogate pairs treated as one character) and compared after NFC normalization.
-- When reporting a disallowed non-ASCII line, any character present in `unicodeReplacements` is mentioned in the error with its suggested replacement.
+- **One error per disallowed character:** each violation highlights only that character (range) on the line. The detail names the character, its code point (e.g. U+2192), and the suggested replacement when present in `unicodeReplacements`.
 - Inline code (backticks) is stripped before scanning.
 
 ### no-duplicate-headings-normalized

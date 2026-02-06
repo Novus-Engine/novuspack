@@ -125,31 +125,36 @@ function getConfig(params) {
   };
 }
 
-function getDisallowedChars(scan, allowEmojiOnly, allowedUnicodeSet, allowedEmojiSet) {
-  const disallowedChars = [];
-  for (const ch of getNonAsciiCodePoints(scan)) {
+/** Iterate over disallowed non-ASCII occurrences in scan; yields { startIndex, char } (char may be 1 or 2 code units). */
+function* getDisallowedOccurrences(scan, allowEmojiOnly, allowedUnicodeSet, allowedEmojiSet) {
+  for (let i = 0; i < scan.length; i++) {
+    const cp = scan.codePointAt(i);
+    if (cp <= 0x7f) continue;
+    const len = cp > 0xffff ? 2 : 1;
+    const ch = scan.slice(i, i + len);
     const n = ch.normalize("NFC");
-    if (allowedUnicodeSet.has(n)) continue;
-    if (allowEmojiOnly && allowedEmojiSet.has(n)) continue;
-    if (allowEmojiOnly && n >= VARIATION_SELECTOR_MIN && n <= VARIATION_SELECTOR_MAX) continue;
-    if (!disallowedChars.includes(ch)) disallowedChars.push(ch);
+    if (allowedUnicodeSet.has(n)) { i += len - 1; continue; }
+    if (allowEmojiOnly && allowedEmojiSet.has(n)) { i += len - 1; continue; }
+    if (allowEmojiOnly && n >= VARIATION_SELECTOR_MIN && n <= VARIATION_SELECTOR_MAX) { i += len - 1; continue; }
+    yield { startIndex: i, char: ch, length: len };
+    i += len - 1;
   }
-  return disallowedChars;
 }
 
-function buildDetail(disallowedChars, config, allowEmojiOnly) {
-  const suggestions = [];
-  for (const ch of disallowedChars) {
-    const replacement = config.unicodeReplacements.get(ch);
-    if (replacement !== undefined) suggestions.push(`'${ch}' with '${replacement}'`);
-  }
-  if (suggestions.length > 0) {
-    return `Replace ${suggestions.join("; ")}. Non-ASCII not allowed here.`;
+function formatCodePoint(ch) {
+  const cp = ch.codePointAt(0);
+  return "U+" + cp.toString(16).toUpperCase().padStart(cp <= 0xffff ? 4 : 6, "0");
+}
+
+function buildOccurrenceDetail(ch, replacement, allowEmojiOnly, config) {
+  const cpStr = formatCodePoint(ch);
+  if (replacement !== undefined) {
+    return `Character '${ch}' (${cpStr}); suggested replacement: '${replacement}'`;
   }
   if (allowEmojiOnly) {
-    return `Only the listed emoji (${config.allowedEmoji.join(", ")}) are allowed in this path. Replace or remove other non-ASCII characters.`;
+    return `Character '${ch}' (${cpStr}) not in allowed emoji list (${config.allowedEmoji.join(", ")})`;
   }
-  return "Non-ASCII characters are not allowed. Use ASCII only.";
+  return `Character '${ch}' (${cpStr}) not allowed; use ASCII only`;
 }
 
 module.exports = {
@@ -171,16 +176,18 @@ module.exports = {
       if (allowUnicode) continue;
       if (allowEmojiOnly && onlyAllowedEmoji(scan, allowedEmojiSet)) continue;
 
-      const disallowedChars = getDisallowedChars(
+      for (const { startIndex, char, length } of getDisallowedOccurrences(
         scan, allowEmojiOnly, allowedUnicodeSet, allowedEmojiSet,
-      );
-      if (disallowedChars.length === 0) continue;
-
-      onError({
-        lineNumber,
-        detail: buildDetail(disallowedChars, config, allowEmojiOnly),
-        context: line,
-      });
+      )) {
+        const column = startIndex + 1;
+        const replacement = config.unicodeReplacements.get(char);
+        onError({
+          lineNumber,
+          detail: buildOccurrenceDetail(char, replacement, allowEmojiOnly, config),
+          context: line,
+          range: [column, length],
+        });
+      }
     }
   },
 };
