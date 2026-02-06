@@ -184,7 +184,7 @@ module.exports = {
       if (scanLine.indexOf("<a", anchorIndex + 1) !== -1) {
         onError({
           lineNumber,
-          detail: "Only one <a id=\"...\"></a> anchor is allowed per line.",
+          detail: "[one-per-line] Only one <a id=\"...\"></a> anchor is allowed per line.",
           context: line,
         });
         continue;
@@ -195,7 +195,7 @@ module.exports = {
         onError({
           lineNumber,
           detail:
-            "Only <a id=\"...\"></a> anchors are allowed, with id as the only attribute.",
+            "[anchor-format] Only <a id=\"...\"></a> anchors are allowed, with id as the only attribute.",
           context: line,
         });
         continue;
@@ -208,7 +208,7 @@ module.exports = {
         onError({
           lineNumber,
           detail:
-            "Anchor id must match one of the configured allowedIdPatterns.",
+            "[allowedIdPatterns] Anchor id must match one of the configured allowedIdPatterns.",
           context: line,
         });
         continue;
@@ -219,7 +219,7 @@ module.exports = {
         onError({
           lineNumber,
           detail:
-            "Anchors must appear at the end of the line (or be a standalone reference anchor line above a fenced code block).",
+            "[end-of-line] Anchors must appear at the end of the line (or be a standalone reference anchor line above a fenced code block).",
           context: line,
         });
         continue;
@@ -242,7 +242,7 @@ module.exports = {
         onError({
           lineNumber,
           detail:
-            "Anchor line must match the configured lineMatch pattern for this id.",
+            "[lineMatch] Anchor line must match the configured lineMatch pattern for this id.",
           context: line,
         });
         continue;
@@ -252,7 +252,7 @@ module.exports = {
         onError({
           lineNumber,
           detail:
-            "This anchor must be on its own line (no other content).",
+            "[standaloneLine] This anchor must be on its own line (no other content).",
           context: line,
         });
         continue;
@@ -266,7 +266,7 @@ module.exports = {
           onError({
             lineNumber,
             detail:
-              "This anchor must appear within a section whose heading matches the configured headingMatch.",
+              "[headingMatch] This anchor must appear within a section whose heading matches the configured headingMatch.",
             context: line,
           });
           continue;
@@ -277,7 +277,7 @@ module.exports = {
           if (count >= rule.maxPerSection) {
             onError({
               lineNumber,
-              detail: `Only ${rule.maxPerSection} anchor(s) of this type allowed per section.`,
+              detail: `[maxPerSection] Only ${rule.maxPerSection} anchor(s) of this type allowed per section.`,
               context: line,
             });
             continue;
@@ -301,7 +301,7 @@ module.exports = {
           onError({
             lineNumber,
             detail:
-              "This anchor must appear immediately after the section heading (blank lines allowed).",
+              "[anchorImmediatelyAfterHeading] This anchor must appear immediately after the section heading (blank lines allowed).",
             context: line,
           });
           continue;
@@ -318,7 +318,7 @@ module.exports = {
         if (needBlank && (next == null || next.trim() !== "")) {
           onError({
             lineNumber,
-            detail: "Anchor line must be followed by a blank line.",
+            detail: "[requireAfter] Anchor line must be followed by a blank line.",
             context: line,
           });
           continue;
@@ -330,7 +330,7 @@ module.exports = {
           onError({
             lineNumber,
             detail:
-              "Anchor line must be followed by a blank line and then a fenced code block.",
+              "[requireAfter] Anchor line must be followed by a blank line and then a fenced code block.",
             context: line,
           });
           continue;
@@ -340,7 +340,7 @@ module.exports = {
           onError({
             lineNumber,
             detail:
-              "Anchor line must be followed by a blank line and then a list (ordered or unordered).",
+              "[requireAfter] Anchor line must be followed by a blank line and then a list (ordered or unordered).",
             context: line,
           });
           continue;
