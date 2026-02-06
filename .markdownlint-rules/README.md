@@ -108,4 +108,7 @@ Glob matching supports `**` (any path) and `*` (within a segment). Paths are nor
 
 ## Shared helper
 
-**utils.js** is not a rule. It provides utilities used by several rules (e.g. `extractHeadings`, `iterateNonFencedLines`, `stripInlineCode`, `parseHeadingNumberPrefix`, `normalizedTitleForDuplicate`). Do not list it in `customRules` in `.markdownlint-cli2.jsonc`.
+**utils.js** is not a rule. It provides utilities used by several rules. Do not list it in `customRules` in `.markdownlint-cli2.jsonc`.
+
+- **Heading and content:** `extractHeadings`, `iterateNonFencedLines`, `stripInlineCode`, `parseHeadingNumberPrefix`, `normalizeHeadingTitleForDup`, `normalizedTitleForDuplicate`, `RE_ATX_HEADING`, `RE_NUMBERING_PREFIX`.
+- **Path/glob matching:** `globToRegExp`, `matchGlob`, `pathMatchesAny` — used for path-pattern options (e.g. ascii-only `allowedPathPatternsUnicode`). Supports `**` and `*`; paths normalized to forward slashes; relative patterns match path prefix or mid-path.

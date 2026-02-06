@@ -117,6 +117,60 @@ function getSectionPeriodStyle(sorted, parentIndex, i) {
   return parseHeadingNumberPrefix(firstNumbered.rawText).hasH2Dot;
 }
 
+function getPeriodStyleError(ctx) {
+  const { h, sorted, parentIndex, i, contextLine } = ctx;
+  const { hasH2Dot } = parseHeadingNumberPrefix(h.rawText);
+  const sectionPeriodStyle = getSectionPeriodStyle(sorted, parentIndex, i);
+  if (sectionPeriodStyle == null || hasH2Dot === sectionPeriodStyle) return null;
+  return {
+    lineNumber: h.lineNumber,
+    detail: `Period inconsistency in this section: use ${sectionPeriodStyle ? "period" : "no period"} after number to match sibling.`,
+    context: contextLine,
+  };
+}
+
+function checkSegmentCount(ctx) {
+  const { h, sorted, parentIndex, i, contextLine } = ctx;
+  const { numbering } = parseHeadingNumberPrefix(h.rawText);
+  if (numbering == null) return null;
+  const rootLevel = getNumberingRootLevel(sorted, parentIndex, i);
+  const expectedSegmentCount = h.level - rootLevel;
+  const segments = numbering.split(".");
+  if (segments.length !== expectedSegmentCount) {
+    return { lineNumber: h.lineNumber, detail: `H${h.level} heading has ${segments.length} number(s), expected ${expectedSegmentCount} (level - numbering root).`, context: contextLine };
+  }
+  return null;
+}
+
+/** Return zero or more errors for heading at index i. */
+function getHeadingErrors(h, i, ctx) {
+  const errors = [];
+  const { numbering } = parseHeadingNumberPrefix(h.rawText);
+  const { sorted, parentIndex, contextLine } = ctx;
+  const sectionUsesNum = sectionUsesNumbering(sorted, parentIndex, i);
+
+  if (sectionUsesNum && numbering == null) {
+    errors.push({ lineNumber: h.lineNumber, detail: "This section uses numbering; add a number prefix to match siblings.", context: contextLine });
+    return errors;
+  }
+  if (numbering == null) return errors;
+
+  const segmentErr = checkSegmentCount({ h, sorted, parentIndex, i, contextLine });
+  if (segmentErr) {
+    errors.push(segmentErr);
+    return errors;
+  }
+  if (!sectionUsesNum) return errors;
+
+  const periodErr = getPeriodStyleError({ h, sorted, parentIndex, i, contextLine });
+  if (periodErr) errors.push(periodErr);
+  const expected = getExpectedNumberInSection(sorted, parentIndex, i);
+  if (expected != null && numbering !== expected) {
+    errors.push({ lineNumber: h.lineNumber, detail: `Non-sequential numbering in this section: got '${numbering}', expected '${expected}'.`, context: contextLine });
+  }
+  return errors;
+}
+
 module.exports = {
   names: ["heading-numbering"],
   description:
@@ -139,55 +193,9 @@ module.exports = {
 
     for (let i = 0; i < sorted.length; i++) {
       const h = sorted[i];
-      const { numbering, hasH2Dot } = parseHeadingNumberPrefix(h.rawText);
-
-      if (sectionUsesNumbering(sorted, parentIndex, i) && numbering == null) {
-        onError({
-          lineNumber: h.lineNumber,
-          detail:
-            "This section uses numbering; add a number prefix to match siblings.",
-          context: params.lines[h.lineNumber - 1],
-        });
-        continue;
-      }
-
-      if (numbering == null) {
-        continue;
-      }
-
-      const rootLevel = getNumberingRootLevel(sorted, parentIndex, i);
-      const expectedSegmentCount = h.level - rootLevel;
-      const segments = numbering.split(".");
-
-      if (segments.length !== expectedSegmentCount) {
-        onError({
-          lineNumber: h.lineNumber,
-          detail: `H${h.level} heading has ${segments.length} number(s), expected ${expectedSegmentCount} (level - numbering root).`,
-          context: params.lines[h.lineNumber - 1],
-        });
-        continue;
-      }
-
-      if (!sectionUsesNumbering(sorted, parentIndex, i)) {
-        continue;
-      }
-
-      const sectionPeriodStyle = getSectionPeriodStyle(sorted, parentIndex, i);
-      if (sectionPeriodStyle != null && hasH2Dot !== sectionPeriodStyle) {
-        onError({
-          lineNumber: h.lineNumber,
-          detail: `Period inconsistency in this section: use ${sectionPeriodStyle ? "period" : "no period"} after number to match sibling.`,
-          context: params.lines[h.lineNumber - 1],
-        });
-      }
-
-      const expected = getExpectedNumberInSection(sorted, parentIndex, i);
-      if (expected != null && numbering !== expected) {
-        onError({
-          lineNumber: h.lineNumber,
-          detail: `Non-sequential numbering in this section: got '${numbering}', expected '${expected}'.`,
-          context: params.lines[h.lineNumber - 1],
-        });
+      const contextLine = params.lines[h.lineNumber - 1];
+      for (const err of getHeadingErrors(h, i, { sorted, parentIndex, contextLine })) {
+        onError(err);
       }
     }
   },

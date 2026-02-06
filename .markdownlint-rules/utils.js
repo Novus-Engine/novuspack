@@ -153,6 +153,61 @@ function normalizedTitleForDuplicate(rawText) {
   return normalizeHeadingTitleForDup(titleText);
 }
 
+/**
+ * Convert glob pattern to RegExp. Supports ** (any path) and * (segment).
+ */
+function globToRegExp(pattern) {
+  const parts = [];
+  let i = 0;
+  while (i < pattern.length) {
+    if (pattern[i] === "*" && pattern[i + 1] === "*") {
+      parts.push(".*");
+      i += 2;
+    } else if (pattern[i] === "*") {
+      parts.push("[^/]*");
+      i += 1;
+    } else {
+      parts.push(pattern[i].replace(/[.+?^${}()|[\]\\]/g, "\\$&"));
+      i += 1;
+    }
+  }
+  return new RegExp("^" + parts.join("") + "$");
+}
+
+/**
+ * Match path against a single glob pattern. Path normalized to forward slashes.
+ * Relative patterns match when path starts with pattern or pattern appears mid-path.
+ */
+function matchGlob(path, pattern) {
+  if (!path || !pattern) {
+    return false;
+  }
+  const normalized = path.replace(/\\/g, "/").replace(/^\.\//, "");
+  const re = globToRegExp(pattern);
+  if (re.test(normalized)) {
+    return true;
+  }
+  const isRelative =
+    pattern[0] !== "/" && pattern[0] !== "*" && !pattern.startsWith("./");
+  if (isRelative) {
+    return globToRegExp("**/" + pattern).test(normalized);
+  }
+  return false;
+}
+
+/** Return true if path matches any of the glob patterns. */
+function pathMatchesAny(path, patterns) {
+  if (!Array.isArray(patterns) || patterns.length === 0) {
+    return false;
+  }
+  for (const p of patterns) {
+    if (typeof p === "string" && matchGlob(path, p)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 module.exports = {
   stripInlineCode,
   iterateNonFencedLines,
@@ -160,6 +215,9 @@ module.exports = {
   parseHeadingNumberPrefix,
   normalizeHeadingTitleForDup,
   normalizedTitleForDuplicate,
+  globToRegExp,
+  matchGlob,
+  pathMatchesAny,
   RE_ATX_HEADING,
   RE_NUMBERING_PREFIX,
 };

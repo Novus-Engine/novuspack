@@ -2,6 +2,7 @@
 
 const {
   iterateNonFencedLines,
+  pathMatchesAny,
   stripInlineCode,
 } = require("./utils.js");
 
@@ -23,63 +24,8 @@ const DEFAULT_UNICODE_REPLACEMENTS = {
   "\u2018": "'",
 };
 
-/**
- * Match path against a single glob pattern. Supports ** (any path) and * (segment).
- * Path is normalized to forward slashes. Relative patterns (no leading / or *) match
- * both when the path starts with the pattern (e.g. "dev_docs/foo.md") and when the
- * pattern appears mid-path (e.g. "/abs/path/dev_docs/foo.md").
- */
-function matchGlob(path, pattern) {
-  if (!path || !pattern) {
-    return false;
-  }
-  const normalized = path.replace(/\\/g, "/").replace(/^\.\//, "");
-  const re = globToRegExp(pattern);
-  if (re.test(normalized)) {
-    return true;
-  }
-  const isRelative =
-    pattern[0] !== "/" && pattern[0] !== "*" && !pattern.startsWith("./");
-  if (isRelative) {
-    const reAnywhere = globToRegExp("**/" + pattern);
-    return reAnywhere.test(normalized);
-  }
-  return false;
-}
-
-function globToRegExp(pattern) {
-  const parts = [];
-  let i = 0;
-  while (i < pattern.length) {
-    if (pattern[i] === "*" && pattern[i + 1] === "*") {
-      parts.push(".*");
-      i += 2;
-    } else if (pattern[i] === "*") {
-      parts.push("[^/]*");
-      i += 1;
-    } else {
-      parts.push(pattern[i].replace(/[.+?^${}()|[\]\\]/g, "\\$&"));
-      i += 1;
-    }
-  }
-  const source = parts.join("");
-  return new RegExp("^" + source + "$");
-}
-
-function pathMatchesAny(path, patterns) {
-  if (!Array.isArray(patterns) || patterns.length === 0) {
-    return false;
-  }
-  for (const p of patterns) {
-    if (typeof p === "string" && matchGlob(path, p)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 function hasNonAscii(str) {
-  return /[^\x00-\x7F]/.test(str);
+  return /[\u0080-\u{10FFFF}]/u.test(str);
 }
 
 /** Return non-ASCII code points (iterating by code point, not code unit, so surrogates stay as one). */
@@ -117,24 +63,32 @@ function onlyAllowedEmoji(str, allowedSet) {
   return true;
 }
 
+function addArrayReplacements(map, arr) {
+  for (const entry of arr) {
+    if (Array.isArray(entry) && entry.length >= 2 && typeof entry[0] === "string" && entry[0].length === 1) {
+      map.set(entry[0], String(entry[1]));
+    }
+  }
+}
+
+function addObjectReplacements(map, obj) {
+  for (const [ch, replacement] of Object.entries(obj)) {
+    if (typeof ch === "string" && ch.length === 1 && replacement != null) {
+      map.set(ch, String(replacement));
+    }
+  }
+}
+
 function buildReplacementsMap(unicodeReplacements) {
   const map = new Map();
   if (!unicodeReplacements || typeof unicodeReplacements !== "object") {
     return map;
   }
   if (Array.isArray(unicodeReplacements)) {
-    for (const entry of unicodeReplacements) {
-      if (Array.isArray(entry) && entry.length >= 2 && typeof entry[0] === "string" && entry[0].length === 1) {
-        map.set(entry[0], String(entry[1]));
-      }
-    }
+    addArrayReplacements(map, unicodeReplacements);
     return map;
   }
-  for (const [ch, replacement] of Object.entries(unicodeReplacements)) {
-    if (typeof ch === "string" && ch.length === 1 && replacement != null) {
-      map.set(ch, String(replacement));
-    }
-  }
+  addObjectReplacements(map, unicodeReplacements);
   return map;
 }
 
@@ -171,6 +125,33 @@ function getConfig(params) {
   };
 }
 
+function getDisallowedChars(scan, allowEmojiOnly, allowedUnicodeSet, allowedEmojiSet) {
+  const disallowedChars = [];
+  for (const ch of getNonAsciiCodePoints(scan)) {
+    const n = ch.normalize("NFC");
+    if (allowedUnicodeSet.has(n)) continue;
+    if (allowEmojiOnly && allowedEmojiSet.has(n)) continue;
+    if (allowEmojiOnly && n >= VARIATION_SELECTOR_MIN && n <= VARIATION_SELECTOR_MAX) continue;
+    if (!disallowedChars.includes(ch)) disallowedChars.push(ch);
+  }
+  return disallowedChars;
+}
+
+function buildDetail(disallowedChars, config, allowEmojiOnly) {
+  const suggestions = [];
+  for (const ch of disallowedChars) {
+    const replacement = config.unicodeReplacements.get(ch);
+    if (replacement !== undefined) suggestions.push(`'${ch}' with '${replacement}'`);
+  }
+  if (suggestions.length > 0) {
+    return `Replace ${suggestions.join("; ")}. Non-ASCII not allowed here.`;
+  }
+  if (allowEmojiOnly) {
+    return `Only the listed emoji (${config.allowedEmoji.join(", ")}) are allowed in this path. Replace or remove other non-ASCII characters.`;
+  }
+  return "Non-ASCII characters are not allowed. Use ASCII only.";
+}
+
 module.exports = {
   names: ["ascii-only"],
   description:
@@ -179,78 +160,25 @@ module.exports = {
   function: function (params, onError) {
     const filePath = params.name || "";
     const config = getConfig(params);
-    const allowUnicode = pathMatchesAny(
-      filePath,
-      config.allowedPathPatternsUnicode,
-    );
-    const allowEmojiOnly = pathMatchesAny(
-      filePath,
-      config.allowedPathPatternsEmoji,
-    );
+    const allowUnicode = pathMatchesAny(filePath, config.allowedPathPatternsUnicode);
+    const allowEmojiOnly = pathMatchesAny(filePath, config.allowedPathPatternsEmoji);
     const allowedEmojiSet = toCharSet(config.allowedEmoji);
     const allowedUnicodeSet = config.allowedUnicode;
 
     for (const { lineNumber, line } of iterateNonFencedLines(params.lines)) {
       const scan = stripInlineCode(line);
-      if (!hasNonAscii(scan)) {
-        continue;
-      }
+      if (!hasNonAscii(scan)) continue;
+      if (allowUnicode) continue;
+      if (allowEmojiOnly && onlyAllowedEmoji(scan, allowedEmojiSet)) continue;
 
-      if (allowUnicode) {
-        continue;
-      }
-
-      if (allowEmojiOnly && onlyAllowedEmoji(scan, allowedEmojiSet)) {
-        continue;
-      }
-
-      const disallowedChars = [];
-      const nonAsciiInLine = getNonAsciiCodePoints(scan);
-      for (const ch of nonAsciiInLine) {
-        const n = ch.normalize("NFC");
-        if (allowedUnicodeSet.has(n)) {
-          continue;
-        }
-        if (allowEmojiOnly && allowedEmojiSet.has(n)) {
-          continue;
-        }
-        if (
-          allowEmojiOnly &&
-          n >= VARIATION_SELECTOR_MIN &&
-          n <= VARIATION_SELECTOR_MAX
-        ) {
-          continue;
-        }
-        if (!disallowedChars.includes(ch)) {
-          disallowedChars.push(ch);
-        }
-      }
-
-      if (disallowedChars.length === 0) {
-        continue;
-      }
-
-      const suggestions = [];
-      for (const ch of disallowedChars) {
-        const replacement = config.unicodeReplacements.get(ch);
-        if (replacement !== undefined) {
-          suggestions.push(`'${ch}' with '${replacement}'`);
-        }
-      }
-
-      let detail;
-      if (suggestions.length > 0) {
-        detail = `Replace ${suggestions.join("; ")}. Non-ASCII not allowed here.`;
-      } else if (allowEmojiOnly) {
-        const list = config.allowedEmoji.join(", ");
-        detail = `Only the listed emoji (${list}) are allowed in this path. Replace or remove other non-ASCII characters.`;
-      } else {
-        detail = "Non-ASCII characters are not allowed. Use ASCII only.";
-      }
+      const disallowedChars = getDisallowedChars(
+        scan, allowEmojiOnly, allowedUnicodeSet, allowedEmojiSet,
+      );
+      if (disallowedChars.length === 0) continue;
 
       onError({
         lineNumber,
-        detail,
+        detail: buildDetail(disallowedChars, config, allowEmojiOnly),
         context: line,
       });
     }
