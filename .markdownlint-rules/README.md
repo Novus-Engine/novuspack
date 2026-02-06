@@ -15,21 +15,34 @@ This directory contains custom rules used by [markdownlint-cli2](https://github.
 
 **File:** `allow-custom-anchors.js`
 
-**Description:** Allow only configured `<a id="..."></a>` anchor id patterns; optional placement rules (spec/ref/algo).
+**Description:** Allow only configured `<a id="..."></a>` anchor id patterns; optional configurable placement rules (heading match, line match, etc.).
 
 **Configuration:** In `.markdownlint.yml` under `allow-custom-anchors`:
 
-| Option              | Type                  | Default                | Meaning                                                                                                         |
-| ------------------- | --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `allowedIdPatterns` | list of regex strings | none (required)        | Regex strings for allowed anchor `id` values. No built-in default.                                              |
-| `strictPlacement`   | boolean               | `true`                 | If `true`, enforce spec/ref/algo placement rules; if `false`, only validate id match and anchor at end of line. |
+| Option              | Type                               | Default    | Meaning                                                                                                         |
+| ------------------- | ---------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| `allowedIdPatterns` | array of strings or pattern objects| none (required) | Each entry is a regex string or `{ pattern: string, placement?: object }`. No built-in default.                 |
+| `strictPlacement`   | boolean                            | `true`     | If `true`, enforce placement when the matching pattern has a `placement` object; if `false`, only id match and anchor at end of line. |
+
+**Per-pattern placement** (optional `placement` on an entry in `allowedIdPatterns`):
+
+| Property                        | Type    | Meaning                                                                                                                                 |
+| ------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `headingMatch`                  | string  | Optional. Regex for the heading line. Anchor must be inside a section whose heading matches (sections tracked by heading level).        |
+| `lineMatch`                    | string  | Optional. Regex for the line content before the anchor. The line (before the anchor) must match.                                        |
+| `standaloneLine`               | boolean | Optional. If true, anchor must be the only content on its line.                                                                          |
+| `requireAfter`                 | array   | Optional. Sequence after anchor line: `["blank"]`, `["blank", "fencedBlock"]`, or `["blank", "list"]`.                                  |
+| `anchorImmediatelyAfterHeading`| boolean | Optional. If true, anchor line must follow (with optional blank lines) a heading. When `headingMatch` is set, that heading must match it; otherwise the previous non-blank line may be any ATX heading (`#`–`######`). Works when the anchor shares a line with other content (e.g. end of a list item). |
+| `maxPerSection`                | number  | Optional. Max anchors of this pattern per `headingMatch` section (e.g. 1).                                                              |
+
+Order of entries matters: the first pattern that matches the anchor id is used. Put more specific patterns (e.g. algo-step) before general ones (e.g. algo). Entries may be a plain regex string (no placement) or `{ pattern: "regex", placement: { ... } }`.
 
 **Behavior:**
 
 - Only `<a id="..."></a>` is allowed (no other attributes, no inner content).
-- Anchor `id` must match one of the configured `allowedIdPatterns` (each string is compiled to a RegExp).
-- Anchors must appear at the end of the line (or standalone for ref anchors).
-- When `strictPlacement` is true: spec anchors on Spec ID line; ref anchors alone above a fenced block; algo anchors in Algorithm sections with placement rules.
+- Anchor `id` must match one of the configured patterns in `allowedIdPatterns`.
+- Anchors must appear at the end of the line (or on a standalone line where required by that pattern's placement).
+- When `strictPlacement` is true and the matching pattern has a `placement` object, the anchor is validated against that placement (heading match, line match, standalone, require-after, etc.).
 
 ### no-heading-like-lines
 

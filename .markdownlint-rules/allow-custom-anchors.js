@@ -1,13 +1,86 @@
 "use strict";
 
+/**
+ * Parse placement options for one anchor regex. No idPattern here; placement is attached to the pattern.
+ */
+function parsePlacement(placement, patternIndex) {
+  if (!placement || typeof placement !== "object") {
+    return null;
+  }
+  let headingMatch = null;
+  if (typeof placement.headingMatch === "string" && placement.headingMatch) {
+    try {
+      headingMatch = new RegExp(placement.headingMatch);
+    } catch {
+      headingMatch = null;
+    }
+  }
+  let lineMatch = null;
+  if (typeof placement.lineMatch === "string" && placement.lineMatch) {
+    try {
+      lineMatch = new RegExp(placement.lineMatch);
+    } catch {
+      lineMatch = null;
+    }
+  }
+  const standaloneLine = placement.standaloneLine === true;
+  const requireAfter = Array.isArray(placement.requireAfter)
+    ? placement.requireAfter.filter((x) =>
+        ["blank", "fencedBlock", "list"].includes(x),
+      )
+    : [];
+  const anchorImmediatelyAfterHeading =
+    placement.anchorImmediatelyAfterHeading === true;
+  const maxPerSection =
+    typeof placement.maxPerSection === "number" &&
+    placement.maxPerSection >= 1
+      ? placement.maxPerSection
+      : null;
+  return {
+    patternIndex,
+    headingMatch,
+    lineMatch,
+    standaloneLine,
+    requireAfter,
+    anchorImmediatelyAfterHeading,
+    maxPerSection,
+  };
+}
+
 function getConfig(params) {
   const c = params.config || {};
   const raw = Array.isArray(c.allowedIdPatterns) ? c.allowedIdPatterns : [];
-  const allowedIdPatterns = raw
-    .filter((p) => typeof p === "string")
-    .map((p) => new RegExp(p));
+  const allowedEntries = [];
+
+  for (let i = 0; i < raw.length; i++) {
+    const item = raw[i];
+    let patternStr = null;
+    let placementRaw = null;
+
+    if (typeof item === "string" && item.length > 0) {
+      patternStr = item;
+    } else if (item && typeof item === "object" && typeof item.pattern === "string" && item.pattern.length > 0) {
+      patternStr = item.pattern;
+      placementRaw = item.placement;
+    }
+
+    if (!patternStr) {
+      continue;
+    }
+
+    let pattern;
+    try {
+      pattern = new RegExp(patternStr);
+    } catch {
+      continue;
+    }
+
+    const placement = parsePlacement(placementRaw, i);
+    allowedEntries.push({ pattern, placement });
+  }
+
   const strictPlacement = c.strictPlacement !== false;
-  return { allowedIdPatterns, strictPlacement };
+  return { allowedEntries, strictPlacement };
 }
 
 module.exports = {
@@ -16,14 +89,9 @@ module.exports = {
     "Allow only configured <a id=\"...\"></a> anchor id patterns; optional placement rules.",
   tags: ["html", "anchors"],
   function: function (params, onError) {
-    const { allowedIdPatterns, strictPlacement } = getConfig(params);
+    const { allowedEntries, strictPlacement } = getConfig(params);
+    const allowedPatterns = allowedEntries.map((e) => e.pattern);
 
-    /**
-     * Strictly allow only: <a id="SOME_ID"></a>
-     * - double-quotes required
-     * - only attribute is id
-     * - no inner content
-     */
     const anchorTagRegex = /<a id="([^"]+)"><\/a>/;
     const anchorAtEndOfLineRegex = /<a id="([^"]+)"><\/a>\s*$/;
 
@@ -62,9 +130,11 @@ module.exports = {
 
     let inFence = false;
     let fenceMarker = null;
-    let inAlgorithmSection = false;
-    let algorithmHeadingLevel = null;
-    let seenAlgorithmAnchorInSection = false;
+
+    /** Stack of { patternIndex, level } for sections we're inside (by headingMatch). */
+    const sectionStack = [];
+    /** For each pattern index with maxPerSection: count of anchors seen in current section. */
+    const sectionAnchorCount = new Map();
 
     for (let index = 0; index < params.lines.length; index++) {
       const lineNumber = index + 1;
@@ -91,17 +161,18 @@ module.exports = {
       const headingMatch = trimmed.match(/^(#{1,6})\s+/);
       if (headingMatch) {
         const level = headingMatch[1].length;
-        if (inAlgorithmSection && algorithmHeadingLevel != null && level <= algorithmHeadingLevel) {
-          inAlgorithmSection = false;
-          algorithmHeadingLevel = null;
-          seenAlgorithmAnchorInSection = false;
+        while (sectionStack.length > 0 && sectionStack[sectionStack.length - 1].level >= level) {
+          sectionStack.pop();
         }
-
-        if (/`[^`]+`.*\bAlgorithm\b/.test(trimmed)) {
-          inAlgorithmSection = true;
-          algorithmHeadingLevel = level;
-          seenAlgorithmAnchorInSection = false;
+        for (let pi = 0; pi < allowedEntries.length; pi++) {
+          const entry = allowedEntries[pi];
+          const pl = entry.placement;
+          if (pl && pl.headingMatch && pl.headingMatch.test(trimmed)) {
+            sectionStack.push({ patternIndex: pi, level });
+            sectionAnchorCount.set(pi, 0);
+          }
         }
+        continue;
       }
 
       const scanLine = stripInlineCode(line);
@@ -132,8 +203,8 @@ module.exports = {
 
       const id = match[1];
 
-      const ok = allowedIdPatterns.some((re) => re.test(id));
-      if (!ok) {
+      const allowed = allowedPatterns.some((re) => re.test(id));
+      if (!allowed) {
         onError({
           lineNumber,
           detail:
@@ -154,7 +225,11 @@ module.exports = {
         continue;
       }
 
-      if (!strictPlacement) {
+      const matchIndex = allowedEntries.findIndex((e) => e.pattern.test(id));
+      const entry = allowedEntries[matchIndex];
+      const rule = entry.placement;
+
+      if (!strictPlacement || !rule) {
         continue;
       }
 
@@ -163,116 +238,112 @@ module.exports = {
         ? line.slice(0, anchorPosOriginal)
         : line).trim();
 
-      const startsWithList =
-        /^\s*(?:[-*+]\s+|\d+[.)]\s+)/.test(beforeOriginal);
-
-      if (id.startsWith("spec-")) {
-        if (!/^\s*-\s+Spec ID:\s+`NP\.[^`]+`/.test(beforeOriginal)) {
-          onError({
-            lineNumber,
-            detail:
-              "Spec anchors must be appended to the end of the '- Spec ID: `NP....`' list item line.",
-            context: line,
-          });
-        }
+      if (rule.lineMatch && !rule.lineMatch.test(beforeOriginal)) {
+        onError({
+          lineNumber,
+          detail:
+            "Anchor line must match the configured lineMatch pattern for this id.",
+          context: line,
+        });
         continue;
       }
 
-      if (id.startsWith("ref-")) {
-        const expected = `<a id="${id}"></a>`;
-        if (trimmed !== expected) {
-          onError({
-            lineNumber,
-            detail:
-              "Reference anchors must be on their own line directly above a fenced code block.",
-            context: line,
-          });
-          continue;
-        }
-
-        const next = params.lines[index + 1];
-        const next2 = params.lines[index + 2];
-        if (next == null || next.trim() !== "" || next2 == null || !next2.trim().match(/^(```+|~~~+)/)) {
-          onError({
-            lineNumber,
-            detail:
-              "Reference anchor line must be followed by a blank line and then a fenced code block.",
-            context: line,
-          });
-        }
+      if (rule.standaloneLine && trimmed !== `<a id="${id}"></a>`) {
+        onError({
+          lineNumber,
+          detail:
+            "This anchor must be on its own line (no other content).",
+          context: line,
+        });
         continue;
       }
 
-      if (id.startsWith("algo-") && !id.includes("-step-")) {
-        const expected = `<a id="${id}"></a>`;
-        if (trimmed !== expected) {
+      if (rule.headingMatch) {
+        const inSection = sectionStack.some(
+          (s) => s.patternIndex === matchIndex,
+        );
+        if (!inSection) {
           onError({
             lineNumber,
             detail:
-              "Algorithm anchors must be on their own line at the start of an Algorithm section.",
+              "This anchor must appear within a section whose heading matches the configured headingMatch.",
             context: line,
           });
           continue;
         }
 
-        if (!inAlgorithmSection) {
-          onError({
-            lineNumber,
-            detail:
-              "Algorithm anchors must appear within an Algorithm section.",
-            context: line,
-          });
-          continue;
+        if (rule.maxPerSection != null) {
+          const count = sectionAnchorCount.get(matchIndex) || 0;
+          if (count >= rule.maxPerSection) {
+            onError({
+              lineNumber,
+              detail: `Only ${rule.maxPerSection} anchor(s) of this type allowed per section.`,
+              context: line,
+            });
+            continue;
+          }
+          sectionAnchorCount.set(matchIndex, count + 1);
         }
+      }
 
-        if (seenAlgorithmAnchorInSection) {
-          onError({
-            lineNumber,
-            detail:
-              "Only one Algorithm anchor is allowed per Algorithm section.",
-            context: line,
-          });
-          continue;
-        }
-        seenAlgorithmAnchorInSection = true;
-
+      if (rule.anchorImmediatelyAfterHeading) {
         let prev = index - 1;
         while (prev >= 0 && params.lines[prev].trim() === "") {
           prev--;
         }
-        if (prev < 0 || !/^\s*#{1,6}\s+.*`[^`]+`.*\bAlgorithm\b/.test(params.lines[prev].trim())) {
+        const prevLine = prev >= 0 ? params.lines[prev].trim() : "";
+        const isAnyAtxHeading = /^\s*#{1,6}\s+/.test(prevLine);
+        const matchesHeading =
+          rule.headingMatch
+            ? rule.headingMatch.test(prevLine)
+            : isAnyAtxHeading;
+        if (prev < 0 || !matchesHeading) {
           onError({
             lineNumber,
             detail:
-              "Algorithm anchor line must appear immediately after the Algorithm heading (allowing blank lines).",
+              "This anchor must appear immediately after the section heading (blank lines allowed).",
             context: line,
           });
+          continue;
         }
-
-        const next = params.lines[index + 1];
-        const next2 = params.lines[index + 2];
-        const startsWithListNext2 =
-          next2 != null && /^\s*(?:[-*+]\s+|\d+[.)]\s+)/.test(next2);
-
-        if (next == null || next.trim() !== "" || next2 == null || !startsWithListNext2) {
-          onError({
-            lineNumber,
-            detail:
-              "Algorithm anchor line must be followed by a blank line and then the procedure list (ordered or unordered).",
-            context: line,
-          });
-        }
-        continue;
       }
 
-      if (id.includes("-step-")) {
-        if (!beforeOriginal || !inAlgorithmSection || !startsWithList) {
+      if (rule.requireAfter.length > 0) {
+        const next = params.lines[index + 1];
+        const next2 = params.lines[index + 2];
+        const needBlank = rule.requireAfter[0] === "blank";
+        const needFenced = rule.requireAfter.includes("fencedBlock");
+        const needList = rule.requireAfter.includes("list");
+
+        if (needBlank && (next == null || next.trim() !== "")) {
+          onError({
+            lineNumber,
+            detail: "Anchor line must be followed by a blank line.",
+            context: line,
+          });
+          continue;
+        }
+
+        const checkLine = needBlank ? next2 : next;
+
+        if (needFenced && (checkLine == null || !checkLine.trim().match(/^(```+|~~~+)/))) {
           onError({
             lineNumber,
             detail:
-              "Algorithm step anchors must be appended to the end of an ordered or unordered list item line within an Algorithm section.",
+              "Anchor line must be followed by a blank line and then a fenced code block.",
             context: line,
           });
+          continue;
+        }
+
+        if (needList && (checkLine == null || !/^\s*(?:[-*+]\s+|\d+[.)]\s+)/.test(checkLine.trim()))) {
+          onError({
+            lineNumber,
+            detail:
+              "Anchor line must be followed by a blank line and then a list (ordered or unordered).",
+            context: line,
+          });
+          continue;
         }
       }
     }
