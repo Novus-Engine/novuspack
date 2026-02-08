@@ -117,6 +117,11 @@ function getSectionPeriodStyle(sorted, parentIndex, i) {
   return parseHeadingNumberPrefix(firstNumbered.rawText).hasH2Dot;
 }
 
+/**
+ * Check period style consistency with numbered siblings in the same section.
+ * @param {object} ctx - { h, sorted, parentIndex, i, contextLine }
+ * @returns {object|null} Error object or null
+ */
 function getPeriodStyleError(ctx) {
   const { h, sorted, parentIndex, i, contextLine } = ctx;
   const { hasH2Dot } = parseHeadingNumberPrefix(h.rawText);
@@ -124,11 +129,16 @@ function getPeriodStyleError(ctx) {
   if (sectionPeriodStyle == null || hasH2Dot === sectionPeriodStyle) return null;
   return {
     lineNumber: h.lineNumber,
-    detail: `Period inconsistency in this section: use ${sectionPeriodStyle ? "period" : "no period"} after number to match sibling.`,
+    detail: `Numbering period style inconsistent: use ${sectionPeriodStyle ? "a period" : "no period"} after the number (e.g. "${sectionPeriodStyle ? "1.2." : "1.2"}") to match other numbered headings in this section.`,
     context: contextLine,
   };
 }
 
+/**
+ * Check that numbered heading has correct segment count (level - numbering root level).
+ * @param {object} ctx - { h, sorted, parentIndex, i, contextLine }
+ * @returns {object|null} Error object or null
+ */
 function checkSegmentCount(ctx) {
   const { h, sorted, parentIndex, i, contextLine } = ctx;
   const { numbering } = parseHeadingNumberPrefix(h.rawText);
@@ -137,12 +147,18 @@ function checkSegmentCount(ctx) {
   const expectedSegmentCount = h.level - rootLevel;
   const segments = numbering.split(".");
   if (segments.length !== expectedSegmentCount) {
-    return { lineNumber: h.lineNumber, detail: `H${h.level} heading has ${segments.length} number(s), expected ${expectedSegmentCount} (level - numbering root).`, context: contextLine };
+    return { lineNumber: h.lineNumber, detail: `H${h.level} heading has ${segments.length} segment(s) in number prefix "${numbering}"; expected ${expectedSegmentCount} (one per level from numbering root).`, context: contextLine };
   }
   return null;
 }
 
-/** Return zero or more errors for heading at index i. */
+/**
+ * Return zero or more errors for heading at index i (numbering, segment count, sequence, period style).
+ * @param {object} h - Heading object { lineNumber, level, rawText }
+ * @param {number} i - Index in sorted headings
+ * @param {object} ctx - { sorted, parentIndex, contextLine }
+ * @returns {object[]} Array of error objects
+ */
 function getHeadingErrors(h, i, ctx) {
   const errors = [];
   const { numbering } = parseHeadingNumberPrefix(h.rawText);
@@ -150,7 +166,7 @@ function getHeadingErrors(h, i, ctx) {
   const sectionUsesNum = sectionUsesNumbering(sorted, parentIndex, i);
 
   if (sectionUsesNum && numbering == null) {
-    errors.push({ lineNumber: h.lineNumber, detail: "This section uses numbering; add a number prefix to match siblings.", context: contextLine });
+    errors.push({ lineNumber: h.lineNumber, detail: "This heading has no number prefix but other headings in this section are numbered; add a number prefix to match siblings (e.g. \"1.2\" for second under 1).", context: contextLine });
     return errors;
   }
   if (numbering == null) return errors;
@@ -166,17 +182,18 @@ function getHeadingErrors(h, i, ctx) {
   if (periodErr) errors.push(periodErr);
   const expected = getExpectedNumberInSection(sorted, parentIndex, i);
   if (expected != null && numbering !== expected) {
-    errors.push({ lineNumber: h.lineNumber, detail: `Non-sequential numbering in this section: got '${numbering}', expected '${expected}'.`, context: contextLine });
+    errors.push({ lineNumber: h.lineNumber, detail: `Number prefix "${numbering}" is out of sequence in this section; expected "${expected}" to match sibling order.`, context: contextLine });
   }
   return errors;
 }
 
-module.exports = {
-  names: ["heading-numbering"],
-  description:
-    "Numbered headings: segment count by numbering root; numbering consistent within each section; period style consistent within section.",
-  tags: ["headings"],
-  function: function (params, onError) {
+/**
+ * markdownlint rule: validate numbered headings (segment count, sequence per section, period style).
+ *
+ * @param {object} params - markdownlint params (lines, config)
+ * @param {function(object): void} onError - Callback to report an error
+ */
+function ruleFunction(params, onError) {
     const headings = extractHeadings(params.lines);
     const withNumbering = headings
       .map((h) => ({
@@ -198,5 +215,12 @@ module.exports = {
         onError(err);
       }
     }
-  },
+  }
+
+module.exports = {
+  names: ["heading-numbering"],
+  description:
+    "Numbered headings: segment count by numbering root; numbering consistent within each section; period style consistent within section.",
+  tags: ["headings"],
+  function: ruleFunction,
 };

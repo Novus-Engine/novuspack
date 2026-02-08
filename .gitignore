@@ -2,6 +2,7 @@
 .vscode/
 .cursor/
 .venv/
+node_modules/
 Abacus.ai*/
 tmp/
 

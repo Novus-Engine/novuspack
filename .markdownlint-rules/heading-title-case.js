@@ -1,0 +1,210 @@
+"use strict";
+
+const {
+  extractHeadings,
+  parseHeadingNumberPrefix,
+  stripInlineCode,
+} = require("./utils.js");
+
+/** Default lowercase words for AP-style headings (unless first/last/subphrase-start). */
+const DEFAULT_LOWERCASE_WORDS = new Set([
+  // Articles
+  "a", "an", "the",
+
+  // Coordinating conjunctions
+  "and", "but", "for", "nor", "or", "so", "yet",
+
+  // Prepositions (3 letters or fewer) and infinitive "to"
+  "as", "at", "by", "in", "of", "off", "on", "out", "per", "to", "up", "via",
+
+  // Short verb/pronoun (AP: lowercase when not first/last)
+  "is", "its",
+
+  // Comparison/citations
+  "v", "vs",
+]);
+
+/**
+ * Strip leading/trailing punctuation from a word for comparison (e.g. "word," -> "word").
+ * @param {string} w
+ * @returns {string}
+ */
+function stripWordPunctuation(w) {
+  // Only trim punctuation at the edges so internal punctuation like "Node.js" or "O'Reilly" remains.
+  // This ensures words like "(Custom" and "practice)" are evaluated as "Custom" and "practice".
+  return w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "").trim();
+}
+
+/**
+ * Check if a word starts with an uppercase letter (A-Z).
+ * @param {string} w
+ * @returns {boolean}
+ */
+function startsWithUpper(w) {
+  const core = stripWordPunctuation(w);
+  const firstAlpha = core.match(/[A-Za-z]/)?.[0];
+  return firstAlpha != null && /[A-Z]/.test(firstAlpha);
+}
+
+/**
+ * Check if a word is all lowercase (ignoring leading/trailing punctuation).
+ * @param {string} w
+ * @returns {boolean}
+ */
+function isAllLower(w) {
+  const core = stripWordPunctuation(w);
+  return core === core.toLowerCase() && /[a-z]/.test(core);
+}
+
+/**
+ * Validate one word for title case; returns error detail string or null if valid.
+ * @param {{ raw: string, core: string, isFirst: boolean, isLast: boolean, lowercaseWords: Set<string> }} opts
+ * @returns {string|null}
+ */
+function checkWord(opts) {
+  const { raw, core, isFirst, isLast, lowercaseWords, isSubphraseStart } = opts;
+  const coreLower = core.toLowerCase();
+  // Parenthetical/bracketed phrases act like a new "sentence start":
+  // the first word inside them should be capitalized, even if it's in lowercaseWords.
+  const shouldBeLower = !isFirst && !isLast && !isSubphraseStart && lowercaseWords.has(coreLower);
+  if (shouldBeLower) {
+    return isAllLower(raw) ? null : `Word "${core}" should be lowercase (middle word in title case).`;
+  }
+  if (startsWithUpper(raw)) return null;
+  const kind = (isFirst || isSubphraseStart) ? "first" : isLast ? "last" : "major";
+  return `Word "${core}" should be capitalized (${kind} word in title case).`;
+}
+
+/**
+ * Validate title case on a heading's title part (numbering stripped).
+ * AP rules: first/last/subphrase-start capitalized; hyphenated segments checked separately;
+ * first word after colon treated as subphrase start. Words in backticks are excluded.
+ *
+ * @param {string} titleText - Title after stripping numbering
+ * @param {Set<string>} lowercaseWords - Words that must be lowercase in middle
+ * @returns {{ valid: boolean, detail?: string, wordIndex?: number, segmentOffset?: number, segmentLength?: number }}
+ */
+function checkTitleCase(titleText, lowercaseWords) {
+  const withCodeStripped = stripInlineCode(titleText);
+  const words = withCodeStripped.split(/\s+/).filter((w) => w.length > 0);
+  if (words.length === 0) return { valid: true };
+
+  for (let i = 0; i < words.length; i++) {
+    const raw = words[i];
+    const firstAlphaIdx = raw.search(/[A-Za-z0-9]/);
+    const prefix = firstAlphaIdx > 0 ? raw.slice(0, firstAlphaIdx) : "";
+    const afterColon = i > 0 && words[i - 1].replace(/\s+$/, "").endsWith(":");
+    const wordIsSubphraseStart = prefix.includes("(") || prefix.includes("[") || afterColon;
+
+    const rawSegments = raw.split(/-/);
+    for (let j = 0; j < rawSegments.length; j++) {
+      const rawSeg = rawSegments[j];
+      const core = stripWordPunctuation(rawSeg);
+      if (!core || !/[a-zA-Z]/.test(core)) continue;
+
+      const isFirst = i === 0 && j === 0;
+      const isLast = i === words.length - 1 && j === rawSegments.length - 1;
+      const isSubphraseStart = j === 0 && wordIsSubphraseStart;
+
+      const detail = checkWord({
+        raw: rawSeg,
+        core,
+        isFirst,
+        isLast,
+        lowercaseWords,
+        isSubphraseStart,
+      });
+      if (detail) {
+        let segmentOffset;
+        let segmentLength;
+        if (rawSegments.length > 1) {
+          segmentOffset = 0;
+          for (let k = 0; k < j; k++) segmentOffset += rawSegments[k].length + 1;
+          segmentLength = rawSegments[j].length;
+        }
+        return {
+          valid: false,
+          detail,
+          wordIndex: i,
+          ...(segmentOffset !== undefined && { segmentOffset, segmentLength }),
+        };
+      }
+    }
+  }
+  return { valid: true };
+}
+
+/**
+ * Get 1-based column and length of the i-th word (or segment within it) in the heading line.
+ * @param {string} line - Full source line (e.g. "## 1.2 The quick Brown")
+ * @param {string} rawText - Content after ATX prefix (e.g. "1.2 The quick Brown")
+ * @param {string} titleText - Content after numbering (e.g. "The quick Brown")
+ * @param {number} wordIndex - 0-based index of the word in the title
+ * @param {number} [segmentOffset] - Offset of segment within word (for hyphenated words)
+ * @param {number} [segmentLength] - Length of segment (for hyphenated words)
+ * @returns {{ column: number, length: number }|null}
+ */
+function getWordRangeInLine(line, rawText, titleText, wordIndex, segmentOffset, segmentLength) {
+  const wordMatches = [...titleText.matchAll(/\S+/g)];
+  if (wordIndex < 0 || wordIndex >= wordMatches.length) return null;
+  const rawTextStart = line.indexOf(rawText);
+  if (rawTextStart === -1) return null;
+  const titleStartInRaw = rawText.indexOf(titleText);
+  if (titleStartInRaw === -1) return null;
+  const m = wordMatches[wordIndex];
+  let column = rawTextStart + titleStartInRaw + m.index + 1;
+  let length = m[0].length;
+  if (segmentOffset !== undefined && segmentLength !== undefined) {
+    column += segmentOffset;
+    length = segmentLength;
+  }
+  return { column, length };
+}
+
+/**
+ * markdownlint rule: enforce AP-style heading capitalization.
+ * - First and last words must be capitalized.
+ * - Lowercase only a small set of minor words (articles, coordinating conjunctions,
+ *   and short prepositions) in the middle.
+ * - Words in backticks are skipped.
+ *
+ * @param {object} params - markdownlint params (lines, config)
+ * @param {function(object): void} onError - Callback to report an error
+ */
+function ruleFunction(params, onError) {
+    const options = params.config?.["heading-title-case"] ?? {};
+    const customLower = options.lowercaseWords;
+    const lowercaseWords = Array.isArray(customLower) && customLower.length > 0
+      ? new Set(customLower.map((w) => String(w).toLowerCase().trim()).filter(Boolean))
+      : DEFAULT_LOWERCASE_WORDS;
+
+    const headings = extractHeadings(params.lines);
+    for (const h of headings) {
+      const { titleText } = parseHeadingNumberPrefix(h.rawText);
+      const result = checkTitleCase(titleText, lowercaseWords);
+      if (!result.valid) {
+        const line = params.lines[h.lineNumber - 1];
+        const rangeInfo = getWordRangeInLine(
+          line,
+          h.rawText,
+          titleText,
+          result.wordIndex,
+          result.segmentOffset,
+          result.segmentLength
+        );
+        onError({
+          lineNumber: h.lineNumber,
+          detail: result.detail,
+          context: line,
+          ...(rangeInfo && { range: [rangeInfo.column, rangeInfo.length] }),
+        });
+      }
+    }
+  }
+
+module.exports = {
+  names: ["heading-title-case"],
+  description: "Enforce AP-style capitalization for headings, with exceptions for words in backticks and configurable lowercase words.",
+  tags: ["headings"],
+  function: ruleFunction,
+};
