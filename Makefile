@@ -11,7 +11,7 @@ ifneq ($(MAKE),$(SYSTEM_MAKE))
   override MAKE := $(SYSTEM_MAKE)
 endif
 
-.PHONY: test test-go test-go-v1 test-nvpkg bdd bdd-go bdd-go-v1 bdd-ci test-unified ci ci-go ci-go-v1 ci-nvpkg venv lint-markdown lint-python lint-nvpkg validate-links validate-heading-numbering apply-heading-corrections generate-anchor validate-req-references validate-go-defs-index validate-go-code-blocks validate-go-spec-signature-consistency validate-go-signatures validate-go-signatures-go validate-go-signatures-go-v1 validate-go-spec-references apply-go-spec-references audit-feature-coverage audit-requirements-coverage audit-coverage docs-check lint lint-go lint-go-v1 coverage coverage-go coverage-go-v1 coverage-nvpkg coverage-html coverage-html-go coverage-html-go-v1 coverage-html-nvpkg coverage-report coverage-report-go coverage-report-go-v1 coverage-report-nvpkg build build-nvpkg build-dev-nvpkg clean clean-go clean-nvpkg
+.PHONY: test test-go test-go-v1 test-nvpkg bdd bdd-go bdd-go-v1 bdd-ci test-unified ci ci-go ci-go-v1 ci-nvpkg venv lint-markdown lint-python lint-nvpkg validate-links validate-heading-numbering apply-heading-corrections generate-anchor replace-unicode validate-req-references validate-go-defs-index validate-go-code-blocks validate-go-spec-signature-consistency validate-go-signatures validate-go-signatures-go validate-go-signatures-go-v1 validate-go-spec-references apply-go-spec-references audit-feature-coverage audit-requirements-coverage audit-coverage docs-check lint lint-go lint-go-v1 coverage coverage-go coverage-go-v1 coverage-nvpkg coverage-html coverage-html-go coverage-html-go-v1 coverage-html-nvpkg coverage-report coverage-report-go coverage-report-go-v1 coverage-report-nvpkg build build-nvpkg build-dev-nvpkg clean clean-go clean-nvpkg
 
 # Test targets - delegate to language implementations
 test: test-go test-nvpkg
@@ -288,6 +288,31 @@ generate-anchor:
 		python3 scripts/generate_anchor.py --line "$(LINE)"; \
 	else \
 		python3 scripts/generate_anchor.py --file "$(FILE)"; \
+	fi
+
+# Replace standard Unicode with ASCII in a Markdown file (prose only)
+# NOTE: Wrapper for scripts/replace_unicode.py. Replaces U+2192, U+201C, U+201D, U+2019
+#       in prose; skips fenced code blocks and inline backticks.
+#       Requires: Python 3
+# Usage: make replace-unicode FILE="path/to/file.md" [DRY_RUN=1]
+#        - FILE: Markdown file to process (required)
+#        - DRY_RUN: Set to 1 to print result to stdout without modifying the file
+replace-unicode:
+	@command -v python3 >/dev/null 2>&1 || { \
+		echo "Error: python3 not found. Install Python 3 to run replace-unicode."; \
+		exit 1; \
+	}
+	@if [ -z "$(FILE)" ]; then \
+		echo "Error: FILE is required."; \
+		echo ""; \
+		echo "Usage: make replace-unicode FILE=\"path/to/file.md\""; \
+		echo "       make replace-unicode FILE=\"path/to/file.md\" DRY_RUN=1"; \
+		exit 1; \
+	fi
+	@if [ -n "$(DRY_RUN)" ]; then \
+		python3 scripts/replace_unicode.py --dry-run "$(FILE)"; \
+	else \
+		python3 scripts/replace_unicode.py "$(FILE)"; \
 	fi
 
 # Requirement reference validation - validates REQ references in feature files
