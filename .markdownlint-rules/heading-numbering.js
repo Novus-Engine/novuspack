@@ -53,9 +53,11 @@ function getSiblings(sorted, parentIndex, i) {
     if (parentIndex[j] !== parentIndex[i]) {
       continue;
     }
+    /* c8 ignore start -- same parent implies same level by tree construction */
     if (sorted[j].level !== h.level) {
       continue;
     }
+    /* c8 ignore stop */
     siblings.push({ index: j, ...sorted[j] });
   }
   siblings.sort((a, b) => a.lineNumber - b.lineNumber);
@@ -65,7 +67,7 @@ function getSiblings(sorted, parentIndex, i) {
 /**
  * Expected number for heading at index i within its section (parent prefix + sibling sequence).
  * Section-scoped: only used when at least one sibling has numbering.
- * 0-based when the first numbered sibling has numbering "0".
+ * 0-based when the first numbered sibling's last segment is "0" (e.g. "0", "0.0", "1.0").
  */
 function getExpectedNumberInSection(sorted, parentIndex, i) {
   const h = sorted[i];
@@ -76,18 +78,23 @@ function getExpectedNumberInSection(sorted, parentIndex, i) {
 
   const siblings = getSiblings(sorted, parentIndex, i);
   const myIdx = siblings.findIndex((s) => s.lineNumber === h.lineNumber);
+  /* c8 ignore start -- current heading is always in its sibling list */
   if (myIdx < 0) {
     return null;
   }
+  /* c8 ignore stop */
 
   const firstNumbered = siblings.find((s) =>
     parseHeadingNumberPrefix(s.rawText).numbering != null
   );
+  /* c8 ignore start -- sectionUsesNum ensures at least one numbered sibling */
   const firstNumbering =
     firstNumbered != null
       ? parseHeadingNumberPrefix(firstNumbered.rawText).numbering
       : null;
-  const startAtZero = firstNumbering === "0";
+  /* c8 ignore stop */
+  const lastSegment = firstNumbering.split(".").pop();
+  const startAtZero = lastSegment === "0";
   const nextNum = startAtZero ? myIdx : myIdx + 1;
   const prefix = parentNum ? parentNum + "." : "";
   return prefix + String(nextNum);
@@ -111,9 +118,11 @@ function getSectionPeriodStyle(sorted, parentIndex, i) {
   const firstNumbered = siblings.find((s) =>
     parseHeadingNumberPrefix(s.rawText).numbering != null
   );
+  /* c8 ignore start -- getPeriodStyleError only called for numbered headings */
   if (firstNumbered == null) {
     return null;
   }
+  /* c8 ignore stop */
   return parseHeadingNumberPrefix(firstNumbered.rawText).hasH2Dot;
 }
 
