@@ -8,7 +8,7 @@ require (
 	github.com/cucumber/godog v0.15.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/samber/lo v1.52.0
-	golang.org/x/text v0.33.0
+	golang.org/x/text v0.34.0
 )
 
 require (
